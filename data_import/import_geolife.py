@@ -94,3 +94,6 @@ with psycopg2.connect(conn_string) as conn2:
                             geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"""
     cur.execute(query)
     conn2.commit()
+
+print('Done')
+
