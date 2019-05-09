@@ -26,23 +26,25 @@ path_pois = os.path.join('data_tist', 'dataset_TIST2015_POIs.txt')
 with psycopg2.connect(conn_string) as conn2:
     cur = conn2.cursor()
 
-    query = """CREATE SCHEMA if not exists tist;"""
+    query = """CREATE SCHEMA if not exists tist_temp;"""
     cur.execute(query)
     conn2.commit()
 
 # load raw data
 print('Reading raw data')
 checkins = pd.read_csv(path_checkins, sep='\t', header=None,
-                       names=['user_id', 'venue_id', 'started_at', 'timezone'])
-venues = pd.read_csv(path_pois, sep='\t', header=None,
-                     names=['venue_id', 'lat', 'lon', 'category', 'country_code'])
+                       names=['user_id', 'venue_id', 'started_at', 'timezone'], nrows=10000)
+#venues = pd.read_csv(path_pois, sep='\t', header=None,
+#                     names=['venue_id', 'lat', 'lon', 'category', 'country_code'], nrows=10000)
+
+checkins['started_at'] = pd.to_datetime(checkins['started_at'], format='%a %b %d %H:%M:%S +0000 %Y')
 
 # repair unicode error
 venues.loc[venues["category"] == 'Caf', "category"] = 'Café'
 
 print('Writing to database')
-checkins.to_sql('checkins', engine, schema="tist", if_exists='append', index=False, chunksize=50000)
-venues.to_sql('venues', engine, schema="tist", if_exists='append', index=False, chunksize=50000)
+checkins.to_sql('checkins', engine, schema="tist_temp", if_exists='append', index=False, chunksize=50000)
+#venues.to_sql('venues', engine, schema="tist_temp", if_exists='append', index=False, chunksize=50000)
 
 del checkins, venues
 
@@ -52,22 +54,22 @@ with psycopg2.connect(conn_string) as conn2:
 
     # create staypoints table
     print('Create staypoint table')
-    query = """CREATE TABLE tist.staypoints as
+    query = """CREATE TABLE tist_temp.staypoints as
                     SELECT checkins.user_id, checkins.started_at,
                             venues.lat, venues.lon, venues.category,
                             checkins.timezone, venues.country_code
-                    FROM tist.checkins
-                    INNER JOIN tist.venues on checkins.venue_id = venues.venue_id;"""
+                    FROM tist_temp.checkins
+                    INNER JOIN tist_temp.venues on checkins.venue_id = venues.venue_id;"""
     cur.execute(query)
     conn2.commit()
 
     # create and fill geometry
     print('Create staypoint geometries')
     query = """select AddGeometryColumn(
-                'tist', 'staypoints', 'geom', 4326, 'Point', 2);"""
+                'tist_temp', 'staypoints', 'geom', 4326, 'Point', 2);"""
     cur.execute(query)
 
-    query = """update tist.staypoints SET
+    query = """update tist_temp.staypoints SET
                 geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"""
     cur.execute(query)
     conn2.commit()
