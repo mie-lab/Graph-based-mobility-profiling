@@ -116,3 +116,6 @@ login.json
 
 # output images
 /graph_images/*
+
+# personal files
+trackintel_comments*
