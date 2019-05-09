@@ -109,7 +109,7 @@ venv.bak/
 Pipfile.lock
 
 # passwords
-login.json
+dblogin.json
 
 # raw data
 /data_import/data*
