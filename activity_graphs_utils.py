@@ -17,7 +17,7 @@ def nx_coordinate_layout_smopy(G, smap):
     return pos
 
 
-def draw_smopy_basemap(G, figsize=(8, 6), zoom=10):
+def draw_smopy_basemap(G, figsize=(8, 6), zoom=10, ax=None):
     
     pos_wgs = tigraphs.nx_coordinate_layout(G) 
     lon = list_values = [ coords[0] for coords in pos_wgs.values() ]
@@ -30,6 +30,6 @@ def draw_smopy_basemap(G, figsize=(8, 6), zoom=10):
 
     smap = smopy.Map(lat_min, lon_min, lat_max, lon_max, tileserver="http://tile.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png", z=zoom)
     #map = smopy.Map((min_y, max_y-min_y, min_x, max_x-min_x), z=5)
-    ax = smap.show_mpl(figsize=figsize)
+    ax = smap.show_mpl(figsize=figsize, ax=ax)
     
     return ax, smap

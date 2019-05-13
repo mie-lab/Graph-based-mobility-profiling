@@ -11,14 +11,24 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import json
 import os
+import pickle
+import ntpath
 
 from activity_graphs_utils import draw_smopy_basemap, nx_coordinate_layout_smopy
 
 
 CRS_WGS = {'init' :'epsg:4326'}
+
+# define output for images
 IMAGE_OUTPUT = os.path.join(".", "graph_images", "tist")
 if not os.path.exists(IMAGE_OUTPUT):
     os.mkdir(IMAGE_OUTPUT)
+    
+# define output for graphs
+GRAPH_OUTPUT = os.path.join(".", "graph_data", "tist.graphs.pkl")
+GRAPH_FOLDER, _= ntpath.split(GRAPH_OUTPUT)
+if not os.path.exists(GRAPH_FOLDER):
+    os.mkdir(GRAPH_FOLDER)
 
 # build database login string from file
 DBLOGIN_FILE = os.path.join("dblogin.json")
@@ -48,7 +58,13 @@ A_dict = tigraphs.weights_transition_count(sp)
 #
 G_dict = tigraphs.generate_activity_graphs(places, A_dict)
 
+# save graphs to file
+pickle.dump( G_dict, open( GRAPH_OUTPUT, "wb" ) )
 
+
+
+
+# save figures
 
 for user_id, G in G_dict.items():
     print(user_id)
@@ -82,5 +98,8 @@ for user_id, G in G_dict.items():
     plt.savefig(filename)
     plt.close()
     
+    
+
+
 
 

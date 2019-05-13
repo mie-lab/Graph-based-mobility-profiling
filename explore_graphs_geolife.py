@@ -4,32 +4,51 @@ import trackintel as ti
 from sqlalchemy import create_engine
 from trackintel.preprocessing import activity_graphs as tigraphs
 import numpy as np
-import networkx as nx
+import networkx as nxa
 import matplotlib.pyplot as plt
-import matplotlib
-import smopy
+import pickle
+import os
+import json
+import ntpath
+from shapely.geometry import Point
 
 from activity_graphs_utils import draw_smopy_basemap, nx_coordinate_layout_smopy
 
-crs_wgs84 = {'init' :'epsg:4326'}
+CRS_WGS84 = {'init' :'epsg:4326'}
 
-with open('login.json') as json_file:  
-    login_data = json.load(json_file)
+
+
+# define output for images
+IMAGE_OUTPUT = os.path.join(".", "graph_images", "geolife")
+if not os.path.exists(IMAGE_OUTPUT):
+    os.mkdir(IMAGE_OUTPUT)
+
+# define output for graphs
+GRAPH_OUTPUT = os.path.join(".", "graph_data", "geolife.graphs.pkl")
+GRAPH_FOLDER, _= ntpath.split(GRAPH_OUTPUT)
+if not os.path.exists(GRAPH_FOLDER):
+    os.mkdir(GRAPH_FOLDER)
     
-conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}".format(**login_data)
+# build database login string from file
+DBLOGIN_FILE = os.path.join("dblogin.json")
+with open(DBLOGIN_FILE) as json_file:  
+    LOGIN_DATA = json.load(json_file)
+    
+conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}"\
+                .format(**LOGIN_DATA)
 
-image_output = r".\graph_images\geolife"
 
 engine = create_engine(conn_string)
 conn = engine.connect()
 
 posfix = pd.read_sql("""select * from geolife.positionfixes where user_id = 0""", engine)
 
-posfix = gpd.GeoDataFrame(posfix, geometry=gpd.points_from_xy(posfix.lon, posfix.lat), crs=crs_wgs84)
+posfix = gpd.GeoDataFrame(posfix,
+                          geometry=[Point(xy) for xy in 
+                                    zip(posfix.lon, posfix.lat)], 
+                          crs=CRS_WGS84)
 
 posfix['accuracy'] = np.nan
-posfix['tracked_at'] = posfix['timestamp']
-posfix['elevation'] = posfix['altitude meter']
 posfix['geom'] = posfix['geometry']
 posfix = posfix.set_geometry("geom")
 
@@ -38,7 +57,7 @@ sp = posfix.as_positionfixes.extract_staypoints()
 
 #sp = sp.to_crs({'init': 'epsg:2056'})
 #sp = ti.trackintel.read_staypoints_postgis(conn_string=conn_string, geom_col="geometry_raw", table_name="gc2.staypoints")
-    
+# todo: Create reliable staypoints and write them to database!
 places = sp.as_staypoints.extract_places(epsilon=0.0001, num_samples=3)
 places.as_places.plot()
 
@@ -46,6 +65,9 @@ A_dict = tigraphs.weights_transition_count(sp)
 
 G_dict = tigraphs.generate_activity_graphs(places, A_dict)
 
+
+# save graphs to file
+pickle.dump( G_dict, open( GRAPH_OUTPUT, "wb" ) )
 
 
 for user_id, G in G_dict.items():
@@ -68,7 +90,7 @@ for user_id, G in G_dict.items():
                  pos=nx_coordinate_layout_smopy(G,smap))
     
 
-    filename = image_output + "\\" + str(user_id) + "_coordinate_layout" + ".png"
+    filename = IMAGE_OUTPUT + "\\" + str(user_id) + "_coordinate_layout" + ".png"
     plt.savefig(filename)
     plt.close()
     
@@ -76,7 +98,7 @@ for user_id, G in G_dict.items():
     plt.figure()
     pos = nx.spring_layout(G)
     nx.draw(G, pos=pos, width=norm_width/2, node_size=node_sizes)
-    filename = image_output + "\\" + str(user_id) + "_spring_layout" + ".png"
+    filename = IMAGE_OUTPUT + "\\" + str(user_id) + "_spring_layout" + ".png"
     plt.savefig(filename)
     plt.close()
     
