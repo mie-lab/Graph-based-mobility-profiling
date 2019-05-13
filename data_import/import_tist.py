@@ -26,7 +26,7 @@ path_pois = os.path.join('data_tist', 'dataset_TIST2015_POIs.txt')
 with psycopg2.connect(conn_string) as conn2:
     cur = conn2.cursor()
 
-    query = """CREATE SCHEMA if not exists tist_temp;"""
+    query = """CREATE SCHEMA if not exists tist;"""
     cur.execute(query)
     conn2.commit()
 
@@ -43,8 +43,8 @@ checkins['started_at'] = pd.to_datetime(checkins['started_at'], format='%a %b %d
 venues.loc[venues["category"] == 'Caf', "category"] = 'Café'
 
 print('Writing to database')
-checkins.to_sql('checkins', engine, schema="tist_temp", if_exists='append', index=False, chunksize=50000)
-#venues.to_sql('venues', engine, schema="tist_temp", if_exists='append', index=False, chunksize=50000)
+checkins.to_sql('checkins', engine, schema="tist", if_exists='append', index=False, chunksize=50000)
+#venues.to_sql('venues', engine, schema="temp", if_exists='append', index=False, chunksize=50000)
 
 del checkins, venues
 
@@ -54,22 +54,22 @@ with psycopg2.connect(conn_string) as conn2:
 
     # create staypoints table
     print('Create staypoint table')
-    query = """CREATE TABLE tist_temp.staypoints as
+    query = """CREATE TABLE tist.staypoints as
                     SELECT checkins.user_id, checkins.started_at,
                             venues.lat, venues.lon, venues.category,
                             checkins.timezone, venues.country_code
-                    FROM tist_temp.checkins
-                    INNER JOIN tist_temp.venues on checkins.venue_id = venues.venue_id;"""
+                    FROM tist.checkins
+                    INNER JOIN tist.venues on checkins.venue_id = venues.venue_id;"""
     cur.execute(query)
     conn2.commit()
 
     # create and fill geometry
     print('Create staypoint geometries')
     query = """select AddGeometryColumn(
-                'tist_temp', 'staypoints', 'geom', 4326, 'Point', 2);"""
+                'tist', 'staypoints', 'geom', 4326, 'Point', 2);"""
     cur.execute(query)
 
-    query = """update tist_temp.staypoints SET
+    query = """update tist.staypoints SET
                 geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"""
     cur.execute(query)
     conn2.commit()
