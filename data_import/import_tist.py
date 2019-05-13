@@ -33,18 +33,19 @@ with psycopg2.connect(conn_string) as conn2:
 # load raw data
 print('Reading raw data')
 checkins = pd.read_csv(path_checkins, sep='\t', header=None,
-                       names=['user_id', 'venue_id', 'started_at', 'timezone'], nrows=10000)
-#venues = pd.read_csv(path_pois, sep='\t', header=None,
-#                     names=['venue_id', 'lat', 'lon', 'category', 'country_code'], nrows=10000)
+                       names=['user_id', 'venue_id', 'started_at', 'timezone'])
+venues = pd.read_csv(path_pois, sep='\t', header=None,
+                     names=['venue_id', 'lat', 'lon', 'category', 'country_code'])
 
-checkins['started_at'] = pd.to_datetime(checkins['started_at'], format='%a %b %d %H:%M:%S +0000 %Y')
+checkins['started_at'] = pd.to_datetime(checkins['started_at'], format='%a %b %d %H:%M:%S +0000 %Y',
+		errors='coerce')
 
 # repair unicode error
 venues.loc[venues["category"] == 'Caf', "category"] = 'Café'
 
 print('Writing to database')
 checkins.to_sql('checkins', engine, schema="tist", if_exists='append', index=False, chunksize=50000)
-#venues.to_sql('venues', engine, schema="temp", if_exists='append', index=False, chunksize=50000)
+venues.to_sql('venues', engine, schema="tist", if_exists='append', index=False, chunksize=50000)
 
 del checkins, venues
 
