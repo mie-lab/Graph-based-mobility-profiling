@@ -4,7 +4,7 @@ import trackintel as ti
 from sqlalchemy import create_engine
 from trackintel.preprocessing import activity_graphs as tigraphs
 import numpy as np
-import networkx as nxa
+import networkx as nx
 import matplotlib.pyplot as plt
 import pickle
 import os
