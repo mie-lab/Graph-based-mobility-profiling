@@ -4,7 +4,7 @@ import trackintel as ti
 from sqlalchemy import create_engine
 from trackintel.preprocessing import activity_graphs as tigraphs
 import numpy as np
-import networkx as nx
+import networkx as nxa
 import matplotlib.pyplot as plt
 import pickle
 import os
@@ -58,7 +58,6 @@ sp = posfix.as_positionfixes.extract_staypoints()
 #sp = sp.to_crs({'init': 'epsg:2056'})
 #sp = ti.trackintel.read_staypoints_postgis(conn_string=conn_string, geom_col="geometry_raw", table_name="gc2.staypoints")
 # todo: Create reliable staypoints and write them to database!
-
 
 places = sp.as_staypoints.extract_places(epsilon=0.0001, num_samples=3)
 places.as_places.plot()
