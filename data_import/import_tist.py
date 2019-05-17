@@ -32,8 +32,8 @@ with psycopg2.connect(conn_string) as conn2:
 
 # load raw data
 print('Reading raw data')
-checkins = pd.read_csv(path_checkins, sep='\t', header=None,
-                       names=['user_id', 'venue_id', 'started_at', 'timezone'], nrows=10000)
+checkins = pd.read_csv(path_checkins, sep='\t', header=None, names=['user_id', 'venue_id', 'started_at', 'timezone'], skiprows=4000000, nrows=1000000)
+                       
 #venues = pd.read_csv(path_pois, sep='\t', header=None,
 #                     names=['venue_id', 'lat', 'lon', 'category', 'country_code'], nrows=10000)
 
@@ -75,3 +75,5 @@ with psycopg2.connect(conn_string) as conn2:
     conn2.commit()
 
 print('Done')
+
+

@@ -116,6 +116,7 @@ dblogin.json
 
 # output images
 /graph_images/*
+/graph_data/*
 
 # personal files
 trackintel_comments*

@@ -4,6 +4,7 @@ This script reads in the geolife data (as it can be downloaded from
 https://www.microsoft.com/en-us/download/details.aspx?id=52367) and loads it
 in a postgis database
 """
+
 import os
 import time
 import json
@@ -12,6 +13,7 @@ import glob
 import pandas as pd
 from sqlalchemy import create_engine
 import psycopg2
+import trackintel as ti
 
 FEET2METER = 0.3048
 
@@ -77,23 +79,49 @@ for user_folder_this in user_folder:
     t_end = time.time()
     print("finished user_id: ", user_id, "Duration: ", "{:.0f}"
           .format(t_end-t_start))
-
+    
+    break
 
 print("finished all users, start creating geometries")
 
-# add geometry to table
+
+# add geometry and trackintel fields to table
 with psycopg2.connect(conn_string) as conn2:
     cur = conn2.cursor()
 
+    # add geometry column
     QUERY = """select AddGeometryColumn('geolife', 'positionfixes',
-                                        'geom', 4326, 'Point', 2);"""
-    cur.execute(query)
+                                        'geom', 4326, 'Point', 2);
+                ALTER TABLE geolife.positionfixes 
+                            ADD COLUMN id SERIAL PRIMARY KEY,
+                            ADD COLUMN accuracy double precision;
+                            """
+    cur.execute(QUERY)
     conn2.commit()
 
     QUERY = """update geolife.positionfixes SET
                             geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"""
-    cur.execute(query)
+    cur.execute(QUERY)
     conn2.commit()
 
-print('Done')
+
+# downlaod all position fixes from database
+print("download positionfixes")
+posfix = ti.io.read_positionfixes_postgis(conn_string=conn_string, table_name="geolife.positionfixes")
+
+# staypoints
+print("extracting staypoints")
+sp = posfix.as_positionfixes.extract_staypoints()
+print("writing to postgis...")
+ti.io.write_staypoints_postgis(sp, conn_string, schema="geolife", table_name="staypoints")
+
+# places
+print("extracting places")
+places = sp.as_staypoints.extract_places(epsilon=50, num_samples=4, distance_matrix_metric='haversine')
+print("writing to postgis...")
+ti.io.write_places_postgis(places, conn_string, schema="geolife", table_name="places")
+
+print("done")
+
+
 
