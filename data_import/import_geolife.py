@@ -29,11 +29,13 @@ conn = engine.connect()
 data_folder = os.path.join(".", "data_geolife", "*")
 user_folder = glob.glob(data_folder)
 
+schema_name = 'geolife2'
+
 # create schema for the data
 with psycopg2.connect(conn_string) as conn2:
     cur = conn2.cursor()
 
-    query = """CREATE SCHEMA if not exists geolife;"""
+    query = """CREATE SCHEMA if not exists {};""".format(schema_name)
     cur.execute(query)
     conn2.commit()
 
@@ -72,7 +74,7 @@ for user_folder_this in user_folder:
 
     data = pd.concat(df_list, axis=0, ignore_index=True)
     del df_list
-    data.to_sql('positionfixes', engine, schema="geolife", if_exists='append',
+    data.to_sql('positionfixes', engine, schema=schema_name, if_exists='append',
                 index=False, chunksize=50000)
     del data, data_this
 
@@ -90,36 +92,39 @@ with psycopg2.connect(conn_string) as conn2:
     cur = conn2.cursor()
 
     # add geometry column
-    QUERY = """select AddGeometryColumn('geolife', 'positionfixes',
+    QUERY = """select AddGeometryColumn('{}', 'positionfixes',
                                         'geom', 4326, 'Point', 2);
-                ALTER TABLE geolife.positionfixes 
+                ALTER TABLE {}.positionfixes 
                             ADD COLUMN id SERIAL PRIMARY KEY,
                             ADD COLUMN accuracy double precision;
-                            """
+                            """.format(schema_name, schema_name)
     cur.execute(QUERY)
     conn2.commit()
 
-    QUERY = """update geolife.positionfixes SET
-                            geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"""
+    QUERY = """update {}.positionfixes SET
+                            geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);""".format(schema_name)
     cur.execute(QUERY)
     conn2.commit()
 
 
 # downlaod all position fixes from database
 print("download positionfixes")
-posfix = ti.io.read_positionfixes_postgis(conn_string=conn_string, table_name="geolife.positionfixes")
+posfix = ti.io.read_positionfixes_postgis(conn_string=conn_string, schema=schema_name, table_name='positionfixes')
 
 # staypoints
-print("extracting staypoints")
+print('extracting staypoints')
 sp = posfix.as_positionfixes.extract_staypoints()
-print("writing to postgis...")
-ti.io.write_staypoints_postgis(sp, conn_string, schema="geolife", table_name="staypoints")
+print('writing positionfixes to postgis...')
+
+# positionfixes are written back to the database to include the staypoint id
+ti.io.write_positionfixes_postgis(posfix, conn_string, schema=schema_name, table_name="positionfixes")
 
 # places
 print("extracting places")
 places = sp.as_staypoints.extract_places(epsilon=50, num_samples=4, distance_matrix_metric='haversine')
-print("writing to postgis...")
-ti.io.write_places_postgis(places, conn_string, schema="geolife", table_name="places")
+print("writing staypoints and places to postgis...")
+ti.io.write_staypoints_postgis(sp, conn_string, schema=schema_name, table_name="staypoints")
+ti.io.write_places_postgis(places, conn_string, schema=schema_name, table_name="places")
 
 print("done")
 

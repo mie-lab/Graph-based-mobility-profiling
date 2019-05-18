@@ -37,30 +37,19 @@ with open(DBLOGIN_FILE) as json_file:
 conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}"\
                 .format(**LOGIN_DATA)
 
-
 engine = create_engine(conn_string)
 conn = engine.connect()
 
-posfix = pd.read_sql("""select * from geolife.positionfixes where user_id <= 0""", engine)
-
-posfix = gpd.GeoDataFrame(posfix,
-                          geometry=[Point(xy) for xy in 
-                                    zip(posfix.lon, posfix.lat)], 
-                          crs=CRS_WGS84)
-
-posfix['accuracy'] = np.nan
-posfix['geom'] = posfix['geometry']
-posfix = posfix.set_geometry("geom")
 
 
-sp = posfix.as_positionfixes.extract_staypoints()
+sp_org = ti.io.read_staypoints_postgis(conn_string, table_name="geolife.staypoints")
+#places = ti.io.read_places_postgis(conn_string, table_name="geolife.places", 
+#                                   geom_col='center')
+sp = sp_org.iloc[0:10000].copy()
 
-#sp = sp.to_crs({'init': 'epsg:2056'})
-#sp = ti.trackintel.read_staypoints_postgis(conn_string=conn_string, geom_col="geometry_raw", table_name="gc2.staypoints")
-# todo: Create reliable staypoints and write them to database!
+places = sp.as_staypoints.extract_places(epsilon=50, num_samples=4,
+                                         distance_matrix_metric='haversine')
 
-places = sp.as_staypoints.extract_places(epsilon=0.0001, num_samples=3)
-places.as_places.plot()
 
 A_dict = tigraphs.weights_transition_count(sp)
 G_dict = tigraphs.generate_activity_graphs(places, A_dict)
