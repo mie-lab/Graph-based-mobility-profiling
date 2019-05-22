@@ -11,6 +11,7 @@ import os
 import json
 import ntpath
 from shapely.geometry import Point
+import datetime
 
 from activity_graphs_utils import draw_smopy_basemap, nx_coordinate_layout_smopy
 
@@ -43,16 +44,36 @@ conn = engine.connect()
 
 
 sp_org = ti.io.read_staypoints_postgis(conn_string, table_name="geolife.staypoints")
-#places = ti.io.read_places_postgis(conn_string, table_name="geolife.places", 
+places = ti.io.read_places_postgis(conn_string, table_name="geolife.places", 
+                                   geom_col='center') 
 #                                   geom_col='center')
-sp = sp_org.iloc[0:10000].copy()
+sp = sp_org.copy()
+#
+#places = sp.as_staypoints.extract_places(epsilon=50, num_samples=4,
+#                                         distance_matrix_metric='haversine')
 
-places = sp.as_staypoints.extract_places(epsilon=50, num_samples=4,
-                                         distance_matrix_metric='haversine')
+#sp = ti.io.read_staypoints_postgis(conn_string, table_name="geolife4444.staypoints")
+#places = ti.io.read_places_postgis(conn_string, table_name="geolife4444.places", 
+#                                   geom_col='center')
 
+start_date = min(sp['started_at'])
+end_date = max(sp['finished_at'])
 
-A_dict = tigraphs.weights_transition_count(sp)
-G_dict = tigraphs.generate_activity_graphs(places, A_dict)
+delta_date = end_date - start_date
+
+date_step = 10
+date_list = [start_date + datetime.timedelta(days=int(x)) for x in np.arange(date_step, delta_date.days, date_step)]
+
+A_dict = {}
+G_dict = {}
+start_date_this = start_date
+
+for end_date_this in date_list:
+    sp_this = sp[(sp['started_at'] > start_date_this) & (sp['finished_at'] < end_date_this)]
+    places_this = places[places['place_id'].isin(sp_this['place_id'])]
+    
+    A_dict.update(tigraphs.weights_transition_count(sp_this))
+    G_dict.update(tigraphs.generate_activity_graphs(places, A_dict))
 
 
 # save graphs to file

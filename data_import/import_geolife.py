@@ -29,7 +29,7 @@ conn = engine.connect()
 data_folder = os.path.join(".", "data_geolife", "*")
 user_folder = glob.glob(data_folder)
 
-schema_name = 'geolife2'
+schema_name = 'geolife'
 
 # create schema for the data
 with psycopg2.connect(conn_string) as conn2:
@@ -81,8 +81,9 @@ for user_folder_this in user_folder:
     t_end = time.time()
     print("finished user_id: ", user_id, "Duration: ", "{:.0f}"
           .format(t_end-t_start))
-    
     break
+    
+    
 
 print("finished all users, start creating geometries")
 
@@ -109,7 +110,7 @@ with psycopg2.connect(conn_string) as conn2:
 
 # downlaod all position fixes from database
 print("download positionfixes")
-posfix = ti.io.read_positionfixes_postgis(conn_string=conn_string, schema=schema_name, table_name='positionfixes')
+posfix = ti.io.read_positionfixes_postgis(conn_string=conn_string, table_name='{}.positionfixes'.format(schema_name))
 
 # staypoints
 print('extracting staypoints')
