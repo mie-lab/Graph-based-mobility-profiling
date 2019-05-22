@@ -23,7 +23,7 @@ if not os.path.exists(IMAGE_OUTPUT):
     os.mkdir(IMAGE_OUTPUT)
     
 # define output for graphs
-GRAPH_OUTPUT = os.path.join(".", "graph_data", study +".graphs.pkl")
+GRAPH_OUTPUT = os.path.join(".", "graph_data", study +".graphs")
 GRAPH_FOLDER, _= ntpath.split(GRAPH_OUTPUT)
 if not os.path.exists(GRAPH_FOLDER):
     os.mkdir(GRAPH_FOLDER)
@@ -40,7 +40,7 @@ engine = create_engine(conn_string)
 conn = engine.connect()
 
 sp_org = gpd.GeoDataFrame.from_postgis("""SELECT *, geometry_raw as geometry_new
-                                       FROM gc1.staypoints""",
+                                       FROM {}.staypoints where user_id < 1599""".format(study),
                                        conn, crs=CRS_WGS84, geom_col='geometry_new', index_col='id')
 # create important places 
 sp = sp_org.copy()
@@ -58,6 +58,16 @@ places = sp.as_staypoints.extract_places(epsilon=50, num_samples=4,
                                          distance_matrix_metric='haversine')
 
 
+# create graphs of the full period
+    
+A_dict = (tigraphs.weights_transition_count(sp))
+G_list = list(tigraphs.generate_activity_graphs(places, A_dict).items())
+    
+# save graphs to file
+pickle.dump( G_list, open( GRAPH_OUTPUT + "_full.pkl", "wb" ) )
+
+
+# create graphs with temporal window
 start_date = min(sp['started_at']) + datetime.timedelta(days=100)
 end_date = max(sp['finished_at'])
 
@@ -84,7 +94,7 @@ for end_date_this in date_list:
     start_date_this = end_date_this
 
 # save graphs to file
-pickle.dump( G_list, open( GRAPH_OUTPUT, "wb" ) )
+pickle.dump( G_list, open( GRAPH_OUTPUT + "_{}days.pkl".format(date_step) , "wb" ) )
 
 
 #for ix, id_G_tuple in enumerate(G_list):
