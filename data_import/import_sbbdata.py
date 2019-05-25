@@ -43,19 +43,20 @@ for study in studies:
                                            crs=CRS_WGS84, 
                                            geom_col='geometry_new',
                                            index_col='id')
+    conn.close()
+    
     # create important places 
     sp = sp_org.copy()
     sp["geom"] = sp["geometry_new"]
     sp["elevation"] = np.nan
     
-    sp = sp.loc[:,["user_id", "started_at", "finished_at", "elevation", "geom"]]
     sp = sp.set_geometry("geom")
     
     print('create places')
     places = sp.as_staypoints.extract_places(epsilon=50, num_samples=4,
                                              distance_matrix_metric='haversine')
+
     print('write staypoints to database')
-    #
-    print('write places to database')
     ti.io.write_staypoints_postgis(sp, conn_string, schema=study, table_name="staypoints")
+    print('write places to database')
     ti.io.write_places_postgis(places, conn_string, schema=study, table_name="places")
