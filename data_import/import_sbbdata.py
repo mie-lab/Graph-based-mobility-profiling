@@ -14,13 +14,16 @@ import json
 
 CRS_WGS84 = {'init' :'epsg:4326'}
 #
-studies = ['gc1','gc2']
+studies = ['gc2', 'gc1']
 
+DBLOGIN_FILE = os.path.join('..','dblogin.json')
+with open(DBLOGIN_FILE) as json_file:  
+    LOGIN_DATA = json.load(json_file)
+        
+        
 for study in studies:
     # build database login string from file
-    DBLOGIN_FILE = os.path.join("dblogin.json")
-    with open(DBLOGIN_FILE) as json_file:  
-        LOGIN_DATA = json.load(json_file)
+    print('start study {}'.format(study))
         
     conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}"\
                     .format(**LOGIN_DATA)
@@ -28,17 +31,15 @@ for study in studies:
     engine = create_engine(conn_string)
     conn = engine.connect()
     
-    sp_org = gpd.GeoDataFrame.from_postgis("""SELECT *, geometry_raw as geometry_new
+    print('download staypoints')    
+    sp = gpd.GeoDataFrame.from_postgis("""SELECT *, geometry_raw as geom
                                            FROM {}.staypoints""".format(study),
                                            conn,
                                            crs=CRS_WGS84, 
-                                           geom_col='geometry_new',
-                                           index_col='id')
+                                           geom_col='geom')
     conn.close()
     
     # create important places 
-    sp = sp_org.copy()
-    sp["geom"] = sp["geometry_new"]
     sp["elevation"] = np.nan
     
     sp = sp.set_geometry("geom")
