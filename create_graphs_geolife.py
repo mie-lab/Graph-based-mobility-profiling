@@ -45,7 +45,7 @@ engine = create_engine(conn_string)
 conn = engine.connect()
 
 
-sp = places = ti.io.read_staypoints_postgis(conn_string, table_name='{}.staypoints'.format(schema_name),
+sp = ti.io.read_staypoints_postgis(conn_string, table_name='{}.staypoints'.format(schema_name),
                           geom_col='geom')
 places = ti.io.read_places_postgis(conn_string, table_name='{}.places'.format(schema_name),
                           geom_col='center')

@@ -43,7 +43,8 @@ for study in studies:
     engine = create_engine(conn_string)
     conn = engine.connect()
     
-    
+    sp = ti.io.read_staypoints_postgis(conn_string, table_name='{}.staypoints'.format(study),
+                          geom_col='geom')
     places = ti.io.read_places_postgis(conn_string, table_name='{}.places'.format(study),
                               geom_col='center')
     
