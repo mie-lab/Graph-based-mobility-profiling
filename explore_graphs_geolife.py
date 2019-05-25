@@ -66,7 +66,7 @@ pickle.dump( G_list, open( GRAPH_OUTPUT + "_{}dist_full.pkl".format(n), "wb" ) )
 print('create full graph with delaunay tesselation')
 A_dict = tigraphs.weights_delaunay(places,  to_crs={'init': 'epsg:3857'})
 G_list = list(tigraphs.generate_activity_graphs(places, A_dict).items())
-pickle.dump( G_list, open( GRAPH_OUTPUT + "_counts_full.pkl", "wb" ) )
+pickle.dump( G_list, open( GRAPH_OUTPUT + "_delaunay_full.pkl", "wb" ) )
 
 
 # create graphs with temporal window
@@ -83,7 +83,7 @@ A_dict_counts = {}
 G_list_counts = []
 
 A_dict_ndist = {}
-G_list_5dist = []
+G_list_ndist = []
 
 A_dict_delaunay = {}
 G_list_delaunay = []
@@ -101,7 +101,7 @@ for ix,end_date_this in enumerate(date_list):
     
         
     G_list_counts = G_list_counts + list(tigraphs.generate_activity_graphs(places_this, A_dict_counts).items())
-    G_list_ndist = G_list_5dist + list(tigraphs.generate_activity_graphs(places_this, A_dict_ndist).items())
+    G_list_ndist = G_list_ndist + list(tigraphs.generate_activity_graphs(places_this, A_dict_ndist).items())
     G_list_delaunay = G_list_delaunay + list(tigraphs.generate_activity_graphs(places_this, A_dict_delaunay).items())
 
     start_date_this = end_date_this
@@ -111,79 +111,7 @@ for ix,end_date_this in enumerate(date_list):
 
 print('writing time-window graphs...')
 pickle.dump( G_list_counts, open( GRAPH_OUTPUT + "_counts_{}days.pkl".format(date_step) , "wb" ) )
-pickle.dump( G_list_5dist, open( GRAPH_OUTPUT + "_{}dist_{}days.pkl".format(n,date_step) , "wb" ) )
-pickle.dump( G_list_5dist, open( GRAPH_OUTPUT + "_delaunay_{}days.pkl".format(date_step) , "wb" ) )
+pickle.dump( G_list_ndist, open( GRAPH_OUTPUT + "_{}dist_{}days.pkl".format(n,date_step) , "wb" ) )
+pickle.dump( G_list_delaunay, open( GRAPH_OUTPUT + "_delaunay_{}days.pkl".format(date_step) , "wb" ) )
 
 print('done')
-
-
-
-
-
-
-
-
-# code for plotting
-
-#
-#
-#def get_color_hash(key_list):
-#    cmap = plt.get_cmap('Set1')
-#    colors = cmap(np.linspace(0, 1, len(key_list)))
-##    colors = np.linspace(0, 1, len(key_list))
-#     
-#    return dict(zip(key_list, colors))
-
-
-
-
-# save graphs to file
-
-
-#for ix, id_G_tuple in enumerate(G_list):
-#    user_id, G = id_G_tuple
-#    edge_color_dict = get_color_hash(G.graph['edge_keys']+[''])
-#    if len(G.nodes) == 0:
-#        continue
-#    
-#    print(user_id)
-#    # edge color management
-#    weights = [1/(d+1) for u,v,d in G.edges(data='weight')]
-#    edge_colors = np.asarray([edge_color_dict[edge_key]
-#                            for u,v, edge_key in G.edges(keys=True)])
-#    mm = MinMaxScaler((0.1,3))
-#    norm_weights = np.log(weights)
-#    norm_weights = mm.fit_transform(norm_weights.reshape((-1,1)))
-#
-#    deg = nx.degree(G)
-#    node_sizes = [1 * deg[iata] for iata in G.nodes]
-#    
-#    # draw geographic representation
-#    ax, smap = draw_smopy_basemap(G)
-#    nx.draw_networkx(G, ax=ax,
-#                 edge_color=edge_colors,
-#                 font_size=20,
-#                 width=norm_weights.ravel(),
-#                 with_labels=False,
-#                 node_size=node_sizes,
-#                 pos=nx_coordinate_layout_smopy(G,smap))
-#    break
-#    
-#    
-
-
-#    plt.close()
-##    
-##
-##    filename = IMAGE_OUTPUT + "\\" + str(user_id) + "_" + str(ix) + "_coordinate_layout" + ".png"
-##    plt.savefig(filename)
-##    plt.close()
-##    
-#    # draw spring layout 
-#    plt.figure()
-#    pos = nx.spring_layout(G)
-#    nx.draw(G, pos=pos, width=norm_width/2, node_size=node_sizes)
-#    filename = IMAGE_OUTPUT + "\\" + str(user_id) + "_" + str(ix) + "_spring_layout" + ".png"
-#    plt.savefig(filename)
-#    plt.close()
-##    
