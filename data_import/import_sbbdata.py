@@ -8,18 +8,9 @@ Created on Sat May 25 20:31:37 2019
 import geopandas as gpd
 import trackintel as ti
 from sqlalchemy import create_engine
-from trackintel.preprocessing import activity_graphs as tigraphs
 import numpy as np
-import networkx as nx
-import matplotlib.pyplot as plt
 import os
-import pickle
-import ntpath
 import json
-import datetime
-from sklearn.preprocessing import MinMaxScaler
-
-from activity_graphs_utils import draw_smopy_basemap, nx_coordinate_layout_smopy
 
 CRS_WGS84 = {'init' :'epsg:4326'}
 #
