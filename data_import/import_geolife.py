@@ -18,8 +18,8 @@ import trackintel as ti
 FEET2METER = 0.3048
 
 # connect to postgis database
-dblogin_file = os.path.join("..", "dblogin.json")
-with open(dblogin_file) as json_file:
+config_file = os.path.join("..", "dblogin.json")
+with open(config_file) as json_file:
     login_data = json.load(json_file)
 
 conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}".format(**login_data)

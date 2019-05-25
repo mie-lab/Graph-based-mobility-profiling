@@ -28,7 +28,7 @@ if not os.path.exists(IMAGE_OUTPUT):
     os.mkdir(IMAGE_OUTPUT)
 
 # define output for graphs
-GRAPH_OUTPUT = os.path.join(".", "graph_data", "geolife.graphs.pkl")
+GRAPH_OUTPUT = os.path.join(".", "graph_data", "geolife")
 GRAPH_FOLDER, _= ntpath.split(GRAPH_OUTPUT)
 if not os.path.exists(GRAPH_FOLDER):
     os.mkdir(GRAPH_FOLDER)

@@ -18,7 +18,7 @@ import os
 import pickle
 import ntpath
 import glob
-
+import re
 
 plt.rcParams["figure.figsize"] = (16,9)
 fontSizeAll = 18
@@ -42,7 +42,9 @@ for graph_file in GRAPH_FILES:
 # iterate all graph data sets,
 # todo: define G_dict in loop
     
+regex = re.compile('.*_10days')
 
+study_name_list = list(filter(regex.search, study_name_list))
 
 result = {}
 result['av_degree'] = {}
@@ -53,7 +55,7 @@ result['av_shortest_path'] = {}
 
 for study_name in study_name_list:
     
-    G_dict = graph_data_dict[study_name]
+    G_list = graph_data_dict[study_name]
     
     av_degree_list = []
     av_clustering_list = []
@@ -61,18 +63,23 @@ for study_name in study_name_list:
     av_diameter_list = []
     av_shortest_path_list = []
 
-    for user_id, G in G_dict.items():
+    for user_id, G1 in G_list:
+        G = nx.Graph(G1)
         # average degree
         av_degree_list.append(np.mean(list(dict(G.degree).values())))
         
         # average clustering
         av_clustering_list.append(nx.average_clustering(G, weight='weight'))
         
-        # Diameter
-        av_diameter_list.append(nx.diameter(G))
         
-        # average shortest path length
-        av_shortest_path_list.append(nx.average_shortest_path_length(G, weight='weight'))
+        try:
+            # Diameter
+            av_diameter_list.append(nx.diameter(G))
+        
+            # average shortest path length
+            av_shortest_path_list.append(nx.average_shortest_path_length(G, weight='weight'))
+        except nx.NetworkXError:
+            print('unconnected')
     
     #save to dict for each study
     
@@ -88,7 +95,7 @@ for parameter, results_by_study_dict in result.items():
     fig.suptitle(parameter)
     for i, study_name in enumerate(study_name_list):
         ax_this = ax[i//2][i%2]
-        ax_this.hist(results_by_study_dict[study_name], 20)
+        ax_this.hist(results_by_study_dict[study_name], 50)
         ax_this.set_title(study_name)
         
     

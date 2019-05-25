@@ -27,7 +27,7 @@ for study in studies:
         os.mkdir(IMAGE_OUTPUT)
         
     # define output for graphs
-    GRAPH_OUTPUT = os.path.join(".", "graph_data", study +".graphs")
+    GRAPH_OUTPUT = os.path.join(".", "graph_data", study)
     GRAPH_FOLDER, _= ntpath.split(GRAPH_OUTPUT)
     if not os.path.exists(GRAPH_FOLDER):
         os.mkdir(GRAPH_FOLDER)
