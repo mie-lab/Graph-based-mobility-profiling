@@ -52,6 +52,7 @@ result['av_clustering'] = {}
 result['av_shortest_path'] = {}
 result['av_diameter'] = {}
 result['av_shortest_path'] = {}
+result['weights'] = {}
 
 for study_name in study_name_list:
     
@@ -62,6 +63,7 @@ for study_name in study_name_list:
     av_shortest_path_list = []
     av_diameter_list = []
     av_shortest_path_list = []
+    weights_list = []
 
     for user_id, G1 in G_list:
         G = nx.Graph(G1)
@@ -80,6 +82,8 @@ for study_name in study_name_list:
             av_shortest_path_list.append(nx.average_shortest_path_length(G, weight='weight'))
         except nx.NetworkXError:
             print('unconnected')
+            
+        weights_list = weights_list + [w for u,v,w in G.edges(data='weight')]
     
     #save to dict for each study
     
@@ -87,6 +91,7 @@ for study_name in study_name_list:
     result['av_clustering'].update( {study_name: av_clustering_list} )
     result['av_shortest_path'].update( {study_name: av_shortest_path_list} )
     result['av_diameter'].update( {study_name: av_diameter_list} )
+    result['weights'].update({study_name: weights_list})
     
 
 
@@ -95,7 +100,8 @@ for parameter, results_by_study_dict in result.items():
     fig.suptitle(parameter)
     for i, study_name in enumerate(study_name_list):
         ax_this = ax[i//2][i%2]
-        ax_this.hist(results_by_study_dict[study_name], 50)
+        data = np.asarray(results_by_study_dict[study_name])
+        ax_this.hist(np.log(data+0.01), 50)
         ax_this.set_title(study_name)
         
     

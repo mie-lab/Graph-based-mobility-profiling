@@ -3,29 +3,19 @@ import trackintel as ti
 from sqlalchemy import create_engine
 from trackintel.preprocessing import activity_graphs as tigraphs
 import numpy as np
-import networkx as nx
-import matplotlib.pyplot as plt
 import os
 import pickle
 import ntpath
 import json
 import datetime
-from sklearn.preprocessing import MinMaxScaler
-
-from activity_graphs_utils import draw_smopy_basemap, nx_coordinate_layout_smopy
 
 CRS_WGS84 = {'init' :'epsg:4326'}
 #
-studies = ['gc1', 'gc2']
-n = 20 # number of neighbors for neighbor weights
+studies = ['geolife','gc1', 'gc2']
+n = 'fconn' # number of neighbors for neighbor weights
 
 for study in studies:
-
-    # define output for images
-    IMAGE_OUTPUT = os.path.join(".", "graph_images", study)
-    if not os.path.exists(IMAGE_OUTPUT):
-        os.mkdir(IMAGE_OUTPUT)
-        
+      
     # define output for graphs
     GRAPH_OUTPUT = os.path.join(".", "graph_data", study)
     GRAPH_FOLDER, _= ntpath.split(GRAPH_OUTPUT)
@@ -73,7 +63,7 @@ for study in studies:
     
     delta_date = end_date - start_date
     
-    date_step = 10
+    date_step = 7
     date_list = [start_date + datetime.timedelta(days=int(x)) 
         for x in np.arange(date_step, delta_date.days, date_step)]
     
