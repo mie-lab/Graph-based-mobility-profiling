@@ -8,6 +8,8 @@ from http.client import IncompleteRead
 import smopy
 import networkx as nx
 from trackintel.preprocessing import activity_graphs as tigraphs
+import numpy as np
+import datetime
 
 def nx_coordinate_layout_smopy(G, smap):
     """"transforms WGS84 coordinates to pixel coordinates of a smopy map"""
@@ -44,3 +46,41 @@ def draw_smopy_basemap(G, figsize=(8, 6), zoom=10, ax=None):
     ax = smap.show_mpl(figsize=figsize, ax=ax)
     
     return ax, smap
+
+
+def create_activity_graphs(staypoints, places, A_dict, temporal_bin_size=None):      
+    
+    if temporal_bin_size is None:
+        G_list = list(tigraphs.generate_activity_graphs(places, A_dict).items())
+    
+    else:  
+        # create graphs with temporal window
+        
+        start_date = min(staypoints['started_at'])
+        end_date = max(staypoints['finished_at'])
+        date_step = temporal_bin_size
+        nb_days = (end_date - start_date).days
+        
+        end_date_list = [start_date + datetime.timedelta(days=int(x)) 
+            for x in np.arange(date_step, nb_days, date_step)]
+        
+        A_dict = {}
+        G_list = []
+        start_date_this = end_date_list
+        
+        # todo deal with empty graphs/dicts
+        # todo deal with missing user_ids in A_dict
+        
+        for end_date_this in end_date_list:
+            sp_this = staypoints[(staypoints['started_at'] > start_date_this) &
+                                 (staypoints['finished_at'] < end_date_this)]
+            places_this = places[places['place_id'].isin(sp_this['place_id'])]
+            
+            A_dict = (tigraphs.weights_transition_count(sp_this))
+            
+            G_list = G_list + list(tigraphs.generate_activity_graphs(places_this, A_dict).items())
+            
+            start_date_this = end_date_this
+        
+        # save graphs to file
+        pickle.dump( G_list, open( GRAPH_OUTPUT + "_{}days.pkl".format(date_step) , "wb" ) )
