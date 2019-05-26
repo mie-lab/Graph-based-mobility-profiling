@@ -11,11 +11,11 @@ import datetime
 
 CRS_WGS84 = {'init' :'epsg:4326'}
 #
-studies = ['geolife','gc1', 'gc2']
+studies = ['tist', 'geolife','gc1', 'gc2']
 n = 'fconn' # number of neighbors for neighbor weights
 
 for study in studies:
-      
+    print("start {}".format(study))
     # define output for graphs
     GRAPH_OUTPUT = os.path.join(".", "graph_data", study)
     GRAPH_FOLDER, _= ntpath.split(GRAPH_OUTPUT)
@@ -33,25 +33,25 @@ for study in studies:
     engine = create_engine(conn_string)
     conn = engine.connect()
     
+    print('\t download staypoints')
     sp = ti.io.read_staypoints_postgis(conn_string, table_name='{}.staypoints'.format(study),
                           geom_col='geom')
+    print('\t download places')
     places = ti.io.read_places_postgis(conn_string, table_name='{}.places'.format(study),
                               geom_col='center')
     
-    
-    #
     # create graphs of the full period
-    print('create full graph with counts')
+    print('\t create full graph with counts')
     A_dict = (tigraphs.weights_transition_count(sp))
     G_list = list(tigraphs.generate_activity_graphs(places, A_dict).items())
     pickle.dump( G_list, open( GRAPH_OUTPUT + "_counts_full.pkl", "wb" ) )
     
-    print('create full graph with neighbors')
+    print('\t create full graph with neighbors')
     A_dict = tigraphs.weights_n_neighbors(places, n)
     G_list = list(tigraphs.generate_activity_graphs(places, A_dict).items())
     pickle.dump( G_list, open( GRAPH_OUTPUT + "_{}dist_full.pkl".format(n), "wb" ) )
     
-    print('create full graph with delaunay tesselation')
+    print('\t create full graph with delaunay tesselation')
     A_dict = tigraphs.weights_delaunay(places,  to_crs={'init': 'epsg:3857'})
     G_list = list(tigraphs.generate_activity_graphs(places, A_dict).items())
     pickle.dump( G_list, open( GRAPH_OUTPUT + "_delaunay_full.pkl", "wb" ) )
@@ -59,7 +59,7 @@ for study in studies:
     
     # create graphs with temporal window
     start_date = min(sp['started_at'])
-    end_date = max(sp['finished_at'])
+    end_date = max(sp['started_at'])
     
     delta_date = end_date - start_date
     
@@ -78,9 +78,11 @@ for study in studies:
     
     start_date_this = start_date
     
-    print('create time-window graphs')
+    print('\t create time-window graphs')
     for ix,end_date_this in enumerate(date_list):
-        sp_this = sp[(sp['started_at'] > start_date_this) & (sp['finished_at'] < end_date_this)]
+        sp_this = sp[(sp['started_at'] >= start_date_this) & (sp['started_at'] < end_date_this)]
+#        sp_this = sp[(sp['started_at'] > start_date_this) & (sp['finished_at'] < end_date_this)]
+            
         places_this = places[places['place_id'].isin(sp_this['place_id'])]
         
         A_dict_counts = (tigraphs.weights_transition_count(sp_this))
@@ -95,13 +97,15 @@ for study in studies:
         start_date_this = end_date_this
         
         if ix%10 == 0:
-            print('\t {}/{} finished'.format(ix,len(date_list)))
+            print('\t \t {}/{} finished'.format(ix,len(date_list)))
+            
     
-    print('writing time-window graphs...')
+    print('\t writing time-window graphs...')
     pickle.dump( G_list_counts, open( GRAPH_OUTPUT + "_counts_{}days.pkl".format(date_step) , "wb" ) )
     pickle.dump( G_list_ndist, open( GRAPH_OUTPUT + "_{}dist_{}days.pkl".format(n,date_step) , "wb" ) )
     pickle.dump( G_list_delaunay, open( GRAPH_OUTPUT + "_delaunay_{}days.pkl".format(date_step) , "wb" ) )
     
-    print('done')
+    print('finished {}'.format(study))
 
+print('all done')
 
