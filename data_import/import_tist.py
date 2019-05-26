@@ -82,6 +82,31 @@ conn = engine.connect()
 #
 
 
+# todo: Add id column. See example:
+
+#ALTER TABLE tist.staypoints_backup 
+#	ADD COLUMN id SERIAL PRIMARY KEY,
+#    ADD COLUMN place_id bigint DEFAULT -1,
+#    ADD COLUMN finished_at timestamp without time zone;
+#	
+#create index tist_staypoints_user_id_ix on tist.staypoints (user_id)
+
+        ## 
+        #with psycopg2.connect(conn_string) as conn2:
+        #    cur = conn2.cursor()
+        #
+        #    # add geometry column
+        #    QUERY = """select AddGeometryColumn('{}', 'positionfixes',
+        #                                        'geom', 4326, 'Point', 2);
+        #                ALTER TABLE {}.positionfixes 
+        #                            ADD COLUMN id SERIAL PRIMARY KEY,
+        #                            ADD COLUMN accuracy double precision;
+        #                            """.format(schema_name, schema_name)
+        #    cur.execute(QUERY)
+        #    conn2.commit()
+
+
+
 # create places and bring into trackintel format
 
 # get staypoint data
