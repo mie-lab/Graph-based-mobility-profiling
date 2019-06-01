@@ -11,7 +11,7 @@ import datetime
 
 CRS_WGS84 = {'init' :'epsg:4326'}
 #
-studies = ['tist', 'geolife','gc1', 'gc2']
+studies = ['gc1','gc2','geolife','tist_u1000','tist_b100','tist_u10000']
 n = 'fconn' # number of neighbors for neighbor weights
 
 for study in studies:
@@ -39,6 +39,8 @@ for study in studies:
     print('\t download places')
     places = ti.io.read_places_postgis(conn_string, table_name='{}.places'.format(study),
                               geom_col='center')
+
+
     
     # create graphs of the full period
     print('\t create full graph with counts')
@@ -56,7 +58,15 @@ for study in studies:
     G_list = list(tigraphs.generate_activity_graphs(places, A_dict).items())
     pickle.dump( G_list, open( GRAPH_OUTPUT + "_delaunay_full.pkl", "wb" ) )
     
-    
+    print('filter users without places')
+    user_ids_places = places['user_id'].unique()
+    sp = sp[sp['user_id'].isin(user_ids_places)]
+
+
+    print('create index')
+    sp.set_index('started_at', drop=False, inplace=True)
+    sp.index.name = 'started_at_ix'
+    sp.sort_index(inplace=True)
     # create graphs with temporal window
     start_date = min(sp['started_at'])
     end_date = max(sp['started_at'])
@@ -80,7 +90,7 @@ for study in studies:
     
     print('\t create time-window graphs')
     for ix,end_date_this in enumerate(date_list):
-        sp_this = sp[(sp['started_at'] >= start_date_this) & (sp['started_at'] < end_date_this)]
+        sp_this = sp[(sp.index >= start_date_this) & (sp.index < end_date_this)]
 #        sp_this = sp[(sp['started_at'] > start_date_this) & (sp['finished_at'] < end_date_this)]
             
         places_this = places[places['place_id'].isin(sp_this['place_id'])]
@@ -96,7 +106,7 @@ for study in studies:
     
         start_date_this = end_date_this
         
-        if ix%10 == 0:
+        if ix%5 == 0:
             print('\t \t {}/{} finished'.format(ix,len(date_list)))
             
     

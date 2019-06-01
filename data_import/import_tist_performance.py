@@ -25,13 +25,17 @@ conn = engine.connect()
 
 
 t_start_total = time.time()
-schema_name = 'tist_e5'
+schema_name = 'tist'
   
 # download user_ids   
-user_ids = pd.read_sql("select distinct user_id from {}.staypoints \
-                       order by user_id".format(schema_name),
-                       engine).values.ravel()
-users_per_iteration = 1000
+user_ids = pd.read_sql("""SELECT distinct user_id FROM
+				 (SELECT user_id, count(*) as cnt
+			          FROM {}.staypoints GROUP BY user_id) as a
+                          WHERE a.cnt > 45""".format(schema_name),
+                       		engine).values.ravel()
+
+np.random.shuffle(user_ids)
+users_per_iteration = 5000
 nb_users = len(user_ids)
 nb_of_splits = nb_users // users_per_iteration
 if nb_of_splits == 0:
