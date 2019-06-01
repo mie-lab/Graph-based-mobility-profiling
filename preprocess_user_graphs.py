@@ -159,7 +159,7 @@ output_dict = {'study_name_list': study_name_list_all,
                 'result': result}
 
 print('\t writing processed graphs...')
-pickle.dump( result, open( os.path.join(GRAPH_OUTPUT,"processed_graphs.pkl"), "wb" ) )
+pickle.dump( output_dict, open( os.path.join(GRAPH_OUTPUT,"processed_graphs.pkl"), "wb" ) )
     # plot
 
 

@@ -11,7 +11,8 @@ import datetime
 
 CRS_WGS84 = {'init' :'epsg:4326'}
 #
-studies = ['gc1','gc2','geolife','tist_u1000','tist_b100','tist_u10000']
+studies = ['gc1','gc2','geolife','tist_u1000','tist_b100','tist_b200',
+		 'tist_u10000']
 n = 'fconn' # number of neighbors for neighbor weights
 
 for study in studies:
