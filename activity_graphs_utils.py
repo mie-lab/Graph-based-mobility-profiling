@@ -3,6 +3,8 @@
 Created on Tue May  7 16:33:39 2019
 
 @author: martinhe
+
+These are some helper functions to analyze human mobility graphs
 """
 from http.client import IncompleteRead
 import smopy
@@ -20,6 +22,7 @@ def nx_coordinate_layout_smopy(G, smap):
 
 
 def draw_smopy_basemap(G, figsize=(8, 6), zoom=10, ax=None):
+    """Draw a basemap with the extent given by graph G"""
     
     pos_wgs = tigraphs.nx_coordinate_layout(G) 
     lon =  [ coords[0] for coords in pos_wgs.values() ]
@@ -37,11 +40,10 @@ def draw_smopy_basemap(G, figsize=(8, 6), zoom=10, ax=None):
         except IncompleteRead as e:
             
             attempts += 1
-    if attempts == 3:
-        print(G.graph['user_id'],e)
-        smap = smopy.Map(lat_min, lon_min, lat_max, lon_max)
+            if attempts == 3:
+                print(G.graph['user_id'],e)
+                smap = smopy.Map(lat_min, lon_min, lat_max, lon_max)
             
-    
     #map = smopy.Map((min_y, max_y-min_y, min_x, max_x-min_x), z=5)
     ax = smap.show_mpl(figsize=figsize, ax=ax)
     
