@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# pycharm
+.idea
+
 # C extensions
 *.so
 
@@ -112,11 +115,14 @@ Pipfile.lock
 dblogin.json
 
 # raw data
-/data_import/data*
+data*
 
 # output images
 /graph_images/*
 /graph_data/*
 
+# old things
+/old/*
 # personal files
 trackintel_comments*
+notes*

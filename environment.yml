@@ -1,0 +1,24 @@
+name: graph_rep
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+- python
+- numpy
+- matplotlib
+- pandas
+- geopandas
+- scikit-learn
+- networkx 
+- pint
+- pip 
+- geoalchemy2 
+- osmnx 
+- psycopg2
+- imageio
+- tqdm
+- similaritymeasures
+- pip: 
+  - smopy
+  - trackintel
+
