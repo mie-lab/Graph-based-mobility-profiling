@@ -52,7 +52,7 @@ for iter_ix, user_ids_this in enumerate(np.array_split(user_ids, nb_of_splits)):
                                user_ids_this), conn, crs=CRS_WGS, geom_col='geom')
 
     # extract places
-    places = sp.as_staypoints.extract_places(epsilon=50, num_samples=4, distance_matrix_metric='haversine')
+    places = sp.as_staypoints.extract_places(epsilon=50, num_samples=1, distance_matrix_metric='haversine')
     
     # create and write staypoints_id - place_id mapping to database
     mapping_df = sp.loc[sp['place_id']>-1,['place_id','id']]

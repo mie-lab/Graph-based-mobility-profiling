@@ -27,8 +27,8 @@ matplotlib.rc('font', **font)
 
 
 # paths
-GRAPH_input = os.path.join(".", 'graph_data','processed','processed_graphs.pkl')
-GRAPH_IMAGES_FOLDER = os.path.join(".", "graph_images",'hists','')
+GRAPH_input = os.path.join("..", 'graph_data', 'processed', 'processed_graphs.pkl')
+GRAPH_IMAGES_FOLDER = os.path.join("..", "graph_images", 'hists', '')
 
 # load preprocessed graphs
 result =  pickle.load( open( GRAPH_input, "rb" ) )
