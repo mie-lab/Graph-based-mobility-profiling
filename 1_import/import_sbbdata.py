@@ -48,12 +48,15 @@ for study in studies:
                                            geom_col='geometry_raw')
     conn_source.close()
     sp = sp.drop("geometry", axis=1)
+    sp = sp.rename(columns={'geometry_raw': 'geom'})
+    sp = sp.set_geometry("geom")
+
     # create important places 
     sp["elevation"] = np.nan
     sp['started_at'] = sp['started_at'].dt.tz_localize('UTC')
     sp['finished_at'] = sp['finished_at'].dt.tz_localize('UTC')
     print('create places')
-    sp, locs = sp.as_staypoints.generate_locations(method='dbscan', epsilon=50, num_samples=1,
+    sp, locs = sp.as_staypoints.generate_locations(method='dbscan', epsilon=15, num_samples=2,
                                                        distance_metric='haversine', agg_level='user')
 
     print('write staypoints to database')
