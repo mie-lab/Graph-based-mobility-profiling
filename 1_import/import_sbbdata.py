@@ -17,8 +17,8 @@ CRS_WGS84 = 'epsg:4326'
 #
 studies = ['gc2', 'gc1']
 
-DBLOGIN_FILE = os.path.join('..','dblogin.json')
-DBLOGIN_FILE_SOURCE = os.path.join('..','dblogin_source.json')
+DBLOGIN_FILE = os.path.join('.','dblogin.json')
+DBLOGIN_FILE_SOURCE = os.path.join('.','dblogin_source.json')
 
 with open(DBLOGIN_FILE) as json_file:  
     LOGIN_DATA = json.load(json_file)
@@ -46,26 +46,43 @@ for study in studies:
                                            con=conn_source,
                                            crs=CRS_WGS84, 
                                            geom_col='geometry_raw')
+    print('download triplegs')
+    tpls = gpd.GeoDataFrame.from_postgis(sql="SELECT * FROM {}.triplegs where ST_isValid(geometry)".format(
+        study),
+                                       con=conn_source,
+                                       crs=CRS_WGS84,
+                                       geom_col='geometry')
+
     conn_source.close()
     sp = sp.drop("geometry", axis=1)
+    tpls = tpls.drop("geometry_raw", axis=1)
+
     sp = sp.rename(columns={'geometry_raw': 'geom'})
+    tpls = tpls.rename(columns={'geometry': 'geom'})
+
     sp = sp.set_geometry("geom")
+    tpls = tpls.set_geometry("geom")
 
     # create important places 
     sp["elevation"] = np.nan
     sp['started_at'] = sp['started_at'].dt.tz_localize('UTC')
     sp['finished_at'] = sp['finished_at'].dt.tz_localize('UTC')
+
+    tpls['started_at'] = tpls['started_at'].dt.tz_localize('UTC')
+    tpls['finished_at'] = tpls['finished_at'].dt.tz_localize('UTC')
+
     print('create places')
-    sp, locs = sp.as_staypoints.generate_locations(method='dbscan', epsilon=15, num_samples=2,
+    sp, locs = sp.as_staypoints.generate_locations(method='dbscan', epsilon=15, num_samples=1,
                                                        distance_metric='haversine', agg_level='user')
 
     print('write staypoints to database')
 
     ti.io.write_staypoints_postgis(staypoints=sp, conn_string=conn_string, table_name="staypoints",
                                    schema=study, if_exists="replace")
-    # conn = engine.connect()
-    # sp.to_postgis(name="staypoints", con=conn, schema=study, if_exists='replace', index=False, index_label=None)
 
+    print('write triplegs')
+    ti.io.write_triplegs_postgis(triplegs=tpls, conn_string=conn_string, table_name="triplegs",
+                                   schema=study, if_exists="replace")
 
     print('write locations to database')
     locs = locs.drop('extent', axis=1)
