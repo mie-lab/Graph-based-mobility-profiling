@@ -1,3 +1,5 @@
+import ntpath
+
 import pandas as pd
 from future_trackintel import tigraphs
 import numpy as np
@@ -8,6 +10,7 @@ import matplotlib.pyplot as plt
 import functools
 from future_trackintel.activity_graphs_utils import draw_smopy_basemap, nx_coordinate_layout_smopy
 from future_trackintel.activity_graphs_utils import haversine_dist_of_shapely_objs as h_dist
+from pathlib import Path
 
 class activity_graph():
     def __init__(self, staypoints, locations, node_feature_names=[]):
@@ -175,10 +178,9 @@ class activity_graph():
 
         return G
 
-    def plot(self, filename, layout="spring", edge_attributes=None, filter_node_importance=None, \
-                                                                                              filter_extent=True, \
-                                                                                                   filter_dist=100,
-             dist_spring_layout=10):
+    def plot(self, filename, layout="spring", edge_attributes=None, filter_node_importance=None,
+             filter_extent=True, filter_dist=100, dist_spring_layout=10, draw_edge_label=False,
+             draw_edge_label_type='transition_counts'):
         """
 
         Parameters
@@ -195,6 +197,9 @@ class activity_graph():
         -------
 
         """
+        folder_name = ntpath.dirname(filename)
+        Path(folder_name).mkdir(parents=True, exist_ok=True)
+
 
         if filter_node_importance is not None:
             important_nodes = self.get_k_importance_nodes(filter_node_importance)
@@ -232,10 +237,9 @@ class activity_graph():
                         with_labels=False,
                         node_size=node_sizes,
                         pos=nx_coordinate_layout_smopy(G, smap),
-                        connectionstyle='arc3, rad = 0.2')
+                        connectionstyle='arc3, rad = 0.1')
 
-            plt.savefig(filename)
-            plt.close()
+
 
         elif layout == "spring":
 
@@ -243,8 +247,22 @@ class activity_graph():
             plt.figure()
             pos = nx.spring_layout(G, k=dist_spring_layout/np.sqrt(len(G)))
             nx.draw(G, pos=pos, width=norm_width/2, node_size=node_sizes,  connectionstyle='arc3, rad = 0.2',)
-            plt.savefig(filename)
-            plt.close()
+
+        if draw_edge_label:
+            edges_new = {}
+            edges = nx.get_edge_attributes(G, 'weight')
+            # edges have to be recoded for drawing. Multigraph edges have the format: (n1, n2, edge_type): weight but
+            # the drawing function only accepts (n1 n2): weight as input
+
+            for (u, v, enum), weight in edges.items():
+                if enum == draw_edge_label_type:
+                    edges_new[(u, v)] = str(int(weight))
+            GG = nx.Graph()
+            GG.add_edges_from(edges_new)
+            nx.draw_networkx_edge_labels(GG, pos, edge_labels=edges_new, label_pos=0.2)
+
+        plt.savefig(filename)
+        plt.close()
 
     def get_adjecency_matrix_by_type(self, edge_type):
         assert edge_type in self.adjacency_dict['edge_name'], f"Only {self.adjacency_dict['edge_name']} are available " \
