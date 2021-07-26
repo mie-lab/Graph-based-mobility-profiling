@@ -15,7 +15,7 @@ studies = ["gc2", "gc1"]  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200
 for study in studies:
     print("start {}".format(study))
     # define output for graphs
-    GRAPH_OUTPUT = os.path.join(".", "data_out", "graph_data", study)
+    GRAPH_OUTPUT = os.path.join("../2_preprocessing", "data_out", "graph_data", study)
     GRAPH_FOLDER, _ = ntpath.split(GRAPH_OUTPUT)
     if not os.path.exists(GRAPH_FOLDER):
         os.mkdir(GRAPH_FOLDER)
@@ -43,12 +43,12 @@ for study in studies:
         locs_user = locs[locs["user_id"] == user_id_this]
         AG = activity_graph(sp_user, locs_user)
         AG.plot(
-            os.path.join(".", "graph_images", "new", study, "spring", str(user_id_this)),
+            os.path.join("../2_preprocessing", "graph_images", "new", study, "spring", str(user_id_this)),
             filter_node_importance=25,
             draw_edge_label=False,
         )
         AG.plot(
-            os.path.join(".", "graph_images", "new", study, "coords", str(user_id_this)),
+            os.path.join("../2_preprocessing", "graph_images", "new", study, "coords", str(user_id_this)),
             filter_node_importance=25,
             draw_edge_label=False,
             layout="coordinate",

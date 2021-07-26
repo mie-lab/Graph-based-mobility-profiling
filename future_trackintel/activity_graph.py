@@ -12,11 +12,12 @@ from future_trackintel.activity_graphs_utils import draw_smopy_basemap, nx_coord
 from future_trackintel.activity_graphs_utils import haversine_dist_of_shapely_objs as h_dist
 from pathlib import Path
 
-class activity_graph():
+
+class activity_graph:
     def __init__(self, staypoints, locations, node_feature_names=[]):
         self.validate_user(staypoints, locations)
         self.node_feature_names = node_feature_names
-        self.user_id = staypoints['user_id'].iloc[0]
+        self.user_id = staypoints["user_id"].iloc[0]
         self.init_activity_dict()
         self.weights_transition_count(staypoints)
         self.G = self.generate_activity_graphs(locations)
@@ -28,18 +29,24 @@ class activity_graph():
         self.adjacency_dict["edge_name"] = []
 
     def validate_user(self, staypoints, locations):
-        "Test if only a single user id was given"
-        assert len(staypoints['user_id'].unique()) == 1, "An activity graph has to be user specific but your " \
-                                                         "staypoints have" \
-                                                         f" these users: {staypoints['user_id'].unique()}"
-        assert len(staypoints['user_id'].unique()) == 1, "An activity graph has to be user specific but your " \
-                                                         "locations have" \
-                                                         f" these users: {locations['user_id'].unique()}"
-        user_staypoints = staypoints['user_id'].unique()
-        user_locations = locations['user_id'].unique()
+        """Test if only a single user id was given"""
+        assert len(staypoints["user_id"].unique()) == 1, (
+            "An activity graph has to be user specific but your "
+            "staypoints have"
+            f" these users: {staypoints['user_id'].unique()}"
+        )
+        assert len(staypoints["user_id"].unique()) == 1, (
+            "An activity graph has to be user specific but your "
+            "locations have"
+            f" these users: {locations['user_id'].unique()}"
+        )
+        user_staypoints = staypoints["user_id"].unique()
+        user_locations = locations["user_id"].unique()
 
-        assert (user_staypoints == user_locations).all(), f"staypoints and locations need the same user_id but your " \
-                                                        f"data have staypoints: {user_locations} and locations: {user_locations}"
+        assert (user_staypoints == user_locations).all(), (
+            f"staypoints and locations need the same user_id but your "
+            f"data have staypoints: {user_locations} and locations: {user_locations}"
+        )
 
     def weights_transition_count(self, staypoints, adjacency_dict=None):
         """
@@ -49,9 +56,11 @@ class activity_graph():
         on the number of transitions of an individual user between locations.
         The function requires the staypoints to have a cluster id field (e.g.
         staypoints.as_staypoints.extract_locations() was already used.
+
         Parameters
         ----------
         staypoints : GeoDataFrame
+
         Returns
         -------
         adjacency_dict : dictionary
@@ -63,7 +72,8 @@ class activity_graph():
         # transitions between two clusters e.g., 1 -> -1 -> 2 as direct transitions
         # between two clusters!
         # E.g., 1 -> 2
-        # staypoints_a = staypoints_a.loc[staypoints_a["location_id"] != -1]
+        staypoints_a.dropna(subset=["location_id"], inplace=True)
+        staypoints_a = staypoints_a.loc[staypoints_a["location_id"] != -1]
 
         # count transitions between cluster
         staypoints_a["location_id_end"] = staypoints_a.groupby("user_id")["location_id"].shift(-1)
@@ -95,8 +105,8 @@ class activity_graph():
     def edge_types(self):
         edge_type_list = []
 
-        for n, nbrsdict in self.G.adjacency(): # iter all nodes
-            for nbr, keydict in nbrsdict.items(): # iter all neighbors
+        for n, nbrsdict in self.G.adjacency():  # iter all nodes
+            for nbr, keydict in nbrsdict.items():  # iter all neighbors
                 for edge_type_name, _ in keydict.items():  # iter all edges
                     if edge_type_name not in edge_type_list:
                         # append edge attribute to list
@@ -104,17 +114,15 @@ class activity_graph():
 
         return edge_type_list
 
-
     def to_file(self, path):
         pass
 
     def get_k_importance_nodes(self, k):
         node_in_degree = np.asarray([(n, self.G.in_degree(n)) for n in self.G.nodes])
-        best_ixs = np.argsort(node_in_degree[:, 1], )[::-1][:k]
+        best_ixs = np.argsort(node_in_degree[:, 1],)[::-1][:k]
         # we readdress the first column of node_in_degree with best_ixs in case that node degree are not
         # a serial starting from 0
         return node_in_degree[:, 0][best_ixs]
-
 
     def generate_activity_graphs(self, locations):
         """
@@ -150,7 +158,7 @@ class activity_graph():
         locations.sort_index(inplace=True)
 
         if "extent" not in locations.columns:
-            locations['extent'] = pd.NA
+            locations["extent"] = pd.NA
 
         G = tigraphs.initialize_multigraph(self.user_id, locations, self.node_feature_names)
         G.graph["edge_keys"] = []
@@ -178,9 +186,18 @@ class activity_graph():
 
         return G
 
-    def plot(self, filename, layout="spring", edge_attributes=None, filter_node_importance=None,
-             filter_extent=True, filter_dist=100, dist_spring_layout=10, draw_edge_label=False,
-             draw_edge_label_type='transition_counts'):
+    def plot(
+        self,
+        filename,
+        layout="spring",
+        edge_attributes=None,
+        filter_node_importance=None,
+        filter_extent=True,
+        filter_dist=100,
+        dist_spring_layout=10,
+        draw_edge_label=False,
+        draw_edge_label_type="transition_counts",
+    ):
         """
 
         Parameters
@@ -200,7 +217,6 @@ class activity_graph():
         folder_name = ntpath.dirname(filename)
         Path(folder_name).mkdir(parents=True, exist_ok=True)
 
-
         if filter_node_importance is not None:
             important_nodes = self.get_k_importance_nodes(filter_node_importance)
         else:
@@ -208,8 +224,8 @@ class activity_graph():
         # filter graph extent:
         if filter_extent:
             center_node_id = int(self.get_k_importance_nodes(1))
-            c_geom = self.G.nodes[center_node_id]['center']
-            filtered_nodes = [n for n in self.G.nodes if h_dist(self.G.nodes[n]['center'], c_geom) < filter_dist*1000]
+            c_geom = self.G.nodes[center_node_id]["center"]
+            filtered_nodes = [n for n in self.G.nodes if h_dist(self.G.nodes[n]["center"], c_geom) < filter_dist * 1000]
             important_nodes = np.intersect1d(filtered_nodes, important_nodes)
 
         G = self.G.subgraph(important_nodes)
@@ -217,12 +233,12 @@ class activity_graph():
         # edge color management
         if edge_attributes is not None:
             for edge_attribute in edge_attributes:
-                weights = [G[u][v][edge_attribute]['weight']+1 for u,v in G.edges()]
+                weights = [G[u][v][edge_attribute]["weight"] + 1 for u, v in G.edges()]
         else:
             # list(self.G[u][v])[0] is the edge_attribute key (e.g., 'transition_counts' of the edge
-            weights = [G[u][v][list(G[u][v])[0]]['weight'] + 1 for u, v in G.edges()]
+            weights = [G[u][v][list(G[u][v])[0]]["weight"] + 1 for u, v in G.edges()]
 
-        norm_width = np.log(weights)*2
+        norm_width = np.log(weights) * 2
 
         deg = nx.degree(G)
         node_sizes = [10 * deg[iata] for iata in G.nodes]
@@ -230,27 +246,30 @@ class activity_graph():
         if layout == "coordinate":
             # draw geographic representation
             ax, smap = draw_smopy_basemap(G)
-            nx.draw_networkx(G, ax=ax,
-                        font_size=20,
-                        width=1,
-                        linewidths =norm_width,
-                        with_labels=False,
-                        node_size=node_sizes,
-                        pos=nx_coordinate_layout_smopy(G, smap),
-                        connectionstyle='arc3, rad = 0.1')
-
-
+            nx.draw_networkx(
+                G,
+                ax=ax,
+                font_size=20,
+                width=1,
+                linewidths=norm_width,
+                with_labels=False,
+                node_size=node_sizes,
+                pos=nx_coordinate_layout_smopy(G, smap),
+                connectionstyle="arc3, rad = 0.1",
+            )
 
         elif layout == "spring":
 
             # draw spring layout
             plt.figure()
-            pos = nx.spring_layout(G, k=dist_spring_layout/np.sqrt(len(G)))
-            nx.draw(G, pos=pos, width=norm_width/2, node_size=node_sizes,  connectionstyle='arc3, rad = 0.2',)
+            pos = nx.spring_layout(G, k=dist_spring_layout / np.sqrt(len(G)))
+            nx.draw(
+                G, pos=pos, width=norm_width / 2, node_size=node_sizes, connectionstyle="arc3, rad = 0.2",
+            )
 
         if draw_edge_label:
             edges_new = {}
-            edges = nx.get_edge_attributes(G, 'weight')
+            edges = nx.get_edge_attributes(G, "weight")
             # edges have to be recoded for drawing. Multigraph edges have the format: (n1, n2, edge_type): weight but
             # the drawing function only accepts (n1 n2): weight as input
 
@@ -265,13 +284,15 @@ class activity_graph():
         plt.close()
 
     def get_adjecency_matrix_by_type(self, edge_type):
-        assert edge_type in self.adjacency_dict['edge_name'], f"Only {self.adjacency_dict['edge_name']} are available " \
-                                                              f"but you provided {edge_type}"
-        edge_type_ix = self.adjacency_dict['edge_name'].index(edge_type)
-        return self.adjacency_dict['A'][edge_type_ix]
+        assert edge_type in self.adjacency_dict["edge_name"], (
+            f"Only {self.adjacency_dict['edge_name']} are available " f"but you provided {edge_type}"
+        )
+        edge_type_ix = self.adjacency_dict["edge_name"].index(edge_type)
+        return self.adjacency_dict["A"][edge_type_ix]
 
     def get_adjecency_matrix(self):
         return nx.linalg.graphmatrix.adjacency_matrix(self.G).tocoo()
+
 
 def _create_adjacency_matrix_from_transition_counts(counts):
     """
@@ -318,4 +339,3 @@ def _create_adjacency_matrix_from_transition_counts(counts):
         location_id_order = org_ix
 
     return A, location_id_order, "transition_counts"
-
