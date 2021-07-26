@@ -143,7 +143,7 @@ def filter_by_tracking_coverage(sp, tpls, coverage=0.99):
     to_del_ix = tracking_quality[tracking_quality < coverage].index
 
     sp.drop(sp.index.intersection(to_del_ix), axis=0, inplace=True)
-    sp.set_index('id', drop=True, inplace=True)
+    sp.set_index("id", drop=True, inplace=True)
     return sp
 
 

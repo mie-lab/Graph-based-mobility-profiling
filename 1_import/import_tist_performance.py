@@ -13,7 +13,7 @@ import trackintel as ti
 import numpy as np
 import time
 
-CRS_WGS = {'init' :'epsg:4326'}
+CRS_WGS = {"init": "epsg:4326"}
 
 dblogin_file = os.path.join("..", "dblogin.json")
 with open(dblogin_file) as json_file:
@@ -25,14 +25,18 @@ conn = engine.connect()
 
 
 t_start_total = time.time()
-schema_name = 'tist'
-  
-# download user_ids   
-user_ids = pd.read_sql("""SELECT distinct user_id FROM
+schema_name = "tist"
+
+# download user_ids
+user_ids = pd.read_sql(
+    """SELECT distinct user_id FROM
 				 (SELECT user_id, count(*) as cnt
 			          FROM {}.staypoints GROUP BY user_id) as a
-                          WHERE a.cnt > 45""".format(schema_name),
-                       		engine).values.ravel()
+                          WHERE a.cnt > 45""".format(
+        schema_name
+    ),
+    engine,
+).values.ravel()
 
 np.random.shuffle(user_ids)
 users_per_iteration = 5000
@@ -44,31 +48,35 @@ if nb_of_splits == 0:
 
 for iter_ix, user_ids_this in enumerate(np.array_split(user_ids, nb_of_splits)):
     t_start_iter = time.time()
-    
+
     # download staypoints
     user_ids_this = tuple(user_ids_this)
     sp = gpd.GeoDataFrame.from_postgis(
-                "select * from {}.staypoints where user_id in {}".format(schema_name,
-                               user_ids_this), conn, crs=CRS_WGS, geom_col='geom')
+        "select * from {}.staypoints where user_id in {}".format(schema_name, user_ids_this),
+        conn,
+        crs=CRS_WGS,
+        geom_col="geom",
+    )
 
     # extract places
-    places = sp.as_staypoints.extract_places(epsilon=50, num_samples=1, distance_matrix_metric='haversine')
-    
+    places = sp.as_staypoints.extract_places(epsilon=50, num_samples=1, distance_matrix_metric="haversine")
+
     # create and write staypoints_id - place_id mapping to database
-    mapping_df = sp.loc[sp['place_id']>-1,['place_id','id']]
-    mapping_df.to_sql('mapping_temp', conn_string, schema=schema_name,
-                      if_exists='append', index=False)
-    
+    mapping_df = sp.loc[sp["place_id"] > -1, ["place_id", "id"]]
+    mapping_df.to_sql("mapping_temp", conn_string, schema=schema_name, if_exists="append", index=False)
+
     # write places to database
-    ti.io.write_places_postgis(places, conn_string, schema=schema_name,
-                               table_name="places", if_exists='append')
+    ti.io.write_places_postgis(places, conn_string, schema=schema_name, table_name="places", if_exists="append")
 
-    # print iteration report 
-    t_iter = time.time()-t_start_iter
-    print('\t {}/{} users. Time for this iteration: {:.0f} seconds'.format(
-            (iter_ix+1)*users_per_iteration, nb_users, t_iter))
+    # print iteration report
+    t_iter = time.time() - t_start_iter
+    print(
+        "\t {}/{} users. Time for this iteration: {:.0f} seconds".format(
+            (iter_ix + 1) * users_per_iteration, nb_users, t_iter
+        )
+    )
 
-print('Update staypoint ids')
+print("Update staypoint ids")
 with psycopg2.connect(conn_string) as conn2:
     cur = conn2.cursor()
 
@@ -76,15 +84,13 @@ with psycopg2.connect(conn_string) as conn2:
                 SET place_id = mapping.place_id
                 FROM {}.mapping_temp as mapping
                 where mapping.id = sp.id
-                """.format(schema_name, schema_name)
+                """.format(
+        schema_name, schema_name
+    )
     cur.execute(QUERY)
     conn2.commit()
-    
+
 print("done")
 
 t_total = time.time() - t_start_total
-print('Total time for {} users: {:.0f} seconds'.format(nb_users,t_total))
-
-
-
-
+print("Total time for {} users: {:.0f} seconds".format(nb_users, t_total))
