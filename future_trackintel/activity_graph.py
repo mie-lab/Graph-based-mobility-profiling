@@ -75,23 +75,23 @@ class activity_graph:
         staypoints_a = staypoints.copy()
         # join location_id to trips:
 
-        origin_not_na = ~trips_a['origin_staypoint_id'].isna()
-        dest_not_na = ~trips_a['destination_staypoint_id'].isna()
+        origin_not_na = ~trips_a["origin_staypoint_id"].isna()
+        dest_not_na = ~trips_a["destination_staypoint_id"].isna()
 
-        trips_a.loc[origin_not_na, 'location_id'] = \
-            staypoints_a.loc[trips_a.loc[origin_not_na, 'origin_staypoint_id'], 'location_id'].values
-        trips_a.loc[dest_not_na, 'location_id_end'] = \
-            staypoints_a.loc[trips_a.loc[dest_not_na, 'destination_staypoint_id'], 'location_id'].values
+        trips_a.loc[origin_not_na, "location_id"] = staypoints_a.loc[
+            trips_a.loc[origin_not_na, "origin_staypoint_id"], "location_id"
+        ].values
+        trips_a.loc[dest_not_na, "location_id_end"] = staypoints_a.loc[
+            trips_a.loc[dest_not_na, "destination_staypoint_id"], "location_id"
+        ].values
 
         trips_a = trips_a.sort_values(["started_at"])
 
         # delete trips with unknown start/end location
-        trips_a.dropna(subset=['location_id', 'location_id_end'], inplace=True)
+        trips_a.dropna(subset=["location_id", "location_id_end"], inplace=True)
 
         try:
-            counts = (
-                trips_a.groupby(by=["user_id", "location_id", "location_id_end"]).size().reset_index(name="counts")
-            )
+            counts = trips_a.groupby(by=["user_id", "location_id", "location_id_end"]).size().reset_index(name="counts")
         except ValueError:
             # If there are only rows with nans, groupby throws an error but should
             # return an empty dataframe
@@ -105,7 +105,6 @@ class activity_graph:
         self.adjacency_dict["edge_name"].append("transition_counts")
 
         return adjacency_dict
-
 
     def weights_transition_count(self, staypoints, adjacency_dict=None):
         """
@@ -179,7 +178,9 @@ class activity_graph:
 
     def get_k_importance_nodes(self, k):
         node_in_degree = np.asarray([(n, self.G.in_degree(n)) for n in self.G.nodes])
-        best_ixs = np.argsort(node_in_degree[:, 1],)[::-1][:k]
+        best_ixs = np.argsort(node_in_degree[:, 1],)[
+            ::-1
+        ][:k]
         # we readdress the first column of node_in_degree with best_ixs in case that node degree are not
         # a serial starting from 0
         return node_in_degree[:, 0][best_ixs]
@@ -324,7 +325,11 @@ class activity_graph:
             plt.figure()
             pos = nx.spring_layout(G, k=dist_spring_layout / np.sqrt(len(G)))
             nx.draw(
-                G, pos=pos, width=norm_width / 2, node_size=node_sizes, connectionstyle="arc3, rad = 0.2",
+                G,
+                pos=pos,
+                width=norm_width / 2,
+                node_size=node_sizes,
+                connectionstyle="arc3, rad = 0.2",
             )
 
         if draw_edge_label:
