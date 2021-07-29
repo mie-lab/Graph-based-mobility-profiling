@@ -14,12 +14,16 @@ from pathlib import Path
 
 
 class activity_graph:
-    def __init__(self, staypoints, locations, node_feature_names=[]):
+    def __init__(self, staypoints, locations, node_feature_names=[], trips=None):
         self.validate_user(staypoints, locations)
         self.node_feature_names = node_feature_names
         self.user_id = staypoints["user_id"].iloc[0]
         self.init_activity_dict()
-        self.weights_transition_count(staypoints)
+        if trips is not None:
+            self.validate_user(trips, locations)
+            self.weights_transition_count_trips(trips=trips, staypoints=staypoints)
+        else:
+            self.weights_transition_count(staypoints)
         self.G = self.generate_activity_graphs(locations)
 
     def init_activity_dict(self):
@@ -48,6 +52,61 @@ class activity_graph:
             f"data have staypoints: {user_locations} and locations: {user_locations}"
         )
 
+    def weights_transition_count_trips(self, trips, staypoints, adjacency_dict=None):
+        """
+        # copy of weights_transition_count
+        Calculate the number of transition between locations as graph weights.
+        Graphs based on the activity locations (trackintel locations) can have several
+        types of weighted edges. This function calculates the edge weight based
+        on the number of transitions of an individual user between locations.
+        The function requires the staypoints to have a cluster id field (e.g.
+        staypoints.as_staypoints.extract_locations() was already used.
+
+        Parameters
+        ----------
+        staypoints : GeoDataFrame
+
+        Returns
+        -------
+        adjacency_dict : dictionary
+                A dictionary of adjacency matrices of type scipy.sparse.coo_matrix
+        """
+        trips_a = trips.copy()
+        staypoints_a = staypoints.copy()
+        # join location_id to trips:
+
+        origin_not_na = ~trips_a['origin_staypoint_id'].isna()
+        dest_not_na = ~trips_a['destination_staypoint_id'].isna()
+
+        trips_a.loc[origin_not_na, 'location_id'] = \
+            staypoints_a.loc[trips_a.loc[origin_not_na, 'origin_staypoint_id'], 'location_id'].values
+        trips_a.loc[dest_not_na, 'location_id_end'] = \
+            staypoints_a.loc[trips_a.loc[dest_not_na, 'destination_staypoint_id'], 'location_id'].values
+
+        trips_a = trips_a.sort_values(["started_at"])
+
+        # delete trips with unknown start/end location
+        trips_a.dropna(subset=['location_id', 'location_id_end'], inplace=True)
+
+        try:
+            counts = (
+                trips_a.groupby(by=["user_id", "location_id", "location_id_end"]).size().reset_index(name="counts")
+            )
+        except ValueError:
+            # If there are only rows with nans, groupby throws an error but should
+            # return an empty dataframe
+            counts = pd.DataFrame(columns=["user_id", "location_id", "location_id_end", "counts"])
+
+        # create Adjacency matrix
+        A, location_id_order, name = _create_adjacency_matrix_from_transition_counts(counts)
+
+        self.adjacency_dict["A"].append(A)
+        self.adjacency_dict["location_id_order"].append(location_id_order)
+        self.adjacency_dict["edge_name"].append("transition_counts")
+
+        return adjacency_dict
+
+
     def weights_transition_count(self, staypoints, adjacency_dict=None):
         """
         Calculate the number of transition between locations as graph weights.
@@ -72,6 +131,7 @@ class activity_graph:
         # transitions between two clusters e.g., 1 -> -1 -> 2 as direct transitions
         # between two clusters!
         # E.g., 1 -> 2
+
         staypoints_a.dropna(subset=["location_id"], inplace=True)
         staypoints_a = staypoints_a.loc[staypoints_a["location_id"] != -1]
 
