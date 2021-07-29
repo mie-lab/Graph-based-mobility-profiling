@@ -11,13 +11,17 @@ import warnings
 
 # todo: create class activity graph that stores all the going back and forth between indices?
 
-def generate_actvity_graphs(staypoint, ):
-    """ multi user class version
+
+def generate_actvity_graphs(
+    staypoint,
+):
+    """multi user class version
 
     Returns
     -------
 
     """
+
 
 def weights_transition_count(staypoints, adjacency_dict=None):
     """
@@ -167,8 +171,7 @@ def generate_activity_graphs(locations, adjacency_dict, node_feature_names=[]):
     locations.sort_index(inplace=True)
 
     if "extent" not in locations.columns:
-        locations['extent'] = pd.NA
-
+        locations["extent"] = pd.NA
 
     for user_id_this in locations["user_id"].unique():
         if user_id_this not in adjacency_dict:
@@ -438,5 +441,3 @@ def weights_n_neighbors(locations, n=None, distance_matrix_metric="haversine", a
             adjacency_dict[user_id_this]["edge_name"].append(edge_name)
 
     return adjacency_dict
-
-
