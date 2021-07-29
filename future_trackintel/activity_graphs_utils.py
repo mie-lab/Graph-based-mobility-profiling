@@ -125,3 +125,36 @@ def draw_smopy_basemap(G, figsize=(8, 6), zoom=10, ax=None):
 #
 #         # save graphs to file
 #         pickle.dump( G_list, open( GRAPH_OUTPUT + "_{}days.pkl".format(date_step) , "wb" ) )
+
+
+def initialize_multigraph(user_id_this, locs_user_view, node_feature_names):
+    """
+    Initialize a networkx multigraph class based on location information.
+    Graph gets assigned the user_id, the locations as nodes and all non-optional node_features (location_id,
+    extent and center) as well as optional node features passed via `node_feature_names`. Optional node features have
+    to be columns in `loc_user_view`
+
+    Parameters
+    ----------
+    user_id_this
+    locs_user_view
+    node_feature_names
+
+    Returns
+    -------
+
+    Notes
+    ------
+
+    """
+    # create graph
+    G = nx.MultiDiGraph()
+    G.graph["user_id"] = user_id_this
+
+    # add node information
+    node_ids = np.arange(len(locs_user_view))
+    node_features = locs_user_view.loc[:, ["location_id", "extent", "center"] + node_feature_names].to_dict("records")
+
+    node_tuple = tuple(zip(node_ids, node_features))
+    G.add_nodes_from(node_tuple)
+    return G

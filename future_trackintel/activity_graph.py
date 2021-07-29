@@ -1,14 +1,13 @@
 import ntpath
 
 import pandas as pd
-from future_trackintel import tigraphs
 import numpy as np
 import os
 import networkx as nx
 from scipy.sparse import coo_matrix
 import matplotlib.pyplot as plt
 import functools
-from future_trackintel.activity_graphs_utils import draw_smopy_basemap, nx_coordinate_layout_smopy
+from future_trackintel.activity_graphs_utils import draw_smopy_basemap, nx_coordinate_layout_smopy, initialize_multigraph
 from future_trackintel.activity_graphs_utils import haversine_dist_of_shapely_objs as h_dist
 from pathlib import Path
 
@@ -221,7 +220,7 @@ class activity_graph:
         if "extent" not in locations.columns:
             locations["extent"] = pd.NA
 
-        G = tigraphs.initialize_multigraph(self.user_id, locations, self.node_feature_names)
+        G = initialize_multigraph(self.user_id, locations, self.node_feature_names)
         G.graph["edge_keys"] = []
 
         # todo: put edge creation in extra function
