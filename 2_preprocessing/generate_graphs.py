@@ -12,22 +12,25 @@ import datetime
 import numpy as np
 import sys
 from future_trackintel.activity_graph import activity_graph
+from future_trackintel.utils import write_graphs_to_postgresql, read_graphs_from_postgresql
 import copy
 from trackintel.analysis.tracking_quality import _split_overlaps
 from collections import defaultdict
 import pytz
-
+import psycopg2
 CRS_WGS84 = "epsg:4326"
 
 
-def get_engine(study):
+def get_engine(study, return_con=False):
 
     if study == "yumuv_graph_rep":
         sys.path.append(r"C:\Users\e527371\OneDrive\Programming\yumuv")
         from db_login import DSN  # database login information
 
         engine = create_engine("postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}".format(**DSN))
-
+        if return_con:
+            con = psycopg2.connect(dbname=DSN['db_database'], user=DSN['db_user'], password=DSN['db_password'],
+                                   host=DSN['db_host'], port=DSN['db_port'])
     else:
 
         # build database login string from file
@@ -37,8 +40,15 @@ def get_engine(study):
 
         conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}".format(**LOGIN_DATA)
         engine = create_engine(conn_string)
+        if return_con:
+            con = psycopg2.connect(dbname=LOGIN_DATA['database'], user=LOGIN_DATA['user'],
+                                   password=LOGIN_DATA['password'],
+                                   host=LOGIN_DATA['host'], port=LOGIN_DATA['port'])
 
-    return engine
+    if return_con:
+        return con
+    else:
+        return engine
 
 
 def get_staypoints(study, engine):
@@ -112,7 +122,7 @@ def filter_days_with_bad_tracking_coverage(sp, tpls, coverage=0.99):
     return sp
 
 
-def generate_graphs(locs, sp, out_name, trips=None, plotting=False):
+def generate_graphs(locs, sp, trips=None, plotting=False):
     AG_dict = {}
 
     for user_id_this in locs["user_id"].unique():
@@ -123,6 +133,8 @@ def generate_graphs(locs, sp, out_name, trips=None, plotting=False):
 
         if trips is not None:
             trips_user = trips[trips["user_id"] == user_id_this]
+            if trips_user.empty:
+                continue
             AG = activity_graph(sp_user, locs_user, trips=trips_user)
         else:
             AG = activity_graph(sp_user, locs_user)
@@ -140,9 +152,7 @@ def generate_graphs(locs, sp, out_name, trips=None, plotting=False):
             # )
         AG_dict[user_id_this] = copy.deepcopy(AG)
 
-    # create graphs of the full period
-    print("\t create full graph with counts")
-    pickle.dump(AG_dict, out_name)
+    return AG_dict
 
 
 def generate_graphs_daily(locs, sp, out_name, trips=None, plotting=False):
@@ -187,9 +197,9 @@ def generate_graphs_daily(locs, sp, out_name, trips=None, plotting=False):
 
 # globals
 # study name is used as schema name in database
-studies = ["yumuv_graph_rep"]  # , 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
-# studies = ['gc2', 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
-limit = ""  # "where user_id < 4980"
+# studies = ["yumuv_graph_rep"]  # , 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
+studies = ['gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
+limit = "where user_id < 1600"
 single_user = False
 
 if __name__ == "__main__":
@@ -199,9 +209,9 @@ if __name__ == "__main__":
 
         # define output for graphs
         GRAPH_OUTPUT = os.path.join(".", "data_out", "graph_data", study)
-        GRAPH_FOLDER, _ = ntpath.split(GRAPH_OUTPUT)
-        if not os.path.exists(GRAPH_FOLDER):
-            os.mkdir(GRAPH_FOLDER)
+        # GRAPH_FOLDER, _ = ntpath.split(GRAPH_OUTPUT)
+        if not os.path.exists(GRAPH_OUTPUT):
+            os.mkdir(GRAPH_OUTPUT)
 
         engine = get_engine(study)
 
@@ -229,9 +239,21 @@ if __name__ == "__main__":
         locs = locs[locs.user_id.isin(user_id_ix)]
 
         print("generate full graphs (transition counts)")
-        generate_graphs(
-            locs=locs, sp=sp, out_name=open(GRAPH_OUTPUT + "_counts_full.pkl", "wb"), trips=trips, plotting=True
+        AG_dict = generate_graphs(
+            locs=locs, sp=sp, trips=trips, plotting=True
         )
         print("generate daily graphs (transition counts)")
         # sp = filter_days_with_bad_tracking_coverage(sp=sp_merged, tpls=tpls, coverage=0.99)
         # generate_graphs_daily(locs=locs, sp=sp, out_name=open(GRAPH_OUTPUT + "_daily_graphs.pkl", "wb"))
+
+        # store graphs in DB
+        from sqlalchemy import types
+        print("\t create full graph with counts")
+
+        con = get_engine(study, return_con=True)
+
+        out_name = open(os.path.join(GRAPH_OUTPUT, "counts_full.pkl"), "wb")
+        pickle.dump(AG_dict, out_name)
+
+        write_graphs_to_postgresql(graph_data=AG_dict, graph_table_name=study, psycopg_con=con, file_name="graph_data")
+        AG_dict2 = read_graphs_from_postgresql(graph_table_name=study, psycopg_con=con, file_name="graph_data")
