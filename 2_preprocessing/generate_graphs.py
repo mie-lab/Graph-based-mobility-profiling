@@ -197,8 +197,8 @@ def generate_graphs_daily(locs, sp, out_name, trips=None, plotting=False):
 # globals
 # study name is used as schema name in database
 # studies = ["yumuv_graph_rep"]  # , 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
-studies = ['gc1', 'gc2']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
-limit = "where user_id < 1600"
+studies = ['gc2', 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
+limit = "" #where user_id < 1600"
 single_user = False
 
 if __name__ == "__main__":
