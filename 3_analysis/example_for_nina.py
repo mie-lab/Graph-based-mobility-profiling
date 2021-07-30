@@ -2,13 +2,15 @@ import pickle
 from future_trackintel.activity_graph import activity_graph
 import os
 
-AG_dict = pickle.load(open(os.path.join(".", "data_out", "graph_data", "gc1", "counts_full.pkl"), 'rb'))
+study="gc2"
 
-output_spring = os.path.join(".", "graph_images", "gc1", "spring")
+AG_dict = pickle.load(open(os.path.join(".", "data_out", "graph_data", study, "counts_full.pkl"), 'rb'))
+
+output_spring = os.path.join(".", "graph_images", study, "spring")
 if not os.path.exists(output_spring):
     os.makedirs(output_spring)
 
-output_coords = os.path.join(".", "graph_images", "gc1", "coords")
+output_coords = os.path.join(".", "graph_images", study, "coords")
 if not os.path.exists(output_coords):
     os.makedirs(output_coords)
 
@@ -23,4 +25,6 @@ for user_id_this, AG in AG_dict.items():
         draw_edge_label=False,
         layout="coordinate",
     )
+
+# this gets you the graph
 G = AG.G
