@@ -190,12 +190,12 @@ if __name__ == "__main__":
 
     # TODO: node features
     # Load graphs as nx graphs into list
-    load_graphs_pkl(os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50)
+    graphs = load_graphs_pkl(os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50)
 
     # Generate feature matrix
     tic = time.time()
     graph_feat = GraphFeatures()
-    feat_matrix, feat_names = graph_feat(nx_graphs, parallelize=False)
+    feat_matrix, feat_names = graph_feat(graphs, parallelize=False)
     print("time for feature generation", time.time() - tic)
 
     # Save feature matrix to pickle
