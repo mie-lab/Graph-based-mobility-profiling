@@ -4,7 +4,7 @@ import os
 import time
 from joblib import Parallel, delayed
 
-from utils import dist_names, dist_to_stats, count_cycles
+from utils import dist_names, dist_to_stats, count_cycles, load_graphs_postgis, load_graphs_pkl
 
 
 class GraphFeatures:
@@ -190,7 +190,12 @@ if __name__ == "__main__":
 
     # TODO: node features
     # Load graphs as nx graphs into list
-    graphs = load_graphs_pkl(os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50)
+    # graphs, users = load_graphs_pkl(
+    #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
+    # )
+    graphs, users = load_graphs_postgis("gc2", node_importance=50)
+
+    print("loaded graphs", len(graphs))
 
     # Generate feature matrix
     tic = time.time()

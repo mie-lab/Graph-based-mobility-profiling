@@ -1,6 +1,10 @@
 import numpy as np
 import pickle
 import os
+import json
+import psycopg2
+
+from future_trackintel.utils import read_graphs_from_postgresql
 
 
 def normalize_features(feature_matrix):
@@ -77,14 +81,37 @@ def normalize_features(feature_matrix):
     return (feature_matrix - means_cols) / std_cols
 
 
-def load_graphs_pkl(path, node_importance=50):
-    AG_dict = pickle.load(open(path, "rb"))
+def graph_dict_to_list(graph_dict, node_importance=50):
     users = []
     nx_graphs = []
-    for user_id, ag in AG_dict.items():
+    for user_id, ag in graph_dict.items():
         users.append(user_id)
         # TODO: rewrite k importance nodes such that it is filtered by the fraction of occurence, not the abs number
         important_nodes = ag.get_k_importance_nodes(node_importance)
         ag_sub = ag.G.subgraph(important_nodes)
         nx_graphs.append(ag_sub)
-    return nx_graphs
+    return nx_graphs, users
+
+
+def load_graphs_pkl(path, node_importance=50):
+    AG_dict = pickle.load(open(path, "rb"))
+    nx_graphs, users = graph_dict_to_list(AG_dict, node_importance=node_importance)
+    return nx_graphs, users
+
+
+def load_graphs_postgis(study, node_importance=50):
+    # load login data
+    DBLOGIN_FILE = os.path.join("./dblogin.json")
+    with open(DBLOGIN_FILE) as json_file:
+        LOGIN_DATA = json.load(json_file)
+
+    con = psycopg2.connect(
+        dbname=LOGIN_DATA["database"],
+        user=LOGIN_DATA["user"],
+        password=LOGIN_DATA["password"],
+        host=LOGIN_DATA["host"],
+        port=LOGIN_DATA["port"],
+    )
+    graph_dict = read_graphs_from_postgresql(graph_table_name=study, psycopg_con=con, file_name="graph_data")
+    nx_graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
+    return nx_graphs, users
