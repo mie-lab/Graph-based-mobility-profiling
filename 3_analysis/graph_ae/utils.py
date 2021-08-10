@@ -3,6 +3,10 @@ import numpy as np
 import torch
 import networkx as nx
 import pickle
+import os
+import json
+import psycopg2
+from future_trackintel.utils import read_graphs_from_postgresql
 
 
 class RandomGraphDataset(torch.utils.data.Dataset):
@@ -26,41 +30,60 @@ class RandomGraphDataset(torch.utils.data.Dataset):
         return adjacency, feats, label
 
 
+def load_graphs_postgis(study):
+    DBLOGIN_FILE = os.path.join("./dblogin.json")
+    with open(DBLOGIN_FILE) as json_file:
+        LOGIN_DATA = json.load(json_file)
+
+    con = psycopg2.connect(
+        dbname=LOGIN_DATA["database"],
+        user=LOGIN_DATA["user"],
+        password=LOGIN_DATA["password"],
+        host=LOGIN_DATA["host"],
+        port=LOGIN_DATA["port"],
+    )
+    graph_dict = read_graphs_from_postgresql(graph_table_name=study, psycopg_con=con, file_name="graph_data")
+    return graph_dict
+
+
 class MobilityGraphDataset(torch.utils.data.Dataset):
-    def __init__(self, path, node_importance=25):
-        AG_dict = pickle.load(open(path, "rb"))
-        users = []
+    def __init__(self, study, nr_nodes=25):
+        AG_dict = load_graphs_postgis(study=study)
+        # path = os.path.join(".", "data_out", "graph_data", study, "counts_full.pkl")
+        # AG_dict = pickle.load(open(path, "rb"))
+
+        self.nr_nodes = nr_nodes
+
+        self.users = []
         self.nx_graphs = []
         self.adjacency = []
         for user_id, ag in AG_dict.items():
-            users.append(user_id)
+            self.users.append(user_id)
             # TODO: rewrite k importance nodes such that it is filtered by the fraction of occurence, not the abs number
-            important_nodes = ag.get_k_importance_nodes(50)
+            important_nodes = ag.get_k_importance_nodes(nr_nodes)
             ag_sub = ag.G.subgraph(important_nodes)
             self.nx_graphs.append(ag_sub)
-            adjacency = sparse_mx_to_torch_sparse_tensor(preprocess_adj(nx.adjacency_matrix(ag_sub)))
-            # adjacency = np.array(nx.adjacency_matrix(ag_sub).todense())
-            self.adjacency.append(adjacency)
+            # get adjacency and reduce to important nodes
+            adjacency_ag = ag.adjacency_dict["A"][0]
+            adjacency_ag = adjacency_ag.tocsr()[important_nodes, :]
+            adjacency_ag = adjacency_ag.tocsr()[:, important_nodes]
+            # preprocess adjacency matrix
+            adjacency = self.preprocess(adjacency_ag)  # nx.adjacency_matrix(ag_sub)
+            self.adjacency.append(adjacency.float())
+
         # TODO: node features
         self.nr_graphs = len(self.adjacency)
 
-    def preprocess(self, use_log=False, norm_max=None, self_loops=False):
-        # manual preprocessing
-        for i, adj in enumerate(self.adjacency):
-            new_adj = adj.copy()
-            if norm_max is not None:
-                new_adj = new_adj / norm_max
-            if use_log:
-                new_adj[new_adj > 0] = np.log(new_adj[new_adj > 0])
-            if self_loops:
-                new_adj = new_adj + np.identity(len(new_adj))
-            self.adjacency[i] = new_adj
+    @staticmethod
+    def preprocess(adjacency_matrix):
+        return sparse_mx_to_torch_sparse_tensor(preprocess_adj(adjacency_matrix))
 
     def __len__(self):
         return self.nr_graphs
 
     def __getitem__(self, idx):
-        return self.adjacency[idx]
+        feats = torch.ones(self.nr_nodes, 1)
+        return self.adjacency[idx], feats
 
 
 def normalize_adj(adj):

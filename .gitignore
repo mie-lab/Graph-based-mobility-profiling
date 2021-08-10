@@ -31,6 +31,9 @@ MANIFEST
 # notebooks
 *.ipynb
 
+# trained models
+trained_models/
+
 # VS code and OSX
 .DS_Store
 *.code-workspace
