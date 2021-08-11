@@ -73,7 +73,7 @@ def train_ae(model_name="test", nr_nodes=10):
 
 
 def test_ae(model_name="test", nr_nodes=50):
-    dataset = MobilityGraphDataset("gc2", nr_nodes=10)
+    dataset = MobilityGraphDataset("gc2", nr_nodes=nr_nodes)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
     model = GAE(1, adj_dim=nr_nodes)
     model.load_state_dict(torch.load(os.path.join(MODEL_PATH, model_name)))
@@ -99,5 +99,12 @@ def test_ae(model_name="test", nr_nodes=50):
 
 
 if __name__ == "__main__":
-    test_ae(nr_nodes=10)
-    # train_ae()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model", default="test", type=str, help="name where model is saved")
+    parser.add_argument("-n", "--n_nodes", default=20, type=int, help="number of nodes used")
+    args = parser.parse_args()
+
+    test_ae(model_name=args.model, nr_nodes=args.n_nodes)
+    # train_ae(model_name=args.model, nr_nodes=args.n_nodes)
