@@ -62,7 +62,21 @@ def pca(feature_matrix, n_components=2):
     return projected
 
 
-def clean_equal_cols(feature_matrix, feat_names):
+def clean_equal_cols(feature_df):
+    cols_to_be_removed = []
+    unique_value = []
+    for col in feature_df.columns:
+        std = np.std(feature_df[col].values)
+        if std == 0:
+            cols_to_be_removed.append(col)
+            unique_value.append(feature_df[col].values[0])
+    feature_df_rem = feature_df.drop(columns=cols_to_be_removed)
+    print("Delete features because all values are the same:")
+    print(list(zip(cols_to_be_removed, unique_value)))
+    return feature_df_rem
+
+
+def clean_equal_cols_matrix(feature_matrix, feat_names):
     """Delete all features that contain only one value"""
     std = np.std(feature_matrix, axis=0)
     zero_std = std == 0

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["axes.labelsize"] = 15
 
 
-def scatterplot_matrix(feat_matrix, feat_names, use_features, col_names=None, clustering=None, save_path=None):
+def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None, save_path=None):
     """
     Scatterplot matrix for selected features
 
@@ -14,14 +14,11 @@ def scatterplot_matrix(feat_matrix, feat_names, use_features, col_names=None, cl
         clustering: List of cluster labels for each item
     """
     assert len(use_features) < 6, "more than 6 features does not make sense in scatterplot matrix"
-    # get indices
-    use_feat_inds = [feat_names.index(f) for f in use_features]
     # define col names
     if col_names is None:
         col_names = use_features
     # transform to df
-    cutoff = 5
-    feature_df = pd.DataFrame(feat_matrix[:, use_feat_inds], columns=col_names)
+    feature_df = feature_df.loc[:, use_features]
     if clustering is not None:
         feature_df["cluster"] = clustering
         col_dict = {cluster: sns.color_palette()[cluster] for cluster in clustering}

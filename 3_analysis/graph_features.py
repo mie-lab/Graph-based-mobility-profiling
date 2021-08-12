@@ -2,13 +2,20 @@ import networkx as nx
 import numpy as np
 import os
 import time
+import pandas as pd
 from joblib import Parallel, delayed
 
 from utils import dist_names, dist_to_stats, count_cycles, load_graphs_postgis, load_graphs_pkl
 
 
 class GraphFeatures:
-    def __init__(self, random_walk_iters=100, max_cycle_len=5):
+    def __init__(self, graphs, users, random_walk_iters=100, max_cycle_len=5):
+        """
+        graphs: List of nx graph objects
+        users: List of same length as graphs, containing the corresponding user ids
+        """
+        self.users = users
+        self.graphs = graphs
 
         # specify necessary parameters for the feature extraction
         self.random_walk_iters = random_walk_iters
@@ -28,7 +35,7 @@ class GraphFeatures:
         }
         # print("GraphFeature object initialized, available features:", self.feature_dict)
 
-    def __call__(self, graphs, features="all", parallelize=False):
+    def __call__(self, features="all", parallelize=False):
         if features == "all":
             features = list(self.feature_dict.keys())
         # Check that the features are computable
@@ -49,19 +56,25 @@ class GraphFeatures:
             return np.array(feature_output)
 
         feat_names = [e for feat in features for e in self.feature_dict[feat]["feature_names"]]
+        print("Computing the following features")
+        print(feat_names)
+
         check_len = len(feat_names)  # check later that len of names is same as len of features
 
         if parallelize:
             feature_matrix = Parallel(n_jobs=4, prefer="threads")(
-                delayed(compute_feat)(graph, features, check_len) for graph in graphs
+                delayed(compute_feat)(graph, features, check_len) for graph in self.graphs
             )
         else:
-            feature_matrix = [compute_feat(graph, features, check_len) for graph in graphs]
+            feature_matrix = [compute_feat(graph, features, check_len) for graph in self.graphs]
         feature_matrix = np.array(feature_matrix)
-        print("feature matrix", feature_matrix.shape)
-        return feature_matrix, feat_names
+        print("feature matrix shape", feature_matrix.shape)
+        # convert to dataframe
+        feature_df = pd.DataFrame(feature_matrix, index=self.users, columns=feat_names)
 
-    # --------------------- GRAPH LEVEL FEATURE --------------------
+        return feature_df
+
+    # --------------------- GRAPH LEVEL FEATURES --------------------
     def size_emb(self, graph):
         """Very general features of graph size"""
         feats = [graph.number_of_nodes(), graph.number_of_edges()]
@@ -92,7 +105,7 @@ class GraphFeatures:
         if np.max(all_degrees[:, 1]) == 0:
             return 0  # TODO
 
-        encountered_nodes = [current_node]
+        encountered_locations = [current_node]
         number_of_walks = 0
         for step in range(steps):
             # get out neighbors with corresponding transition number
@@ -111,10 +124,9 @@ class GraphFeatures:
             current_node = np.random.choice(next_node, p=out_probs)
             # print("used node with weight", out_weights[next_node.index(current_node)])
             # collect node (features)
-            encountered_nodes.append(current_node)
+            encountered_locations.append(current_node)
 
         # extract features from random walk
-        encountered_locations = [graph.nodes[n]["location_id"] for n in encountered_nodes]
         # 1) distribution of cycles
         cycles_on_walk = count_cycles(encountered_locations, max_len=self.max_cycle_len)
         # 2) number of encountered nodes
@@ -190,17 +202,18 @@ if __name__ == "__main__":
 
     # TODO: node features
     # Load graphs as nx graphs into list
-    # graphs, users = load_graphs_pkl(
-    #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
-    # )
-    graphs, users = load_graphs_postgis("gc2", node_importance=50)
+    graphs, users = load_graphs_pkl(
+        os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
+    )
+    # graphs, users = load_graphs_postgis("gc2", node_importance=50)
 
     print("loaded graphs", len(graphs))
 
     # Generate feature matrix
     tic = time.time()
-    graph_feat = GraphFeatures()
-    feat_matrix, feat_names = graph_feat(graphs, parallelize=False)
+    graph_feat = GraphFeatures(graphs, users)
+    feat_matrix = graph_feat(parallelize=False)
+    print(feat_matrix)
     print("time for feature generation", time.time() - tic)
 
     # Save feature matrix to pickle
@@ -208,8 +221,9 @@ if __name__ == "__main__":
     #     pickle.dump((feat_matrix, feat_names, users), outfile)
 
     # Clean and normalize
-    cleaned_feat_matrix, cleaned_feat_names = clean_equal_cols(feat_matrix, feat_names)
-    normed_feat_matrix = normalize_features(cleaned_feat_matrix)
+    cleaned_feat_df = clean_equal_cols(feat_matrix)
+    print(np.array(cleaned_feat_df).shape)
+    normed_feat_matrix = normalize_features(np.array(cleaned_feat_df))
 
     # KMeans
     from sklearn.cluster import KMeans
@@ -229,4 +243,4 @@ if __name__ == "__main__":
         "Avg. degree",
         "No. of cycles \n of length 3",
     ]
-    scatterplot_matrix(feat_matrix, feat_names, use_features, clustering=kmeans.labels_, col_names=col_names)
+    scatterplot_matrix(cleaned_feat_df, use_features, clustering=kmeans.labels_, col_names=col_names)
