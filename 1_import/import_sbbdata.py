@@ -16,7 +16,7 @@ from future_trackintel.utils import horizontal_merge_staypoints
 
 CRS_WGS84 = "epsg:4326"
 #
-studies = ["gc1"]
+studies = ["gc2", "gc1"]
 
 DBLOGIN_FILE = os.path.join(".", "dblogin.json")
 DBLOGIN_FILE_SOURCE = os.path.join(".", "dblogin_source.json")
@@ -42,7 +42,7 @@ for study in studies:
 
     print("download staypoints")
     sp = gpd.GeoDataFrame.from_postgis(
-        sql="SELECT * FROM {}.staypoints where user_id <= 1600".format(study),
+        sql="SELECT * FROM {}.staypoints".format(study),
         con=conn_source,
         crs=CRS_WGS84,
         geom_col="geometry_raw",
@@ -50,7 +50,7 @@ for study in studies:
     )
     print("download triplegs")
     tpls = gpd.GeoDataFrame.from_postgis(
-        sql="SELECT * FROM {}.triplegs where ST_isValid(geometry) and user_id <= 1600 limit 1000".format(study),
+        sql="SELECT * FROM {}.triplegs where ST_isValid(geometry)".format(study),
         con=conn_source,
         crs=CRS_WGS84,
         geom_col="geometry",
@@ -74,13 +74,13 @@ for study in studies:
     tpls["started_at"] = tpls["started_at"].dt.tz_localize("UTC")
     tpls["finished_at"] = tpls["finished_at"].dt.tz_localize("UTC")
 
-    print("create places")
+    print("create locations")
     sp, locs = sp.as_staypoints.generate_locations(
         method="dbscan", epsilon=30, num_samples=1, distance_metric="haversine", agg_level="user"
     )
     # merge horizontal staypoints
-    sp = horizontal_merge_staypoints(sp)
-    sp = ti.io.read_staypoints_gpd(sp)
+    sp = horizontal_merge_staypoints(sp, custom_add_dict={"purpose_detected": list})
+    sp = ti.io.read_staypoints_gpd(sp, geom_col='geom')
 
     sp, tpls, trips = ti.preprocessing.generate_trips(sp, tpls)
     tpls.index.name = "id"
