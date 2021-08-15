@@ -5,7 +5,7 @@ import psycopg2
 import pickle
 
 
-def horizontal_merge_staypoints(sp, gap_threshold=20):
+def horizontal_merge_staypoints(sp, gap_threshold=20, custom_add_dict={}):
     """merge staypoints that are consecutive at the same place"""
     # merge consecutive staypoints
 
@@ -36,25 +36,24 @@ def horizontal_merge_staypoints(sp, gap_threshold=20):
         print("\t", np.sum(cond_diff))
 
     # aggregate values
-    sp_merged = sp_merge.groupby(by="id").agg(
-        {
-            "user_id": "first",
-            "trip_id": list,
-            "prev_trip_id": list,
-            "next_trip_id": list,
-            "started_at": "first",
-            "finished_at": "last",
-            "geom": "first",
-            "elevation": "first",
-            "location_id": "first",
-            "activity": "first",
-            "purpose": list
-            # "purpose_detected": list,
-            # "purpose_validated": list,
-            # "validated": "first",
-            # "validated_at": "first",
-        }
-    )
+
+    agg_dict = {
+        "user_id": "first",
+        "trip_id": list,
+        "prev_trip_id": list,
+        "next_trip_id": list,
+        "started_at": "first",
+        "finished_at": "last",
+        "geom": "first",
+        "elevation": "first",
+        "location_id": "first",
+        "activity": "first",
+        "purpose": list
+    }
+
+    agg_dict.update(custom_add_dict)
+
+    sp_merged = sp_merge.groupby(by="id").agg(agg_dict)
 
     return sp_merged
 

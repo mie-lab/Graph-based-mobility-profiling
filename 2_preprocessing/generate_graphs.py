@@ -137,6 +137,7 @@ def generate_graphs(locs, sp, trips=None, plotting=False):
             AG = activity_graph(sp_user, locs_user, trips=trips_user)
         else:
             AG = activity_graph(sp_user, locs_user)
+        AG.add_node_features_from_staypoints(sp)
         if plotting:
             AG.plot(
                 os.path.join(".", "graph_images", "new", study, "spring", str(user_id_this)),
@@ -176,6 +177,10 @@ def generate_graphs_daily(locs, sp, out_name, trips=None, plotting=False):
             continue
 
         AG = activity_graph(sp_group, locs_this)
+        AG.add_node_features_from_staypoints(sp_group, agg_dict={'started_at': list,
+        'finished_at': list,
+        "purpose": list})
+
         if plotting:
             AG.plot(
                 os.path.join(".", "graph_images", "new", "daily", user, "spring", day.strftime("%Y-%m-%d"),),
@@ -197,8 +202,8 @@ def generate_graphs_daily(locs, sp, out_name, trips=None, plotting=False):
 # globals
 # study name is used as schema name in database
 # studies = ["yumuv_graph_rep"]  # , 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
-studies = ['gc2', 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
-limit = "" #where user_id < 1600"
+studies = ['gc2', 'gc1']#, 'geolife']# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
+limit = "" # "where user_id < 1600"
 single_user = False
 
 if __name__ == "__main__":
@@ -228,11 +233,11 @@ if __name__ == "__main__":
             sql="select * from {}.locations".format(study), con=engine, geom_col="center",
         )
 
-        # print("horizontal merge") # horizontal merge has to be done before trip generation in the import
 
         print("filter by tracking coverage")
 
-        sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls)
+        sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.9, min_nb_good_days=30)
+        print("drop users with bad coverage")
         tpls = tpls[tpls.user_id.isin(user_id_ix)]
         trips = trips[trips.user_id.isin(user_id_ix)]
         locs = locs[locs.user_id.isin(user_id_ix)]
@@ -241,7 +246,9 @@ if __name__ == "__main__":
         AG_dict = generate_graphs(
             locs=locs, sp=sp, trips=trips, plotting=True
         )
-        print("generate daily graphs (transition counts)")
+
+
+        # print("generate daily graphs (transition counts)")
         # sp = filter_days_with_bad_tracking_coverage(sp=sp_merged, tpls=tpls, coverage=0.99)
         # generate_graphs_daily(locs=locs, sp=sp, out_name=open(GRAPH_OUTPUT + "_daily_graphs.pkl", "wb"))
 
@@ -254,5 +261,6 @@ if __name__ == "__main__":
         out_name = open(os.path.join(GRAPH_OUTPUT, "counts_full.pkl"), "wb")
         pickle.dump(AG_dict, out_name)
 
+        print("\t write graph to db")
         write_graphs_to_postgresql(graph_data=AG_dict, graph_table_name=study, psycopg_con=con, file_name="graph_data")
-        AG_dict2 = read_graphs_from_postgresql(graph_table_name=study, psycopg_con=con, file_name="graph_data")
+        # AG_dict2 = read_graphs_from_postgresql(graph_table_name=study, psycopg_con=con, file_name="graph_data")
