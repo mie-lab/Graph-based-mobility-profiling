@@ -47,10 +47,23 @@ def load_graphs_postgis(study):
 
 
 class MobilityGraphDataset(torch.utils.data.Dataset):
-    def __init__(self, study, nr_nodes=25):
-        AG_dict = load_graphs_postgis(study=study)
-        # path = os.path.join(".", "data_out", "graph_data", study, "counts_full.pkl")
-        # AG_dict = pickle.load(open(path, "rb"))
+    def __init__(self, study, nr_nodes=25, load_from_pickle=None):
+        """[summary]
+
+        Parameters
+        ----------
+        study : str
+            study name
+        nr_nodes : int, optional
+            n most important nodes of the graphts are used, by default 25
+        load_from_pickle : str, optional
+            path where to load pickle, by default None
+        """
+        if load_from_pickle:
+            # path = os.path.join("..", "..", "data_out", "graph_data", study, "counts_full.pkl")
+            AG_dict = pickle.load(open(load_from_pickle, "rb"))
+        else:
+            AG_dict = load_graphs_postgis(study=study)
 
         self.nr_nodes = nr_nodes
 

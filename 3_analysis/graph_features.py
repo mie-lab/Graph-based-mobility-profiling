@@ -1,101 +1,107 @@
 import networkx as nx
+from networkx.algorithms.shortest_paths.generic import shortest_path
 import numpy as np
 import os
 import time
 import pandas as pd
+from scipy.optimize import curve_fit
+
 from joblib import Parallel, delayed
 
-from utils import dist_names, dist_to_stats, count_cycles, load_graphs_postgis, load_graphs_pkl
+
+from utils import *
 
 
 class GraphFeatures:
-    def __init__(self, graphs, users, random_walk_iters=100, max_cycle_len=5):
+    def __init__(self, graphs, users, random_walk_iters=100, max_cycle_len=5, full_distribution=False):
         """
         graphs: List of nx graph objects
         users: List of same length as graphs, containing the corresponding user ids
+        full_distribution:
         """
         self.users = users
         self.graphs = graphs
 
         # specify necessary parameters for the feature extraction
         self.random_walk_iters = random_walk_iters
-        self.max_cycle_len = max_cycle_len
 
-        random_walk_feats = ["nr_encountered_locs"] + ["nr_cycles_" + str(i + 1) for i in range(max_cycle_len)]
-        sp_feats = ["percent_not_inf"] + dist_names("sp_length")
-        # All available graph features
-        self.feature_dict = {
-            "size": {"function": self.size_emb, "feature_names": ["nr_nodes", "nr_edges"]},
-            "connected": {"function": self.components_emb, "feature_names": ["nr_connected_components"]},
-            "random_walk": {"function": self.random_walk_emb, "feature_names": random_walk_feats},
-            "transitions": {"function": self.edge_weight_emb, "feature_names": dist_names("transitions")},
-            "shortest_paths": {"function": self.shortest_path_emb, "feature_names": sp_feats},
-            "degrees": {"function": self.degree_emb, "feature_names": dist_names("degree")},
-            "centrality": {"function": self.centrality_emb, "feature_names": dist_names("centrality")},
-        }
-        # print("GraphFeature object initialized, available features:", self.feature_dict)
+        self.default_features = [
+            "nr_edges",
+            "cycles_2_random_walk",
+            "cycles_3_random_walk",
+            "simple_powerlaw_transitions",
+            "mean_distance_random_walk",
+            "mean_sp_length",
+            "mean_node_degree",
+            "mean_betweenness_centrality",
+        ]
 
-    def __call__(self, features="all", parallelize=False):
+        self.all_features = [f for f in dir(self) if not f.startswith("_")]
+
+    def _check_implemented(self, features):
+        # check if all required features are implemented
+        for feat in features:
+            if not hasattr(self, feat):
+                raise NotImplementedError(f"Feature {feat} ist not implemented!")
+
+    def __call__(self, features="default", parallelize=False):
+        """Compute desired features for all graphs and possibly parallelize over graphs"""
+        if features == "default":
+            features = self.default_features
         if features == "all":
-            features = list(self.feature_dict.keys())
+            features = self.all_features
         # Check that the features are computable
-        assert all(
-            [feat in self.feature_dict.keys() for feat in features]
-        ), "Only features in feature_dict are allowed!"
+        self._check_implemented(features)
+
+        # get names of output features from the dictionary - by default its simply the name itself
+        # feat_names = [e for feat in features for e in self.feature_dict[feat].get("feature_names", [feat])]
+        print("Computing the following features")
+        print(features)
 
         # helper function: compute all features of one graph
-        def compute_feat(graph, features, check_len):
+        def compute_feat(graph, features):
             feature_output = []
             for feat in features:
-                feature_function = self.feature_dict[feat]["function"]
+                feature_function = getattr(self, feat)
                 this_feat_out = feature_function(graph)
-                feature_output.extend(this_feat_out)
-                # print(len(this_feat_out))
-            # print(len(feature_output), feature_output, check_len)
-            assert len(feature_output) == check_len
+                feature_output.append(this_feat_out)
             return np.array(feature_output)
-
-        feat_names = [e for feat in features for e in self.feature_dict[feat]["feature_names"]]
-        print("Computing the following features")
-        print(feat_names)
-
-        check_len = len(feat_names)  # check later that len of names is same as len of features
 
         if parallelize:
             feature_matrix = Parallel(n_jobs=4, prefer="threads")(
-                delayed(compute_feat)(graph, features, check_len) for graph in self.graphs
+                delayed(compute_feat)(graph, features) for graph in self.graphs
             )
         else:
-            feature_matrix = [compute_feat(graph, features, check_len) for graph in self.graphs]
+            feature_matrix = [compute_feat(graph, features) for graph in self.graphs]
         feature_matrix = np.array(feature_matrix)
         print("feature matrix shape", feature_matrix.shape)
         # convert to dataframe
-        feature_df = pd.DataFrame(feature_matrix, index=self.users, columns=feat_names)
+        feature_df = pd.DataFrame(feature_matrix, index=self.users, columns=features)
 
         return feature_df
 
     # --------------------- GRAPH LEVEL FEATURES --------------------
-    def size_emb(self, graph):
-        """Very general features of graph size"""
-        feats = [graph.number_of_nodes(), graph.number_of_edges()]
-        return feats
+    def nr_nodes(self, graph):
+        return graph.number_of_nodes()
 
-    def components_emb(self, graph):
+    def nr_edges(self, graph):
+        return graph.number_of_edges()
+
+    def components(self, graph):
         """
         Count number of connected components
         """
-        test_graph = nx.Graph(graph)
-        comp = nx.connected_components(test_graph)
+        comp = nx.connected_components(graph)
         # I thought about measuring the graph diameter, but this is already part of the sp emb
         # max([nx.algorithms.distance_measures.diameter(test_graph.subgraph(c).copy()) for c in comp])
-        return [sum(1 for c in comp)]  # count elements in generator
+        return sum(1 for c in comp)  # count elements in generator
 
-    def graphlets_emb(self, graph):
+    def _graphlets(self, graph):
         # TODO
         # https://github.com/KirillShmilovich/graphlets
         pass
 
-    def random_walk_emb(self, graph, steps=100, max_cycle_len=5):
+    def _random_walk(self, graph):
         # start at node with highest degree
         all_degrees = np.array(graph.out_degree())
         start_node = all_degrees[np.argmax(all_degrees[:, 1]), 0]
@@ -107,7 +113,7 @@ class GraphFeatures:
 
         encountered_locations = [current_node]
         number_of_walks = 0
-        for step in range(steps):
+        for step in range(self.random_walk_iters):
             # get out neighbors with corresponding transition number
             neighbor_edges = graph.out_edges(current_node, data=True)
             # check if we are at a dead end
@@ -126,64 +132,146 @@ class GraphFeatures:
             # collect node (features)
             encountered_locations.append(current_node)
 
+        # simply save the encountered nodes here
+        return encountered_locations
         # extract features from random walk
         # 1) distribution of cycles
-        cycles_on_walk = count_cycles(encountered_locations, max_len=self.max_cycle_len)
+        # cycles_on_walk = count_cycles(encountered_locations, max_len=self.max_cycle_len)
         # 2) number of encountered nodes
-        nr_encountered_nodes = len(np.unique(encountered_locations))
+        # self.nr_encountered_nodes = len(np.unique(encountered_locations))
         # 3) TODO: distribution of means of tranport or other node/edge features?
+        # return list(cycles_on_walk)
 
-        return [nr_encountered_nodes] + list(cycles_on_walk)
+    def cycles_2_random_walk(self, graph):
+        random_walk_sequence = self._random_walk(graph)
+        return count_cycles(random_walk_sequence, cycle_len=2)
 
-    def edge_weight_emb(self, graph):
-        """Compute distribution of edge weights"""
+    def cycles_3_random_walk(self, graph):
+        random_walk_sequence = self._random_walk(graph)
+        return count_cycles(random_walk_sequence, cycle_len=3)
+
+    def _distances_random_walk(self, graph, crs_is_projected=False):
+        # TODO: are the points in the graph nodes projected?
+        random_walk_sequence = self._random_walk(graph)
+        # get all shapely Point centers on the random walk
+        locs_on_rw = [graph.nodes[node_ind]["center"] for node_ind in random_walk_sequence]
+        # get all distances on the random walk
+        distances = [
+            get_point_dist(locs_on_rw[i], locs_on_rw[i + 1], crs_is_projected=crs_is_projected)
+            for i in range(len(locs_on_rw) - 1)
+        ]
+        return distances
+
+    @get_mean
+    def mean_distance_random_walk(self, graph):
+        return self._distances_random_walk(graph)
+
+    # ---------- EDGE FEATURES ---------------------------
+
+    def _transitions(self, graph):
+        """Get all edge weights"""
         transition_counts = [edge[2]["weight"] for edge in graph.edges(data=True)]
-        return dist_to_stats(transition_counts)
+        return transition_counts
+
+    @get_distribution
+    def dist_transitions(self, graph):
+        """Compute distribution of edge weights"""
+        return self._transitions(graph)
+
+    @get_mean
+    def mean_transitions(self, graph):
+        return self._transitions(graph)
+
+    def simple_powerlaw_transitions(self, graph):
+        """Fit simple power law curve and return beta"""
+        transition_counts = self._transitions(graph)
+        uni, counts = np.unique(transition_counts, return_counts=True)
+        # normalize counts
+        counts = counts / np.sum(counts)
+        params, _ = curve_fit(func_simple_powerlaw, uni, counts, maxfev=3000, bounds=(0, 4))
+        # returns only beta
+        return params[0]
+
+    def truncated_powerlaw_transitions(self, graph, return_param="beta"):
+        """Fit simple power law curve and return beta"""
+        transition_counts = self._transitions(graph)
+        uni, counts = np.unique(transition_counts, return_counts=True)
+        # normalize counts
+        counts = counts / np.sum(counts)
+        params, _ = curve_fit(
+            func_truncated_powerlaw, uni, counts, maxfev=3000, bounds=([-np.inf, 0, 0], [np.inf, 4, np.inf])
+        )
+        # returns list of 3 parameters
+        return params
 
     # ---------- NODE FEATURES ---------------------------
 
-    def shortest_path_emb(self, graph, bins=False, nr_bins=4):
+    def _sp_length(self, graph):
         """
         Returns discrete histogram of path length occurences
         """
-        # TODO: check what floyd warshall does with a weighted graph! --> bzw how do we bin it then?
+        all_sp = nx.floyd_warshall(graph)
+        all_sp_lens = [v for sp_dict in all_sp.values() for v in list(sp_dict.values())]
+        return all_sp_lens
+
+    @get_distribution
+    def dist_sp_length(self, graph):
+        all_sp_lens = self._sp_length(graph)
+        sp_lengths = [v for v in all_sp_lens if v < np.inf]
+        return sp_lengths
+
+    def not_inf_sp_length(self, graph):
+        all_sp_lens = self._sp_length
+        all_not_inf = [v for v in all_sp_lens if v < np.inf]
+        percent_not_inf = len(all_not_inf) / len(all_sp_lens)
+        return percent_not_inf
+
+    def bins_sp_length(self, graph, nr_bins=4):
         all_sp = nx.floyd_warshall(graph)
         # only for bins: get distribution of paths (only possible if no edge weights)
-        if bins:
-            path_len_counts = np.zeros(nr_bins)
-            for node1 in sorted(all_sp.keys()):
-                for node2 in range(node1 + 1, max(all_sp.keys())):
-                    sp_len = all_sp[node1][node2]
-                    if bins and sp_len <= nr_bins:
-                        path_len_counts[int(sp_len) - 1] += 1
-            return path_len_counts
-        else:
-            all_sp_lens = [v for sp_dict in all_sp.values() for v in list(sp_dict.values())]
-            # get non_infs:
-            all_not_inf = [v for v in all_sp_lens if v < np.inf]
-            percent_not_inf = len(all_not_inf) / len(all_sp_lens)
-            return [percent_not_inf] + dist_to_stats(all_not_inf)
+        path_len_counts = np.zeros(nr_bins)
+        for node1 in sorted(all_sp.keys()):
+            for node2 in range(node1 + 1, max(all_sp.keys())):
+                sp_len = all_sp[node1][node2]
+                if sp_len <= nr_bins:
+                    path_len_counts[int(sp_len) - 1] += 1
+        return path_len_counts
 
-    def degree_emb(self, graph, bins=False, nr_bins=None, mode="out"):
+    @get_mean
+    def mean_sp_length(self, graph):
+        all_sp_lens = self._sp_length(graph)
+        sp_lengths = [v for v in all_sp_lens if v < np.inf]
+        return sp_lengths
+
+    def _degree(self, graph, mode="out"):
         """
         Degree distribution of graph
         """
         # one function for in, out and all degrees
         use_function = {"all": graph.degree(), "out": graph.out_degree(), "in": graph.in_degree()}
         degrees = list(dict(use_function[mode]).values())
-        # return degree in bins
-        if bins:
-            if nr_bins is None:
-                nr_bins = max(degrees) + 1
-            degree_count_bins = np.zeros(nr_bins)
-            uni, degree_counts = np.unique(degrees, return_counts=True)
-            degree_count_bins[uni] = degree_counts
-            return degree_count_bins
-        # return statistics of bin distribution
-        else:
-            return dist_to_stats(degrees)
+        return degrees
 
-    def centrality_emb(self, graph):
+    def bins_degree(self, graph, nr_bins=None, mode="out"):
+        degrees = self._degree(graph, mode=mode)
+        # return degree in bins
+        if nr_bins is None:
+            nr_bins = max(degrees) + 1
+        degree_count_bins = np.zeros(nr_bins)
+        uni, degree_counts = np.unique(degrees, return_counts=True)
+        degree_count_bins[uni] = degree_counts
+        return degree_count_bins
+
+    @get_distribution
+    def dist_node_degree(self, graph, mode="out"):
+        # return statistics of degree distribution
+        return self._degree(graph, mode=mode)
+
+    @get_mean
+    def mean_node_degree(self, graph, mode="out"):
+        return self._degree(graph, mode=mode)
+
+    def _eigenvector_centrality(self, graph):
         """
         Compute centrality of each node and return distribution statistics
         TODO: could use decorator
@@ -191,7 +279,21 @@ class GraphFeatures:
         if isinstance(graph, nx.classes.multidigraph.MultiDiGraph):
             graph = nx.DiGraph(graph)
         centrality = nx.eigenvector_centrality_numpy(graph)
-        return dist_to_stats(list(centrality.values()))
+        return list(centrality.values())
+
+    @get_distribution
+    def dist_eigenvector_centrality(self, graph):
+        return self._eigenvector_centrality(graph)
+
+    def _betweenness_centrality(self, graph):
+        if isinstance(graph, nx.classes.multidigraph.MultiDiGraph):
+            graph = nx.DiGraph(graph)
+        centrality = nx.algorithms.centrality.betweenness_centrality(graph)
+        return list(centrality.values())
+
+    @get_mean
+    def mean_betweenness_centrality(self, graph):
+        return self._betweenness_centrality(graph)
 
 
 if __name__ == "__main__":
@@ -235,12 +337,12 @@ if __name__ == "__main__":
 
     # Plot scatterplot matrix
 
-    use_features = ["transitions_mean", "transitions_std", "sp_length_mean", "degree_mean", "nr_cycles_3"]
-    col_names = [
-        "Avg no.\n of transitions",
-        "Std no. of \n transitions",
-        "Avg. shortest \n path length",
-        "Avg. degree",
-        "No. of cycles \n of length 3",
+    use_features = [
+        "nr_edges",
+        "cycles_2_random_walk",
+        "mean_distance_random_walk",
+        "mean_sp_length",
+        "mean_node_degree",
+        "mean_betweenness_centrality",
     ]
-    scatterplot_matrix(cleaned_feat_df, use_features, clustering=kmeans.labels_, col_names=col_names)
+    scatterplot_matrix(cleaned_feat_df, use_features, clustering=kmeans.labels_)

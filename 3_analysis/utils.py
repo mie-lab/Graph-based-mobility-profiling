@@ -3,7 +3,9 @@ import pickle
 import os
 import json
 import psycopg2
+import functools
 
+import trackintel as ti
 from future_trackintel.utils import read_graphs_from_postgresql
 
 
@@ -38,7 +40,69 @@ def dist_names(feature):
     return [feature + "_" + d for d in dist_feats]
 
 
-def count_cycles(location_list, max_len=5):
+def func_simple_powerlaw(x, beta):
+    return x ** (-1 + beta)
+
+
+def func_truncated_powerlaw(x, delta_x, beta, kappa):
+    return (x + delta_x) ** (-beta) * np.exp(-delta_x / kappa)
+
+
+# Distribution decorator
+def get_distribution(func):
+    """
+    Get distribution features of node level features
+    """
+
+    @functools.wraps(func)
+    def call_and_dist(self, *args, **kwargs):
+
+        node_level_features = func(self, *args, **kwargs)
+
+        return dist_to_stats(node_level_features)
+
+    return call_and_dist
+
+
+# Distribution decorator
+def get_mean(func):
+    """
+    Get distribution features of node level features
+    """
+
+    @functools.wraps(func)
+    def call_and_mean(self, *args, **kwargs):
+
+        node_level_features = func(self, *args, **kwargs)
+
+        return np.mean(node_level_features)
+
+    return call_and_mean
+
+
+def get_point_dist(p1, p2, crs_is_projected=False):
+    if crs_is_projected:
+        dist = p1.distance(p2)
+    else:
+        dist = ti.geogr.point_distances.haversine_dist(p1.x, p1.y, p2.x, p2.y)[0]
+    return dist
+
+
+def count_cycles(location_list, cycle_len):
+    """Count number of cycles of length cycle_len in a list of locations"""
+    cycle_counter = 0
+    for i in range(cycle_len, len(location_list)):
+        current_loc = location_list[i]
+        # cycle found
+        if current_loc == location_list[i - cycle_len]:
+            # check if the cycles is not smaller
+            inbetween = [location_list[j] == current_loc for j in range(i - cycle_len + 1, i - 1)]
+            if not any(inbetween):
+                cycle_counter += 1
+    return cycle_counter
+
+
+def old_count_cycles(location_list, max_len=5):
     """
     Compute histogram of how often cycles of size x occur
     NOTE: atm the sequence 2 0 2 1 2 would count as 2 cycles of length 2 AND one cycle of length 5
