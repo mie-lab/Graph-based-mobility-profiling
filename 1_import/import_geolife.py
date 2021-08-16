@@ -25,7 +25,7 @@ engine = create_engine(conn_string)
 conn = engine.connect()
 
 geolife_path = r"E:\Geolife Trajectories 1.3\Data"
-#geolife_path = r"D:\temp\geolife65"
+# geolife_path = r"D:\temp\geolife55"
 # geolife_path = r"D:\temp\geolife_13_users"
 # geolife_path = r"C:\Users\henry\OneDrive\Programming\21_mobility-graph-representation\data_in\data_geolife"
 schema_name = "geolife"
@@ -41,10 +41,19 @@ pfs, tpls = pfs.as_positionfixes.generate_triplegs(spts, method="between_staypoi
 print("attach labels to triplegs")
 tpls = ti.io.dataset_reader.geolife_add_modes_to_triplegs(tpls, mode_labels)
 
+# drop entries with invalid timestamps
+valid_tstamp_flag_sp = spts.started_at <= spts.finished_at
+valid_tstamp_flag_tpls = tpls.started_at <= tpls.finished_at
+print("\t\ttimestamps of {} sp and {} tpls corrupted. corrupted ts are dropped".format(spts.shape[0] - sum(
+    valid_tstamp_flag_sp), tpls.shape[0] - sum(valid_tstamp_flag_tpls)))
+
+sp = spts[valid_tstamp_flag_sp]
+tpls = tpls[valid_tstamp_flag_tpls]
+
+
 print("extract locations")
 spts, locs = spts.as_staypoints.generate_locations(
-    method="dbscan", epsilon=50, num_samples=1, distance_metric="haversine", agg_level="user"
-)
+    method="dbscan", epsilon=50, num_samples=1, distance_metric="haversine", agg_level="user")
 
 spts = ti.analysis.location_identifier(spts, method="FREQ", pre_filter=True)
 

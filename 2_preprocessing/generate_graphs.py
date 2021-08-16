@@ -17,6 +17,7 @@ from trackintel.analysis.tracking_quality import _split_overlaps
 from collections import defaultdict
 import pytz
 import psycopg2
+from tqdm import tqdm
 CRS_WGS84 = "epsg:4326"
 
 
@@ -28,8 +29,13 @@ def get_engine(study, return_con=False):
 
         engine = create_engine("postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}".format(**DSN))
         if return_con:
-            con = psycopg2.connect(dbname=DSN['db_database'], user=DSN['db_user'], password=DSN['db_password'],
-                                   host=DSN['db_host'], port=DSN['db_port'])
+            con = psycopg2.connect(
+                dbname=DSN["db_database"],
+                user=DSN["db_user"],
+                password=DSN["db_password"],
+                host=DSN["db_host"],
+                port=DSN["db_port"],
+            )
     else:
 
         # build database login string from file
@@ -40,9 +46,13 @@ def get_engine(study, return_con=False):
         conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}".format(**LOGIN_DATA)
         engine = create_engine(conn_string)
         if return_con:
-            con = psycopg2.connect(dbname=LOGIN_DATA['database'], user=LOGIN_DATA['user'],
-                                   password=LOGIN_DATA['password'],
-                                   host=LOGIN_DATA['host'], port=LOGIN_DATA['port'])
+            con = psycopg2.connect(
+                dbname=LOGIN_DATA["database"],
+                user=LOGIN_DATA["user"],
+                password=LOGIN_DATA["password"],
+                host=LOGIN_DATA["host"],
+                port=LOGIN_DATA["port"],
+            )
 
     if return_con:
         return con
@@ -52,7 +62,10 @@ def get_engine(study, return_con=False):
 
 def get_staypoints(study, engine):
     sp = gpd.read_postgis(
-        sql="select * from {}.staypoints {}".format(study, limit), con=engine, geom_col="geom", index_col="id",
+        sql="select * from {}.staypoints {}".format(study, limit),
+        con=engine,
+        geom_col="geom",
+        index_col="id",
     )
     sp["started_at"] = pd.to_datetime(sp["started_at"], utc=True)
     sp["finished_at"] = pd.to_datetime(sp["finished_at"], utc=True)
@@ -83,13 +96,14 @@ def filter_user_by_number_of_days(sp, tpls, coverage=0.9, min_nb_good_days=30):
     # could be replaced by https://github.com/mie-lab/trackintel/issues/258 once implemented
     nb_users = len(sp.user_id.unique())
 
-    sp_tpls = sp.append(tpls)
+    sp_tpls = sp.append(tpls).sort_values(['user_id', 'started_at'])
+
     coverage_df = ti.analysis.tracking_quality.temporal_tracking_quality(sp_tpls, granularity="day")
 
     good_days_count = coverage_df[coverage_df["quality"] >= coverage].groupby(by="user_id")["quality"].count()
     good_users = good_days_count[good_days_count >= min_nb_good_days].index
     sp = sp[sp.user_id.isin(good_users)]
-    print("\t nb users now: ", len(sp.user_id.unique()), "before: ", nb_users)
+    print("\t\t nb users now: ", len(sp.user_id.unique()), "before: ", nb_users)
     return sp, good_users
 
 
@@ -121,10 +135,10 @@ def filter_days_with_bad_tracking_coverage(sp, tpls, coverage=0.99):
     return sp
 
 
-def generate_graphs(locs, sp, trips=None, plotting=False):
+def generate_graphs(locs, sp, study, trips=None, plotting=False):
     AG_dict = {}
 
-    for user_id_this in locs["user_id"].unique():
+    for user_id_this in tqdm(locs["user_id"].unique()):
         sp_user = sp[sp["user_id"] == user_id_this]
         if sp_user.empty:
             continue
@@ -137,7 +151,17 @@ def generate_graphs(locs, sp, trips=None, plotting=False):
             AG = activity_graph(sp_user, locs_user, trips=trips_user)
         else:
             AG = activity_graph(sp_user, locs_user)
-        AG.add_node_features_from_staypoints(sp)
+
+        if study == "geolife":
+            AG.add_node_features_from_staypoints(
+                sp, agg_dict={"started_at": list, "finished_at": list}
+            )
+        else:
+            AG.add_node_features_from_staypoints(
+                sp, agg_dict={"started_at": list, "finished_at": list, "purpose": list}
+            )
+
+
         if plotting:
             AG.plot(
                 os.path.join(".", "graph_images", "new", study, "spring", str(user_id_this)),
@@ -155,7 +179,7 @@ def generate_graphs(locs, sp, trips=None, plotting=False):
     return AG_dict
 
 
-def generate_graphs_daily(locs, sp, out_name, trips=None, plotting=False):
+def generate_graphs_daily(locs, sp, out_name, study, trips=None, plotting=False):
     # create daily graphs
     print("create index")
     sp.set_index("started_at", drop=False, inplace=True)
@@ -177,13 +201,26 @@ def generate_graphs_daily(locs, sp, out_name, trips=None, plotting=False):
             continue
 
         AG = activity_graph(sp_group, locs_this)
-        AG.add_node_features_from_staypoints(sp_group, agg_dict={'started_at': list,
-        'finished_at': list,
-        "purpose": list})
+        if study == "geolife":
+            AG.add_node_features_from_staypoints(
+                sp_group, agg_dict={"started_at": list, "finished_at": list}
+            )
+        else:
+            AG.add_node_features_from_staypoints(
+                sp_group, agg_dict={"started_at": list, "finished_at": list, "purpose": list}
+            )
 
         if plotting:
             AG.plot(
-                os.path.join(".", "graph_images", "new", "daily", user, "spring", day.strftime("%Y-%m-%d"),),
+                os.path.join(
+                    ".",
+                    "graph_images",
+                    "new",
+                    "daily",
+                    user,
+                    "spring",
+                    day.strftime("%Y-%m-%d"),
+                ),
                 draw_edge_label=True,
             )
             # AG.plot(
@@ -202,8 +239,9 @@ def generate_graphs_daily(locs, sp, out_name, trips=None, plotting=False):
 # globals
 # study name is used as schema name in database
 # studies = ["yumuv_graph_rep"]  # , 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
-studies = ['gc2', 'gc1']#, 'geolife']# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
-limit = "" # "where user_id < 1600"
+studies = ["geolife"] #, 'geolife']# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
+# limit = "where user_id > 1670"
+limit = ""
 single_user = False
 
 if __name__ == "__main__":
@@ -230,23 +268,21 @@ if __name__ == "__main__":
 
         print("\t download locations")
         locs = ti.io.read_locations_postgis(
-            sql="select * from {}.locations".format(study), con=engine, geom_col="center",
+            sql="select * from {}.locations".format(study),
+            con=engine,
+            geom_col="center",
         )
 
+        print("\t filter by tracking coverage")
 
-        print("filter by tracking coverage")
-
-        sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.9, min_nb_good_days=30)
-        print("drop users with bad coverage")
+        sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.5, min_nb_good_days=14)
+        print("\t\t drop users with bad coverage")
         tpls = tpls[tpls.user_id.isin(user_id_ix)]
         trips = trips[trips.user_id.isin(user_id_ix)]
         locs = locs[locs.user_id.isin(user_id_ix)]
 
-        print("generate full graphs (transition counts)")
-        AG_dict = generate_graphs(
-            locs=locs, sp=sp, trips=trips, plotting=True
-        )
-
+        print("\tgenerate full graphs (transition counts)")
+        AG_dict = generate_graphs(locs=locs, sp=sp, study=study, trips=trips, plotting=True)
 
         # print("generate daily graphs (transition counts)")
         # sp = filter_days_with_bad_tracking_coverage(sp=sp_merged, tpls=tpls, coverage=0.99)
@@ -254,7 +290,6 @@ if __name__ == "__main__":
 
         # store graphs in DB
         from sqlalchemy import types
-        print("\t create full graph with counts")
 
         con = get_engine(study, return_con=True)
 
@@ -262,5 +297,14 @@ if __name__ == "__main__":
         pickle.dump(AG_dict, out_name)
 
         print("\t write graph to db")
-        write_graphs_to_postgresql(graph_data=AG_dict, graph_table_name=study, psycopg_con=con, file_name="graph_data")
+        if study == 'yumuv_graph_rep':
+            pass
+        else:
+            write_graphs_to_postgresql(
+                graph_data=AG_dict,
+                graph_table_name="full_graph",
+                graph_schema_name=study,
+                psycopg_con=con,
+                file_name="graph_data",
+            )
         # AG_dict2 = read_graphs_from_postgresql(graph_table_name=study, psycopg_con=con, file_name="graph_data")

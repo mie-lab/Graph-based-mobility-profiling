@@ -40,7 +40,7 @@ for study in studies:
     engine_source = create_engine(conn_string_source)
     conn_source = engine_source.connect()
 
-    print("download staypoints")
+    print("\tdownload staypoints")
     sp = gpd.GeoDataFrame.from_postgis(
         sql="SELECT * FROM {}.staypoints".format(study),
         con=conn_source,
@@ -48,7 +48,7 @@ for study in studies:
         geom_col="geometry_raw",
         index_col="id",
     )
-    print("download triplegs")
+    print("\tdownload triplegs")
     tpls = gpd.GeoDataFrame.from_postgis(
         sql="SELECT * FROM {}.triplegs where ST_isValid(geometry)".format(study),
         con=conn_source,
@@ -56,6 +56,15 @@ for study in studies:
         geom_col="geometry",
         index_col="id",
     )
+
+    # drop entries with invalid timestamps
+    valid_tstamp_flag_sp = sp.started_at <= sp.finished_at
+    valid_tstamp_flag_tpls = tpls.started_at <= tpls.finished_at
+    print("\t\ttimestamps of {} sp and {} tpls corrupted. corrupted ts are dropped".format(sp.shape[0] - sum(
+        valid_tstamp_flag_sp), tpls.shape[0] - sum(valid_tstamp_flag_tpls)))
+
+    sp = sp[valid_tstamp_flag_sp]
+    tpls = tpls[valid_tstamp_flag_tpls]
 
     conn_source.close()
     sp = sp.drop("geometry", axis=1)
@@ -74,7 +83,7 @@ for study in studies:
     tpls["started_at"] = tpls["started_at"].dt.tz_localize("UTC")
     tpls["finished_at"] = tpls["finished_at"].dt.tz_localize("UTC")
 
-    print("create locations")
+    print("\tcreate locations")
     sp, locs = sp.as_staypoints.generate_locations(
         method="dbscan", epsilon=30, num_samples=1, distance_metric="haversine", agg_level="user"
     )
@@ -85,7 +94,7 @@ for study in studies:
     sp, tpls, trips = ti.preprocessing.generate_trips(sp, tpls)
     tpls.index.name = "id"
 
-    print("write staypoints to database")
+    print("\twrite staypoints to database")
     ti.io.write_staypoints_postgis(
         staypoints=sp,
         con=conn_string,
@@ -95,17 +104,17 @@ for study in studies:
         index_label=locs.index.name,
     )
 
-    print("write triplegs")
+    print("\twrite triplegs")
     ti.io.write_triplegs_postgis(
         triplegs=tpls, con=conn_string, name="triplegs", schema=study, if_exists="replace", index_label=locs.index.name
     )
 
-    print("write trips")
+    print("\twrite trips")
     ti.io.write_trips_postgis(
         trips=trips, con=engine, name="trips", schema=study, if_exists="replace", index_label=trips.index.name
     )
 
-    print("write locations to database")
+    print("\twrite locations to database")
     locs = locs.drop("extent", axis=1)
     ti.io.write_locations_postgis(
         locs, con=conn_string, schema=study, name="locations", if_exists="replace", index_label=locs.index.name
