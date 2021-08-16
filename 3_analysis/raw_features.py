@@ -8,8 +8,9 @@ import psycopg2
 import geopandas as gpd
 import skmob
 from functools import reduce
+import trackintel as ti
 
-from utils import dist_to_stats, dist_names
+from utils import dist_to_stats, dist_names, get_point_dist
 from skmob.measures.individual import *
 
 
@@ -27,7 +28,11 @@ class RawFeatures:
             "entropy_uncorrelated": self.uncorrelated_entropy,
             "number_locations": self.number_locations,
             "dist_from_home": self.max_distance_from_home,
+            "trip_distance": self.mean_trip_distance,
+            "gyration": self.radius_of_gyration,
         }
+        # the features we aim to use
+        self.default_features = ["number_locations", "entropy_real", "trip_distance", "trips_duration", "gyration"]
 
     @staticmethod
     def to_skmob(stps, locations):
@@ -101,7 +106,7 @@ class RawFeatures:
         return uncorrelated_entropy(self.tdf)
 
     def max_distance_from_home(self):
-        return uncorrelated_entropy(self.tdf)
+        return max_distance_from_home(self.tdf)
 
     def number_locations(self):
         num_locs = self.locations.groupby("user_id").agg({"center": "count"})
@@ -115,6 +120,9 @@ class RawFeatures:
         time_df["uid"] = times["uid"]
         return time_df
 
+    def radius_of_gyration(self):
+        return radius_of_gyration(self.tdf)
+
     # # commented out because we have it in the call method directly
     # def k_radius_of_gyration(self, k_most_frequent=[5, 10, 20]):
     #     df_for_each_k = []
@@ -127,9 +135,13 @@ class RawFeatures:
 
     # ----------- Trip based features -----------------
 
-    def max_trip_distance(self):
-        # TODO, use trips table
-        pass
+    def mean_trip_distance(self):
+
+        trips_copy = self.trips.copy()
+        is_projected = ti.geogr.distances.check_gdf_crs(trips_copy)
+        trips_copy["trip_distance"] = trips_copy["geom"].apply(lambda x: get_point_dist(x[0], x[1], is_projected))
+        grouped = trips_copy.groupby("user_id").agg({"trip_distance": "mean"})
+        return grouped.reset_index().rename(columns={"user_id": "uid", "trip_distance": "mean_trip_distance"})
 
     def trip_len_time(self):
         # compute time duration
@@ -146,17 +158,19 @@ class RawFeatures:
         dist_df["uid"] = uid_column
         return dist_df
 
-    def __call__(self, features="all"):
+    def __call__(self, features="default"):
         """Collect all desired features"""
-        if features == "all":
-            features = list(self.feature_dict.keys()) + ["5_gyration", "10_gyration", "50_gyration"]
-        assert all([f in self.feature_dict for f in features if "gyration" not in f])
+        if features == "default":
+            features = self.default_features
+        elif features == "all":
+            features = list(self.feature_dict.keys()) + ["5_k_gyration", "10_k_gyration", "50_k_gyration"]
+        assert all([f in self.feature_dict for f in features if "k_gyration" not in f])
 
         collect_features = []
         for feat in features:
             print("----- ", feat, "----------")
             # for radius of gyration, get k
-            if "gyration" in feat:
+            if "k_gyration" in feat:
                 k = int(feat.split("_")[0])
                 feat_df = k_radius_of_gyration(self.tdf, k)
             else:
@@ -171,6 +185,6 @@ class RawFeatures:
 
 if __name__ == "__main__":
     raw_feat = RawFeatures("gc2")
-    out = raw_feat(features="all")
+    out = raw_feat(features="default")
     print(out.head(10))
     print(out.shape)

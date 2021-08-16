@@ -13,7 +13,7 @@ def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None
     Arguments
         clustering: List of cluster labels for each item
     """
-    assert len(use_features) < 6, "more than 6 features does not make sense in scatterplot matrix"
+    assert len(use_features) <= 6, "more than 6 features does not make sense in scatterplot matrix"
     # define col names
     if col_names is None:
         col_names = use_features
