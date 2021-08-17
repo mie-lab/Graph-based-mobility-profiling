@@ -41,7 +41,7 @@ def dist_names(feature):
 
 
 def func_simple_powerlaw(x, beta):
-    return x ** (-1 + beta)
+    return x ** (-(1 + beta))
 
 
 def func_truncated_powerlaw(x, delta_x, beta, kappa):
@@ -164,9 +164,12 @@ def graph_dict_to_list(graph_dict, node_importance=50):
     nx_graphs = []
     for user_id, ag in graph_dict.items():
         users.append(user_id)
-        # TODO: rewrite k importance nodes such that it is filtered by the fraction of occurence, not the abs number
-        important_nodes = ag.get_k_importance_nodes(node_importance)
-        ag_sub = ag.G.subgraph(important_nodes)
+        if node_importance < 1:
+            ag_sub = ag.G
+        else:
+            # TODO: rewrite k importance nodes such that it is filtered by the fraction of occurence, not the abs number
+            important_nodes = ag.get_k_importance_nodes(node_importance)
+            ag_sub = ag.G.subgraph(important_nodes)
         nx_graphs.append(ag_sub)
     return nx_graphs, users
 
@@ -190,6 +193,8 @@ def load_graphs_postgis(study, node_importance=50):
         host=LOGIN_DATA["host"],
         port=LOGIN_DATA["port"],
     )
-    graph_dict = read_graphs_from_postgresql(graph_table_name=study, psycopg_con=con, file_name="graph_data")
+    graph_dict = read_graphs_from_postgresql(
+        graph_table_name="full_graph", psycopg_con=con, graph_schema_name=study, file_name="graph_data"
+    )
     nx_graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
     return nx_graphs, users

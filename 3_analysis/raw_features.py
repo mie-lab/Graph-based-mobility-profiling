@@ -9,6 +9,7 @@ import geopandas as gpd
 import skmob
 from functools import reduce
 import trackintel as ti
+import argparse
 
 from utils import dist_to_stats, dist_names, get_point_dist
 from skmob.measures.individual import *
@@ -17,25 +18,22 @@ from skmob.measures.individual import *
 class RawFeatures:
     def __init__(self, study):
         print("Loading data...")
-        self.load_data(study)
-        self.tdf = self.to_skmob(self.stps, self.locations)
+        self._load_data(study)
+        self.tdf = self._to_skmob(self.stps, self.locations)
 
-        self.feature_dict = {
-            "entropy_real": self.real_entropy,
-            "entropy_random": self.random_entropy,
-            "trips_duration": self.trip_len_time,
-            "waiting_times": self.waiting_time_distribution,
-            "entropy_uncorrelated": self.uncorrelated_entropy,
-            "number_locations": self.number_locations,
-            "dist_from_home": self.max_distance_from_home,
-            "trip_distance": self.mean_trip_distance,
-            "gyration": self.radius_of_gyration,
-        }
         # the features we aim to use
-        self.default_features = ["number_locations", "entropy_real", "trip_distance", "trips_duration", "gyration"]
+        self.default_features = [
+            "number_locations",
+            "real_entropy",
+            "mean_trip_distance",
+            "mean_trip_duration",
+            "radius_of_gyration",
+        ]
+        self.all_features = [f for f in dir(self) if not f.startswith("_")]
+        print("Available features", self.all_features)
 
     @staticmethod
-    def to_skmob(stps, locations):
+    def _to_skmob(stps, locations):
         sp_with_locs = stps.join(locations, how="left", on="location_id", rsuffix="r")
         assert all(sp_with_locs["user_id"] == sp_with_locs["user_idr"])
 
@@ -57,7 +55,7 @@ class RawFeatures:
         )
         return tdf
 
-    def get_con(self):
+    def _get_con(self):
         DBLOGIN_FILE = os.path.join("./dblogin.json")
         with open(DBLOGIN_FILE) as json_file:
             LOGIN_DATA = json.load(json_file)
@@ -71,9 +69,9 @@ class RawFeatures:
         )
         return con
 
-    def load_data(self, study):
+    def _load_data(self, study):
         CRS_WGS84 = "epsg:4326"
-        con = self.get_con()
+        con = self._get_con()
 
         # get staypoints
         self.stps = gpd.GeoDataFrame.from_postgis(
@@ -92,21 +90,27 @@ class RawFeatures:
             index_col="id",
         )
         # get trips
-        self.trips = pd.read_sql_query(sql="SELECT * FROM {}.trips".format(study), con=con, index_col="id")
+        self.trips = gpd.GeoDataFrame.from_postgis(
+            sql="SELECT * FROM {}.trips".format(study),
+            con=con,
+            crs=CRS_WGS84,
+            geom_col="geom",  # center for locations
+            index_col="id",
+        )
 
     # ----------- STPS based features -----------------
 
     def random_entropy(self):
-        return random_entropy(self.tdf)
+        return random_entropy(self.tdf, show_progress=False)
 
     def real_entropy(self):
-        return real_entropy(self.tdf)
+        return real_entropy(self.tdf, show_progress=False)
 
     def uncorrelated_entropy(self):
-        return uncorrelated_entropy(self.tdf)
+        return uncorrelated_entropy(self.tdf, show_progress=False)
 
     def max_distance_from_home(self):
-        return max_distance_from_home(self.tdf)
+        return max_distance_from_home(self.tdf, show_progress=False)
 
     def number_locations(self):
         num_locs = self.locations.groupby("user_id").agg({"center": "count"})
@@ -121,50 +125,54 @@ class RawFeatures:
         return time_df
 
     def radius_of_gyration(self):
-        return radius_of_gyration(self.tdf)
-
-    # # commented out because we have it in the call method directly
-    # def k_radius_of_gyration(self, k_most_frequent=[5, 10, 20]):
-    #     df_for_each_k = []
-    #     for k in k_most_frequent:
-    #         krg_df = k_radius_of_gyration(self.tdf, k)
-    #         df_for_each_k.append(krg_df)
-
-    #     df_k = reduce(lambda left, right: pd.merge(left, right, on=["uid"], how="outer"), df_for_each_k)
-    #     return df_k
+        return radius_of_gyration(self.tdf, show_progress=False)
 
     # ----------- Trip based features -----------------
 
-    def mean_trip_distance(self):
+    def mean_trip_distance(self, is_projected=False):
 
         trips_copy = self.trips.copy()
-        is_projected = ti.geogr.distances.check_gdf_crs(trips_copy)
+        # is_projected = ti.geogr.distances.check_gdf_crs(trips_copy)
         trips_copy["trip_distance"] = trips_copy["geom"].apply(lambda x: get_point_dist(x[0], x[1], is_projected))
         grouped = trips_copy.groupby("user_id").agg({"trip_distance": "mean"})
         return grouped.reset_index().rename(columns={"user_id": "uid", "trip_distance": "mean_trip_distance"})
 
-    def trip_len_time(self):
+    def _trip_duration(self):
         # compute time duration
         self.trips["time_passed"] = (self.trips.finished_at - self.trips.started_at).astype("timedelta64[m]")
         # get user ids
         grouped_trips = self.trips.groupby("user_id")
-        uid_column = [uid for (uid, _) in grouped_trips]
         # get list of times for each user
         time_passed_list = grouped_trips.agg({"time_passed": list})
+        return time_passed_list
+
+    def mean_trip_duration(self):
+        time_passed_list = self._trip_duration()
+        # uid_column = [uid for (uid, _) in grouped_trips]
+        uid_column = list(time_passed_list.index)
         # get stats for list for each user
-        time_passed_dist = time_passed_list["time_passed"].apply(dist_to_stats)
-        col_names = dist_names("trip_time")
+        # time_passed_dist = time_passed_list["time_passed"].apply(dist_to_stats)
+        # col_names = dist_names("trip_time")
+        time_passed_dist = time_passed_list["time_passed"].apply(np.mean)
+        col_names = ["mean_trip_duration"]
         dist_df = pd.DataFrame(time_passed_dist.tolist(), index=time_passed_list.index, columns=col_names)
         dist_df["uid"] = uid_column
         return dist_df
+
+    def _check_implemented(self, features):
+        # check if all required features are implemented
+        for feat in features:
+            if not hasattr(self, feat):
+                raise NotImplementedError(f"Feature {feat} ist not implemented!")
 
     def __call__(self, features="default"):
         """Collect all desired features"""
         if features == "default":
             features = self.default_features
         elif features == "all":
-            features = list(self.feature_dict.keys()) + ["5_k_gyration", "10_k_gyration", "50_k_gyration"]
-        assert all([f in self.feature_dict for f in features if "k_gyration" not in f])
+            features = self.all_features  # + ["5_k_gyration", "10_k_gyration", "50_k_gyration"]
+        self._check_implemented(features)
+        print("The following features will be computed:", features)
 
         collect_features = []
         for feat in features:
@@ -174,17 +182,34 @@ class RawFeatures:
                 k = int(feat.split("_")[0])
                 feat_df = k_radius_of_gyration(self.tdf, k)
             else:
-                feat_df = self.feature_dict[feat]()
+                # call corresponding method
+                feat_df = getattr(self, feat)()
             print(feat_df.columns)
 
             collect_features.append(feat_df)
 
         df_all_features = reduce(lambda left, right: pd.merge(left, right, on=["uid"], how="outer"), collect_features)
+        # clean
+        df_all_features.rename(columns={"uid": "user_id"}, inplace=True)
+        df_all_features.set_index("user_id", inplace=True)
         return df_all_features
 
 
 if __name__ == "__main__":
-    raw_feat = RawFeatures("gc2")
-    out = raw_feat(features="default")
-    print(out.head(10))
-    print(out.shape)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
+    args = parser.parse_args()
+
+    study = args.study
+    out_dir = "out_features"
+
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    out_path = os.path.join(out_dir, f"{study}_raw_features")
+
+    raw_feat = RawFeatures(study)
+    raw_feature_df = raw_feat(features="default")
+    raw_feature_df.to_csv(out_path + ".csv")
+    print(raw_feature_df.head(10))
+    print(raw_feature_df.shape)

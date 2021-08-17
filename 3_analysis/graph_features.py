@@ -4,6 +4,8 @@ import numpy as np
 import os
 import time
 import pandas as pd
+import argparse
+
 from scipy.optimize import curve_fit
 
 from joblib import Parallel, delayed
@@ -77,6 +79,7 @@ class GraphFeatures:
         print("feature matrix shape", feature_matrix.shape)
         # convert to dataframe
         feature_df = pd.DataFrame(feature_matrix, index=self.users, columns=features)
+        feature_df.index.set_names("user_id", inplace=True)
 
         return feature_df
 
@@ -298,16 +301,27 @@ class GraphFeatures:
 
 if __name__ == "__main__":
     """Test on example data"""
-    import pickle
+    # todo: move to separate process script?
     from plotting import scatterplot_matrix
     from utils import normalize_features, clean_equal_cols, load_graphs_pkl
 
-    # TODO: node features
-    # Load graphs as nx graphs into list
-    graphs, users = load_graphs_pkl(
-        os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
-    )
-    # graphs, users = load_graphs_postgis("gc2", node_importance=50)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
+    parser.add_argument("-n", "--nodes", type=int, default=-1, help="number of x important nodes. Set -1 for all nodes")
+    args = parser.parse_args()
+
+    study = args.study
+    node_importance = args.nodes
+    out_dir = "out_features"
+
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    # Load from pickle
+    # graphs, users = load_graphs_pkl(
+    #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
+    # )
+    graphs, users = load_graphs_postgis(study, node_importance=node_importance)
 
     print("loaded graphs", len(graphs))
 
@@ -318,9 +332,9 @@ if __name__ == "__main__":
     print(feat_matrix)
     print("time for feature generation", time.time() - tic)
 
-    # Save feature matrix to pickle
-    # with open("features_test.pkl", "wb") as outfile:
-    #     pickle.dump((feat_matrix, feat_names, users), outfile)
+    out_path = os.path.join(out_dir, f"{study}_graph_features_{node_importance}")
+
+    feat_matrix.to_csv(out_path + ".csv")
 
     # Clean and normalize
     cleaned_feat_df = clean_equal_cols(feat_matrix)
@@ -345,4 +359,4 @@ if __name__ == "__main__":
         "mean_node_degree",
         "mean_betweenness_centrality",
     ]
-    scatterplot_matrix(cleaned_feat_df, use_features, clustering=kmeans.labels_)
+    scatterplot_matrix(cleaned_feat_df, use_features, clustering=kmeans.labels_, save_path=out_path + ".pdf")
