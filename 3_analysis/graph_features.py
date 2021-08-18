@@ -37,7 +37,13 @@ class GraphFeatures:
             "mean_node_degree",
             "mean_betweenness_centrality",
         ]
-
+        self.random_walk_features = [
+            "mean_distance_random_walk",
+            "cycle_length_mu",
+            "cycle_length_sigma",
+            "ratio_nodes_random_walk",
+            "core_periphery_random_walk",
+        ]
         self.all_features = [f for f in dir(self) if not f.startswith("_")]
 
     def _check_implemented(self, features):
@@ -52,6 +58,8 @@ class GraphFeatures:
             features = self.default_features
         if features == "all":
             features = self.all_features
+        if features == "random_walk":
+            features = self.random_walk_features
         # Check that the features are computable
         self._check_implemented(features)
 
@@ -104,7 +112,7 @@ class GraphFeatures:
         # https://github.com/KirillShmilovich/graphlets
         pass
 
-    def _random_walk(self, graph):
+    def _random_walk(self, graph, return_resets=False):
         # start at node with highest degree
         all_degrees = np.array(graph.out_degree())
         start_node = all_degrees[np.argmax(all_degrees[:, 1]), 0]
@@ -116,16 +124,26 @@ class GraphFeatures:
 
         encountered_locations = [current_node]
         number_of_walks = 0
+        # keep track of when we reset the position to home --> necessary for cycle count
+        reset_to_home = []
         for step in range(self.random_walk_iters):
             # get out neighbors with corresponding transition number
             neighbor_edges = graph.out_edges(current_node, data=True)
-            # check if we are at a dead end
-            if len(neighbor_edges) == 0:
+            # check if we are at a dead end OR if we get stuck at one node and only make cycles of len 1 there
+            at_dead_end = len(neighbor_edges) == 0
+            at_inf_loop = len(neighbor_edges) == 1 and [n[1] for n in neighbor_edges][0] == current_node
+            if at_dead_end or at_inf_loop:
                 # increase number of walks counter
                 number_of_walks += 1
                 # reset current node
                 current_node = start_node
                 neighbor_edges = graph.out_edges(current_node, data=True)
+                # we are again at the start node
+                encountered_locations.append(start_node)
+                # reset location is step + 2 because in encountered_locations
+                prev_added = len(reset_to_home)
+                reset_to_home.append(step + 1 + prev_added)
+
             out_weights = np.array([n[2]["weight"] for n in neighbor_edges])
             out_probs = out_weights / np.sum(out_weights)
             next_node = [n[1] for n in neighbor_edges]
@@ -135,6 +153,8 @@ class GraphFeatures:
             # collect node (features)
             encountered_locations.append(current_node)
 
+        if return_resets:
+            return encountered_locations, reset_to_home
         # simply save the encountered nodes here
         return encountered_locations
         # extract features from random walk
@@ -153,6 +173,35 @@ class GraphFeatures:
         random_walk_sequence = self._random_walk(graph)
         return count_cycles(random_walk_sequence, cycle_len=3)
 
+    def mean_cycle_len_random_walk(self, graph):
+        nodes_on_rw, resets = self._random_walk(graph, return_resets=True)
+        cycle_lengths = all_cycle_lengths(nodes_on_rw, resets)
+        return np.mean(cycle_lengths)
+
+    def _lognormal_cycle_len_random_walk(self, graph):
+        nodes_on_rw, resets = self._random_walk(graph, return_resets=True)
+        cycle_lengths = all_cycle_lengths(nodes_on_rw, resets)
+        # print(cycle_lengths)
+        # get distribution
+        uni, counts = np.unique(cycle_lengths, return_counts=True)
+        # fix: if we only have cycles of length x, then we need to more zero-datapoints
+        if len(uni) < 2:
+            uni = np.array(list(uni) + [uni[0] + i for i in range(1, 11)])
+            counts = np.array(list(counts) + [0 for _ in range(10)])
+        # normalize counts
+        normed_counts = counts / np.sum(counts)
+        # print(uni, normed_counts)
+        # fit log normal
+        params, _ = curve_fit(log_normal, uni, normed_counts, maxfev=2000, bounds=([-5, 0], [5, 5]))
+        # return mu and sigma
+        return params
+
+    def cycle_length_mu(self, graph):
+        return self._lognormal_cycle_len_random_walk(graph)[0]
+
+    def cycle_length_sigma(self, graph):
+        return self._lognormal_cycle_len_random_walk(graph)[1]
+
     def _distances_random_walk(self, graph, crs_is_projected=False):
         # TODO: are the points in the graph nodes projected?
         random_walk_sequence = self._random_walk(graph)
@@ -167,7 +216,26 @@ class GraphFeatures:
 
     @get_mean
     def mean_distance_random_walk(self, graph):
-        return self._distances_random_walk(graph)
+        distances = self._distances_random_walk(graph)
+        # filter out 0 distances
+        distances = [d for d in distances if d > 0]
+        return distances
+
+    def ratio_nodes_random_walk(self, graph):
+        """Ratio of the number of nodes that are encountered on a random walk"""
+        total_nodes = graph.number_of_nodes()
+        nodes_on_rw = self._random_walk(graph)
+        uni = np.unique(nodes_on_rw)
+        return len(uni) / total_nodes
+
+    def core_periphery_random_walk(self, graph, thresh=0.85):
+        nodes_on_rw = self._random_walk(graph)
+        _, counts = np.unique(nodes_on_rw, return_counts=True)
+        sorted_counts = np.sort(counts)[::-1]
+        cumulative_counts = np.cumsum(sorted_counts)
+        # number of nodes needed to cover thresh times the traffic
+        nodes_in_core = np.where(cumulative_counts > thresh * np.sum(counts))[0][0] + 1
+        return nodes_in_core
 
     # ---------- EDGE FEATURES ---------------------------
 
@@ -312,7 +380,7 @@ if __name__ == "__main__":
 
     study = args.study
     node_importance = args.nodes
-    out_dir = "out_features"
+    out_dir = "test_features"
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -328,7 +396,7 @@ if __name__ == "__main__":
     # Generate feature matrix
     tic = time.time()
     graph_feat = GraphFeatures(graphs, users)
-    feat_matrix = graph_feat(parallelize=False)
+    feat_matrix = graph_feat(features="random_walk", parallelize=False)
     print(feat_matrix)
     print("time for feature generation", time.time() - tic)
 
@@ -351,12 +419,5 @@ if __name__ == "__main__":
 
     # Plot scatterplot matrix
 
-    use_features = [
-        "nr_edges",
-        "cycles_2_random_walk",
-        "mean_distance_random_walk",
-        "mean_sp_length",
-        "mean_node_degree",
-        "mean_betweenness_centrality",
-    ]
+    use_features = graph_feat.random_walk_features
     scatterplot_matrix(cleaned_feat_df, use_features, clustering=kmeans.labels_, save_path=out_path + ".pdf")

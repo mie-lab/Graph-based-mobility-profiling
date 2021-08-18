@@ -40,6 +40,7 @@ def dist_names(feature):
     return [feature + "_" + d for d in dist_feats]
 
 
+# ----------------- DISTRIBUTIONS TO FIT ----------------------
 def func_simple_powerlaw(x, beta):
     return x ** (-(1 + beta))
 
@@ -47,6 +48,14 @@ def func_simple_powerlaw(x, beta):
 def func_truncated_powerlaw(x, delta_x, beta, kappa):
     return (x + delta_x) ** (-beta) * np.exp(-delta_x / kappa)
 
+
+def log_normal(x, mu, sigma):
+    factor = 1 / (x * np.sqrt(2 * np.pi) * sigma)
+    exponent = (-1) * ((np.log(x) - mu) ** 2 / (2 * sigma ** 2))
+    return factor * np.exp(exponent)
+
+
+# ----------------- DECORATORS----------------------
 
 # Distribution decorator
 def get_distribution(func):
@@ -88,6 +97,9 @@ def get_point_dist(p1, p2, crs_is_projected=False):
     return dist
 
 
+# ----------------- COUNT CYCLES IN LIST OF LOCATIONS ----------------------
+
+
 def count_cycles(location_list, cycle_len):
     """Count number of cycles of length cycle_len in a list of locations"""
     cycle_counter = 0
@@ -100,6 +112,35 @@ def count_cycles(location_list, cycle_len):
             if not any(inbetween):
                 cycle_counter += 1
     return cycle_counter
+
+
+def all_cycle_lengths(nodes_on_rw, resets):
+    """
+    nodes_on_rw: list of integers, list of nodes encountered on a random walk
+    resets: List of positions when the random walk was reset to home
+
+    Returns: cycle_lengths, list of length per encountered cycles
+    """
+    assert (
+        len(resets) == 0 or len(np.unique(np.array(nodes_on_rw)[resets])) == 1
+    ), "reset indices must always be a home node"
+
+    last_seen = {}
+    cycle_lengths = []
+    for pos, node in enumerate(nodes_on_rw):
+        # check if the arry was resetted - then no cycle is closed, we need to start from new
+        if pos in resets:
+            last_seen = {node: pos}  # only the current node is in the last seen tracker
+            continue
+        # for the current node, check when it was encountered last - closes any loop?
+        node_last_seen_pos = last_seen.get(node, -1)
+        if node_last_seen_pos >= 0:
+            # print(nodes_on_rw[node_last_seen_pos:pos+1], pos - node_last_seen_pos)
+            cycle_lengths.append(pos - node_last_seen_pos)
+
+        # update last_seen
+        last_seen[node] = pos
+    return cycle_lengths
 
 
 def old_count_cycles(location_list, max_len=5):
@@ -172,6 +213,9 @@ def graph_dict_to_list(graph_dict, node_importance=50):
             ag_sub = ag.G.subgraph(important_nodes)
         nx_graphs.append(ag_sub)
     return nx_graphs, users
+
+
+# ----------------- I/O ----------------------
 
 
 def load_graphs_pkl(path, node_importance=50):
