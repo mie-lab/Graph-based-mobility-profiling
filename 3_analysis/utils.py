@@ -4,6 +4,7 @@ import os
 import json
 import psycopg2
 import functools
+import pandas as pd
 
 import trackintel as ti
 from future_trackintel.utils import read_graphs_from_postgresql
@@ -159,14 +160,6 @@ def old_count_cycles(location_list, max_len=5):
     return out_counts
 
 
-def pca(feature_matrix, n_components=2):
-    from sklearn.decomposition import PCA
-
-    pca = PCA(n_components=n_components)
-    projected = pca.fit_transform(feature_matrix)
-    return projected
-
-
 def clean_equal_cols(feature_df):
     cols_to_be_removed = []
     unique_value = []
@@ -224,8 +217,7 @@ def load_graphs_pkl(path, node_importance=50):
     return nx_graphs, users
 
 
-def load_graphs_postgis(study, node_importance=50):
-    # load login data
+def get_con():
     DBLOGIN_FILE = os.path.join("./dblogin.json")
     with open(DBLOGIN_FILE) as json_file:
         LOGIN_DATA = json.load(json_file)
@@ -237,8 +229,20 @@ def load_graphs_postgis(study, node_importance=50):
         host=LOGIN_DATA["host"],
         port=LOGIN_DATA["port"],
     )
+    return con
+
+
+def load_graphs_postgis(study, node_importance=50):
+    # load login data
+    con = get_con()
     graph_dict = read_graphs_from_postgresql(
         graph_table_name="full_graph", psycopg_con=con, graph_schema_name=study, file_name="graph_data"
     )
     nx_graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
     return nx_graphs, users
+
+
+def load_user_info(study):
+    con = get_con()
+    user_info = pd.read_sql_query(sql=f"SELECT * FROM {study}.user_info".format(study), con=con, index_col="user_id")
+    return user_info

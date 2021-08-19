@@ -1,4 +1,10 @@
 import numpy as np
+import os
+import argparse
+import pandas as pd
+
+from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score
+from clustering import normalize_and_cluster
 
 """
 Functions to evaluate clustering: 
@@ -140,3 +146,42 @@ def compare_clusters_chi_square(cluster_labels_1, cluster_labels_2):
 
             chi_square += (m_ij - e_ij) ** 2 / e_ij
     return chi_square
+
+
+def load_two(path, study, node_importance):
+    """Load the extracted features from path for study"""
+    graph_features = pd.read_csv(
+        os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
+    )
+    raw_features = pd.read_csv(os.path.join(path, f"{study}_raw_features.csv"), index_col="user_id")
+    raw_features = raw_features[raw_features.index.isin(graph_features.index)]
+    return graph_features, raw_features
+
+
+def compute_all_scores(clustering_1, clustering_2):
+    """Print out the comparison scores of two different clusterings
+    clustering_1, clustering 2: lists of same length containing cluster for each datapoint
+    """
+    print("Adjusted rand score", adjusted_rand_score(clustering_1, clustering_2))
+    print("Adjusted mutual information score", adjusted_mutual_info_score(clustering_1, clustering_2))
+    print("Rand score:", compare_clusters_rand_index(clustering_1, clustering_2))
+    print("Chi square score:", compare_clusters_chi_square(clustering_1, clustering_2))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
+    parser.add_argument("-n", "--nodes", type=int, default=-1, help="number of x important nodes. Set -1 for all nodes")
+    parser.add_argument("-c", "--clusters", type=int, default=-2, help="number of clusters")
+    args = parser.parse_args()
+
+    study = args.study
+    node_importance = args.nodes
+    n_clusters = args.clusters
+
+    # load features and cluster
+    graph_features, raw_features = load_two("out_features", study, node_importance)
+    graph_labels = normalize_and_cluster(np.array(graph_features), n_clusters=n_clusters)
+    raw_labels = normalize_and_cluster(np.array(raw_features), n_clusters=n_clusters)
+
+    compute_all_scores(graph_labels, raw_labels)

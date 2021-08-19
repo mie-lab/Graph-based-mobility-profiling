@@ -3,7 +3,38 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+from future_trackintel.activity_graph import activity_graph
+import os
+import pickle
+
 plt.rcParams["axes.labelsize"] = 15
+
+
+def plot_all_graphs(study, path_to_pickle):
+    """Original example_for_nina code"""
+    AG_dict = pickle.load(open(path_to_pickle, "rb"))
+
+    output_spring = os.path.join(".", "graph_images", study, "spring")
+    if not os.path.exists(output_spring):
+        os.makedirs(output_spring)
+
+    output_coords = os.path.join(".", "graph_images", study, "coords")
+    if not os.path.exists(output_coords):
+        os.makedirs(output_coords)
+
+    for user_id_this, AG in AG_dict.items():
+
+        AG.plot(
+            filename=os.path.join(output_spring, str(user_id_this)),
+            filter_node_importance=25,
+            draw_edge_label=False,
+        )
+        AG.plot(
+            filename=os.path.join(output_coords, str(user_id_this)),
+            filter_node_importance=25,
+            draw_edge_label=False,
+            layout="coordinate",
+        )
 
 
 def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None, save_path=None):
@@ -30,3 +61,9 @@ def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None
         plt.savefig(save_path)
     else:
         plt.show()
+
+
+if __name__ == "__main__":
+    study = "gc2"
+    path_to_pickle = os.path.join(".", "data_out", "graph_data", study, "counts_full.pkl")
+    plot_all_graphs(study, path_to_pickle)

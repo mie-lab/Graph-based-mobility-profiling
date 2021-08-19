@@ -114,7 +114,7 @@ class RawFeatures:
 
     def number_locations(self):
         num_locs = self.locations.groupby("user_id").agg({"center": "count"})
-        return num_locs.reset_index().rename(columns={"user_id": "uid"})
+        return num_locs.reset_index().rename(columns={"user_id": "uid", "center": "number_locations"})
 
     def waiting_time_distribution(self):
         times = waiting_times(self.tdf)
