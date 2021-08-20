@@ -17,12 +17,11 @@ def load_all(type="graph", node_importance=50):
             os.path.join("out_features", f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
         )
         # TODO: need to filter raw features?
-        raw_features = pd.read_csv(os.path.join("out_features", f"{study}_raw_features.csv"), index_col="user_id")
-        raw_features = raw_features[raw_features.index.isin(graph_features.index)]
-
         if type == "graph":
             all_together.append(graph_features)
         elif type == "raw":
+            raw_features = pd.read_csv(os.path.join("out_features", f"{study}_raw_features.csv"), index_col="user_id")
+            raw_features = raw_features[raw_features.index.isin(graph_features.index)]
             all_together.append(raw_features)
 
         study_labels.extend([study for _ in range(len(graph_features))])
@@ -45,13 +44,14 @@ def mean_features_by_study(features, out_path=None):
 
 
 if __name__ == "__main__":
-    STUDIES = ["gc1", "gc2", "geolife"]
+    STUDIES = ["gc1", "gc2","geolife", "yumuv_graph_rep"]
 
-    n_clusters = 3
-    features_all_datasets = load_all()
+    n_clusters = 2
+    features_all_datasets = load_all(type="graph")
     cluster_labels = normalize_and_cluster(
         np.array(features_all_datasets.drop(columns=["study"])), n_clusters=n_clusters
     )
+    print(np.unique(cluster_labels, return_counts=True))
     # compare relation between cluster and study labels
     compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
     mean_features_by_study(features_all_datasets)

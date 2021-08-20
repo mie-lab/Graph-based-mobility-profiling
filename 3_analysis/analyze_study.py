@@ -23,14 +23,29 @@ def find_k(features):
     # return k with highest score
     return test_k[np.argmax(scores)]
 
-
-def entropy(df_in, label, cluster):
-    """Entropy of labels over the clusters. See Ben-Gal et al paper"""
-    # clean the nans:
+def _rm_nans(df_raw, label, cluster):
+    df_in = df_raw.copy()
     df_in = df_in[~pd.isna(df_in[label])]
     df_in = df_in[df_in[label] != "nan"]
     df_in = df_in[~pd.isna(df_in[cluster])]
-    df = df_in[df_in[cluster] != "nan"]
+    return df_in[df_in[cluster] != "nan"]
+
+def _rename_nans(df_raw, label, cluster):
+    df_in = df_raw.copy()
+    df_in[label] = df_in[label].fillna("nan")
+    df_in[cluster] = df_in[cluster].fillna("nan")
+    return df_in
+    
+
+def entropy(df_in, label, cluster, treat_nans="rm"):
+    """Entropy of labels over the clusters. See Ben-Gal et al paper"""
+    # clean the nans:
+    if treat_nans=="remove":
+        df = _rm_nans(df_in, label, cluster)
+    elif treat_nans == "rename":
+        df = _rename_nans(df_in, label, cluster)
+    else:
+        df = df_in.copy()
 
     n = len(df)  # total number of points
     uni, counts = np.unique(cluster, return_counts=True)
@@ -68,22 +83,31 @@ if __name__ == "__main__":
     labels = normalize_and_cluster(np.array(features), n_clusters=opt_k)
 
     # print decision tree:
-    decision_tree_cluster(features, labels)
+    feature_importances = decision_tree_cluster(features, labels)
+    # get five most important features:
+    important_feature_inds = np.argsort(feature_importances)[-5:]
+    print(np.array(features.columns)[important_feature_inds], feature_importances[important_feature_inds])
 
     # load labels
-    user_info = load_user_info(study)
+    # GC1
+    user_info = load_user_info(study, index_col="user_id")
+    # YUMUV: 
+    # user_info = load_user_info(study, index_col="app_user_id")
+    # user_info = user_info.reset_index().rename(columns={"app_user_id": "user_id"})
+
     # merge into one table and add cluster labels
     joined = features.merge(user_info, how="left", left_on="user_id", right_on="user_id")
     joined["cluster"] = labels
 
     # Decision tree for NUMERIC data - first fill nans
     numeric_columns = get_numeric_columns(user_info)
-    tree_input = joined[numeric_columns]
-    tree_input = tree_input.fillna(value=tree_input.mean())
-    feature_importances = decision_tree_cluster(tree_input, labels)
-    # get five most important features:
-    important_feature_inds = np.argsort(feature_importances)[-5:]
-    print(np.array(numeric_columns)[important_feature_inds], feature_importances[important_feature_inds])
+    if len(numeric_columns)>0:
+        tree_input = joined[numeric_columns]
+        tree_input = tree_input.fillna(value=tree_input.mean())
+        feature_importances = decision_tree_cluster(tree_input, labels)
+        # get five most important features:
+        important_feature_inds = np.argsort(feature_importances)[-5:]
+        print(np.array(numeric_columns)[important_feature_inds], feature_importances[important_feature_inds])
 
     # Entropy for CATEGORICAL data
     for col in user_info.columns:

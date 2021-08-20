@@ -242,7 +242,7 @@ def load_graphs_postgis(study, node_importance=50):
     return nx_graphs, users
 
 
-def load_user_info(study):
+def load_user_info(study, index_col="user_id"):
     con = get_con()
-    user_info = pd.read_sql_query(sql=f"SELECT * FROM {study}.user_info".format(study), con=con, index_col="user_id")
+    user_info = pd.read_sql_query(sql=f"SELECT * FROM {study}.user_info".format(study), con=con, index_col=index_col)
     return user_info

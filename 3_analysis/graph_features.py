@@ -15,7 +15,7 @@ from utils import *
 
 
 class GraphFeatures:
-    def __init__(self, graphs, users, random_walk_iters=100, max_cycle_len=5, full_distribution=False):
+    def __init__(self, graphs, users, random_walk_iters=1000, max_cycle_len=5, full_distribution=False):
         """
         graphs: List of nx graph objects
         users: List of same length as graphs, containing the corresponding user ids
@@ -185,7 +185,10 @@ class GraphFeatures:
         # get distribution
         uni, counts = np.unique(cycle_lengths, return_counts=True)
         # fix: if we only have cycles of length x, then we need to more zero-datapoints
-        if len(uni) < 2:
+        if len(uni) == 0:
+            uni = np.arange(10) +1
+            counts = np.array([1] + [0 for _ in range(9)])
+        elif len(uni) ==1:
             uni = np.array(list(uni) + [uni[0] + i for i in range(1, 11)])
             counts = np.array(list(counts) + [0 for _ in range(10)])
         # normalize counts
@@ -219,6 +222,8 @@ class GraphFeatures:
         distances = self._distances_random_walk(graph)
         # filter out 0 distances
         distances = [d for d in distances if d > 0]
+        if len(distances)==0:
+            distances = [1000] # TODO
         return distances
 
     def ratio_nodes_random_walk(self, graph):
@@ -380,7 +385,7 @@ if __name__ == "__main__":
 
     study = args.study
     node_importance = args.nodes
-    out_dir = "test_features"
+    out_dir = "out_features"
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
