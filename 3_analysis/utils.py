@@ -10,6 +10,32 @@ import trackintel as ti
 from future_trackintel.utils import read_graphs_from_postgresql
 
 
+def sort_images_by_cluster(users, labels, in_img_path="graph_images/gc2/spring", out_img_path="sorted_by_cluster"):
+    """
+    users: list of strings
+    labels: list of same lengths containig assigned cluster for each user
+    in_img_path: path to the saved images that we want to sort by cluster
+    out_img_path: where to save the sorted images
+    """
+    import shutil
+
+    # make dictionary
+    map_dict = {user_id: cluster for (user_id, cluster) in zip(users, labels)}
+    
+    # make out dir and subdirs for each cluster
+    if not os.path.exists(out_img_path):
+        os.makedirs(out_img_path)
+    for cluster in np.unique(labels):
+        os.makedirs(os.path.join(out_img_path, "cluster_"+str(cluster)))
+        
+    # copy the images
+    for user, assigned_cluster in map_dict.items():
+        in_path = os.path.join(in_img_path, user + ".png")
+        out_path =  os.path.join(out_img_path, "cluster_"+str(assigned_cluster), user + ".png")
+        print("copying from", in_path, "to", out_path)
+        shutil.copy(in_path, out_path)
+
+
 def normalize_features(feature_matrix):
     """
     Normalize features per column
