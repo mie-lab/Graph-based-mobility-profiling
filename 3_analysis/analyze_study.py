@@ -37,7 +37,7 @@ def _rename_nans(df_raw, label, cluster):
     return df_in
     
 
-def entropy(df_in, label, cluster, treat_nans="rm"):
+def entropy(df_in, label, cluster, treat_nans="remove"):
     """Entropy of labels over the clusters. See Ben-Gal et al paper"""
     # clean the nans:
     if treat_nans=="remove":
@@ -60,11 +60,37 @@ def entropy(df_in, label, cluster, treat_nans="rm"):
             # print(u, c/n_k)
             inner_entropy += (c / n_k) * np.log2(c / n_k)
         # overall entropy is weighted sum of inner entropy
-        norm_factor = np.log2(len(uni)) if len(uni) > 2 else 1
-        entropy += inner_entropy * n_k / norm_factor
+        entropy -= inner_entropy * (n_k/n)
+    
+    # factor out the label entropy that is expected:        
+    uni, counts = np.unique(df[label].values, return_counts=True)
+    label_entropy = -1 * sum([(c / n) * np.log2(c / n) for (u, c) in zip(uni, counts)])
+    
+    return entropy/label_entropy
 
-    return -entropy / n
 
+def combine_columns(df, list_of_columns, combined_name):
+    """Combine several columns into one, by using the value of the first column of list_of_columns that is not nan"""
+    combined = []
+    for i, row in df.iterrows():
+        # take value from first column that is not nan
+        found_val = False
+        for col in list_of_columns:
+            if ~pd.isna(row[col]) and (row[col] is not None) and row[col]!="nan":
+                combined.append(row[col])
+                found_val=True
+                break
+        # otherwise fill with nans
+        if not found_val:
+            combined.append(pd.NA) 
+    
+    # we must collect the same number of values
+    assert len(combined) == len(df)
+    
+    df_out = df.drop(columns=list_of_columns)
+    df_out[combined_name] = combined
+    
+    return df_out
 
 def get_numeric_columns(df):
     all_numeric = df._get_numeric_data().columns

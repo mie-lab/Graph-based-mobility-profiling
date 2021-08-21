@@ -246,3 +246,16 @@ def load_user_info(study, index_col="user_id"):
     con = get_con()
     user_info = pd.read_sql_query(sql=f"SELECT * FROM {study}.user_info".format(study), con=con, index_col=index_col)
     return user_info
+
+def split_yumuv_control_group(df):
+    """
+    Splits dataframe into users which are in treatment group (study_id: 22) and the ones that are in control group 
+    (study_id: 23)
+    """
+    user_info = load_user_info("yumuv_graph_rep", index_col="app_user_id")
+    users_tg = user_info[user_info["study_id"]==22].index
+    users_cg = user_info[user_info["study_id"]==23].index
+    print("users in control group:", len(users_cg), "users in treatment group:", len(users_tg))
+    df_cg = df[df.index.isin(users_cg)]
+    df_tg = df[df.index.isin(users_tg)]
+    return df_tg, df_cg

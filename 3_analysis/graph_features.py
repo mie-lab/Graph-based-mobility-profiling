@@ -15,19 +15,21 @@ from utils import *
 
 
 class GraphFeatures:
-    def __init__(self, graphs, users, random_walk_iters=1000, max_cycle_len=5, full_distribution=False):
+    def __init__(self, study, node_importance=50, random_walk_iters=500):
         """
-        graphs: List of nx graph objects
-        users: List of same length as graphs, containing the corresponding user ids
-        full_distribution:
+        study: str, study name
+        node_importance: int, only keep x most important nodes for each graph
         """
-        self.users = users
-        self.graphs = graphs
+        # Load from pickle
+        # self.graphs, self.users = load_graphs_pkl(
+        #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
+        # )
+        self.graphs, self.users = self.load_graphs(study, node_importance)
 
         # specify necessary parameters for the feature extraction
         self.random_walk_iters = random_walk_iters
 
-        self.default_features = [
+        self.prev_features = [
             "nr_edges",
             "cycles_2_random_walk",
             "cycles_3_random_walk",
@@ -44,15 +46,22 @@ class GraphFeatures:
             "ratio_nodes_random_walk",
             "core_periphery_random_walk",
         ]
+        # default: Use random walk and power law features
+        self.default_features = self.random_walk_features + ["simple_powerlaw_transitions"]
         self.all_features = [f for f in dir(self) if not f.startswith("_")]
 
+    def load_graphs(self, study, node_importance):        
+        graphs, users = load_graphs_postgis(study, node_importance=node_importance)
+        print("loaded graphs", len(graphs))
+        return graphs, users
+        
     def _check_implemented(self, features):
         # check if all required features are implemented
         for feat in features:
             if not hasattr(self, feat):
                 raise NotImplementedError(f"Feature {feat} ist not implemented!")
 
-    def __call__(self, features="default", parallelize=False):
+    def __call__(self, features="default", parallelize=False, **kwargs):
         """Compute desired features for all graphs and possibly parallelize over graphs"""
         if features == "default":
             features = self.default_features
@@ -385,29 +394,25 @@ if __name__ == "__main__":
 
     study = args.study
     node_importance = args.nodes
-    out_dir = "out_features"
+    out_dir = "test_get_all"
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    # Load from pickle
-    # graphs, users = load_graphs_pkl(
-    #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
-    # )
-    graphs, users = load_graphs_postgis(study, node_importance=node_importance)
-
-    print("loaded graphs", len(graphs))
-
     # Generate feature matrix
     tic = time.time()
-    graph_feat = GraphFeatures(graphs, users)
-    feat_matrix = graph_feat(features="random_walk", parallelize=False)
+    graph_feat = GraphFeatures(study, node_importance=node_importance)
+    feat_matrix = graph_feat(features="default", parallelize=False)
     print(feat_matrix)
     print("time for feature generation", time.time() - tic)
 
     out_path = os.path.join(out_dir, f"{study}_graph_features_{node_importance}")
 
     feat_matrix.to_csv(out_path + ".csv")
+    if study == "yumuv_graph_rep":
+        cg, tg = split_yumuv_control_group(feat_matrix)
+        cg.to_csv(out_path.replace("yumuv_graph_rep", "yumuv_cg") + ".csv")
+        tg.to_csv(out_path.replace("yumuv_graph_rep", "yumuv_tg") + ".csv")
 
     # Clean and normalize
     cleaned_feat_df = clean_equal_cols(feat_matrix)

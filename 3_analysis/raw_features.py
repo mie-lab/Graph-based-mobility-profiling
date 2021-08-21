@@ -12,8 +12,9 @@ import trackintel as ti
 import argparse
 
 from utils import dist_to_stats, dist_names, get_point_dist
+from clustering import normalize_and_cluster
 from skmob.measures.individual import *
-
+from plotting import scatterplot_matrix
 
 class RawFeatures:
     def __init__(self, study):
@@ -165,7 +166,7 @@ class RawFeatures:
             if not hasattr(self, feat):
                 raise NotImplementedError(f"Feature {feat} ist not implemented!")
 
-    def __call__(self, features="default"):
+    def __call__(self, features="default", **kwargs):
         """Collect all desired features"""
         if features == "default":
             features = self.default_features
@@ -201,7 +202,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     study = args.study
-    out_dir = "out_features"
+    out_dir = "test_get_all"
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -213,3 +214,7 @@ if __name__ == "__main__":
     raw_feature_df.to_csv(out_path + ".csv")
     print(raw_feature_df.head(10))
     print(raw_feature_df.shape)
+
+    raw_feature_df.dropna(inplace=True)
+    labels = normalize_and_cluster(np.array(raw_feature_df), n_clusters=2)
+    scatterplot_matrix(raw_feature_df, raw_feature_df.columns, clustering=labels, save_path=out_path + ".pdf")
