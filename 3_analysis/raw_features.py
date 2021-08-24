@@ -20,18 +20,18 @@ class RawFeatures:
     def __init__(self, study):
         print("Loading data...")
         self._load_data(study)
-        self.tdf = self._to_skmob(self.stps, self.locations)
+        self._tdf = self._to_skmob(self._sp, self._locations)
 
         # the features we aim to use
-        self.default_features = [
+        self._default_features = [
             "number_locations",
             "real_entropy",
             "mean_trip_distance",
             "mean_trip_duration",
             "radius_of_gyration",
         ]
-        self.all_features = [f for f in dir(self) if not f.startswith("_")]
-        print("Available features", self.all_features)
+        self._all_features = [f for f in dir(self) if not f.startswith("_")]
+        print("Available features", self._all_features)
 
     @staticmethod
     def _to_skmob(stps, locations):
@@ -75,7 +75,7 @@ class RawFeatures:
         con = self._get_con()
 
         # get staypoints
-        self.stps = gpd.GeoDataFrame.from_postgis(
+        self._sp = gpd.GeoDataFrame.from_postgis(
             sql="SELECT * FROM {}.staypoints".format(study),
             con=con,
             crs=CRS_WGS84,
@@ -83,7 +83,7 @@ class RawFeatures:
             index_col="id",
         )
         # get locs
-        self.locations = gpd.GeoDataFrame.from_postgis(
+        self._locations = gpd.GeoDataFrame.from_postgis(
             sql="SELECT * FROM {}.locations".format(study),
             con=con,
             crs=CRS_WGS84,
@@ -91,7 +91,7 @@ class RawFeatures:
             index_col="id",
         )
         # get trips
-        self.trips = gpd.GeoDataFrame.from_postgis(
+        self._trips = gpd.GeoDataFrame.from_postgis(
             sql="SELECT * FROM {}.trips".format(study),
             con=con,
             crs=CRS_WGS84,
@@ -102,23 +102,23 @@ class RawFeatures:
     # ----------- STPS based features -----------------
 
     def random_entropy(self):
-        return random_entropy(self.tdf, show_progress=False)
+        return random_entropy(self._tdf, show_progress=False)
 
     def real_entropy(self):
-        return real_entropy(self.tdf, show_progress=False)
+        return real_entropy(self._tdf, show_progress=False)
 
     def uncorrelated_entropy(self):
-        return uncorrelated_entropy(self.tdf, show_progress=False)
+        return uncorrelated_entropy(self._tdf, show_progress=False)
 
     def max_distance_from_home(self):
-        return max_distance_from_home(self.tdf, show_progress=False)
+        return max_distance_from_home(self._tdf, show_progress=False)
 
     def number_locations(self):
-        num_locs = self.locations.groupby("user_id").agg({"center": "count"})
+        num_locs = self._locations.groupby("user_id").agg({"center": "count"})
         return num_locs.reset_index().rename(columns={"user_id": "uid", "center": "number_locations"})
 
     def waiting_time_distribution(self):
-        times = waiting_times(self.tdf)
+        times = waiting_times(self._tdf)
         waiting_time_dist = times["waiting_times"].apply(dist_to_stats)
         col_names = dist_names("waiting_time")
         time_df = pd.DataFrame(waiting_time_dist.tolist(), index=times.index, columns=col_names)
@@ -126,13 +126,13 @@ class RawFeatures:
         return time_df
 
     def radius_of_gyration(self):
-        return radius_of_gyration(self.tdf, show_progress=False)
+        return radius_of_gyration(self._tdf, show_progress=False)
 
     # ----------- Trip based features -----------------
 
     def mean_trip_distance(self, is_projected=False):
 
-        trips_copy = self.trips.copy()
+        trips_copy = self._trips.copy()
         # is_projected = ti.geogr.distances.check_gdf_crs(trips_copy)
         trips_copy["trip_distance"] = trips_copy["geom"].apply(lambda x: get_point_dist(x[0], x[1], is_projected))
         grouped = trips_copy.groupby("user_id").agg({"trip_distance": "mean"})
@@ -140,9 +140,9 @@ class RawFeatures:
 
     def _trip_duration(self):
         # compute time duration
-        self.trips["time_passed"] = (self.trips.finished_at - self.trips.started_at).astype("timedelta64[m]")
+        self._trips["time_passed"] = (self._trips.finished_at - self._trips.started_at).astype("timedelta64[m]")
         # get user ids
-        grouped_trips = self.trips.groupby("user_id")
+        grouped_trips = self._trips.groupby("user_id")
         # get list of times for each user
         time_passed_list = grouped_trips.agg({"time_passed": list})
         return time_passed_list
@@ -169,9 +169,9 @@ class RawFeatures:
     def __call__(self, features="default", **kwargs):
         """Collect all desired features"""
         if features == "default":
-            features = self.default_features
+            features = self._default_features
         elif features == "all":
-            features = self.all_features  # + ["5_k_gyration", "10_k_gyration", "50_k_gyration"]
+            features = self._all_features  # + ["5_k_gyration", "10_k_gyration", "50_k_gyration"]
         self._check_implemented(features)
         print("The following features will be computed:", features)
 
@@ -181,7 +181,7 @@ class RawFeatures:
             # for radius of gyration, get k
             if "k_gyration" in feat:
                 k = int(feat.split("_")[0])
-                feat_df = k_radius_of_gyration(self.tdf, k)
+                feat_df = k_radius_of_gyration(self._tdf, k)
             else:
                 # call corresponding method
                 feat_df = getattr(self, feat)()
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     out_path = os.path.join(out_dir, f"{study}_raw_features")
 
     raw_feat = RawFeatures(study)
-    raw_feature_df = raw_feat(features="default")
+    raw_feature_df = raw_feat(features="all")
     raw_feature_df.to_csv(out_path + ".csv")
     print(raw_feature_df.head(10))
     print(raw_feature_df.shape)

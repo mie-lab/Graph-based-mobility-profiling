@@ -12,7 +12,7 @@ from raw_features import RawFeatures
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--out_dir", type=str, default="out_features", help="output directory")
-parser.add_argument("-n", "--nodes", type=int, default=-1, help="number of x important nodes. Set -1 for all nodes")
+parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set -1 for all nodes")
 args = parser.parse_args()
 
 

@@ -224,7 +224,7 @@ def graph_dict_to_list(graph_dict, node_importance=50):
     nx_graphs = []
     for user_id, ag in graph_dict.items():
         users.append(user_id)
-        if node_importance < 1:
+        if node_importance ==0:
             ag_sub = ag.G
         else:
             # TODO: rewrite k importance nodes such that it is filtered by the fraction of occurence, not the abs number

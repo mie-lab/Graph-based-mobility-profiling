@@ -215,25 +215,24 @@ class GraphFeatures:
         return self._lognormal_cycle_len_random_walk(graph)[1]
 
     def _distances_random_walk(self, graph, crs_is_projected=False):
-        # TODO: are the points in the graph nodes projected?
-        random_walk_sequence = self._random_walk(graph)
+        random_walk_sequence, resets = self._random_walk(graph, return_resets=True)
         # get all shapely Point centers on the random walk
         locs_on_rw = [graph.nodes[node_ind]["center"] for node_ind in random_walk_sequence]
         # get all distances on the random walk
         distances = [
             get_point_dist(locs_on_rw[i], locs_on_rw[i + 1], crs_is_projected=crs_is_projected)
-            for i in range(len(locs_on_rw) - 1)
+            for i in range(len(locs_on_rw) - 1) if i+1 not in resets
         ]
         return distances
 
-    @get_mean
-    def mean_distance_random_walk(self, graph):
+    def mean_distance_random_walk(self, graph, cutoff=300000):
         distances = self._distances_random_walk(graph)
-        # filter out 0 distances
-        distances = [d for d in distances if d > 0]
+        # filter out 0 distances and far trips
+        distances = [d for d in distances if d > 0 and d < cutoff]
         if len(distances)==0:
-            distances = [1000] # TODO
-        return distances
+            distances = [0]
+        # return median distance (in m)
+        return np.median(distances)
 
     def ratio_nodes_random_walk(self, graph):
         """Ratio of the number of nodes that are encountered on a random walk"""
@@ -389,7 +388,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
-    parser.add_argument("-n", "--nodes", type=int, default=-1, help="number of x important nodes. Set -1 for all nodes")
+    parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set -1 for all nodes")
     args = parser.parse_args()
 
     study = args.study
