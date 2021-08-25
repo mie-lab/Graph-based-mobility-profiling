@@ -34,26 +34,28 @@ def get_engine(study, return_con=False):
 study = "yumuv_graph_rep"
 
 GRAPH_OUTPUT = os.path.join(".", "data_out", "graph_data", study)
-# GRAPH_FOLDER, _ = ntpath.split(GRAPH_OUTPUT)
-if not os.path.exists(GRAPH_OUTPUT):
-    os.mkdir(GRAPH_OUTPUT)
 
-pkl_name = open(os.path.join(GRAPH_OUTPUT, "counts_full.pkl"), "rb")
-AG_dict = pickle.load(pkl_name)
+pkl_name_before = open(os.path.join(GRAPH_OUTPUT, "counts_full_before.pkl"), "rb")
+pkl_name_after = open(os.path.join(GRAPH_OUTPUT, "counts_full_after.pkl"), "rb")
+
+AG_dict_before = pickle.load(pkl_name_before)
+AG_dict_after = pickle.load(pkl_name_after)
 
 con = get_engine(study, return_con=True)
 
 write_graphs_to_postgresql(
-    graph_data=AG_dict,
-    graph_table_name="full_graph",
+    graph_data=AG_dict_before,
+    graph_table_name="before_after",
     graph_schema_name=study,
     psycopg_con=con,
-    file_name="graph_data",
+    file_name="before",
+    drop_and_create=True)
+
+write_graphs_to_postgresql(
+    graph_data=AG_dict_after,
+    graph_table_name="before_after",
+    graph_schema_name=study,
+    psycopg_con=con,
+    file_name="after",
+    drop_and_create=False
 )
-
-AG_dict2 = read_graphs_from_postgresql(graph_table_name="full_graph",
-    graph_schema_name=study,
-    psycopg_con=con,
-    file_name="graph_data")
-
-assert ()
