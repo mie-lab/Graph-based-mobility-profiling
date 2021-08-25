@@ -72,6 +72,14 @@ def get_staypoints(study, engine):
 
     return sp
 
+def get_locations(study, engine):
+    locs = ti.io.read_locations_postgis(
+        sql="select * from {}.locations".format(study),
+        con=engine,
+        geom_col="center",
+    )
+    return locs
+
 
 def get_triplegs(study, engine):
     tpls = pd.read_sql(
@@ -238,8 +246,9 @@ def generate_graphs_daily(locs, sp, out_name, study, trips=None, plotting=False)
 
 # globals
 # study name is used as schema name in database
-# studies = ["yumuv_graph_rep"]  # , 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
-studies = ["geolife"] #, 'geolife']# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
+studies = ["yumuv_graph_rep"]  # , 'gc1']  # , 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
+# studies = ['tist_top10', 'tist_toph10', 'tist_top100', 'tist_toph100', 'tist_top500', 'tist_toph500', 'tist_top1000',
+#            'tist_toph1000',]
 # limit = "where user_id > 1670"
 limit = ""
 single_user = False
@@ -260,29 +269,34 @@ if __name__ == "__main__":
         # download data
         print("\t download staypoints")
         sp = get_staypoints(study=study, engine=engine)
-        print("\t download triplegs")
-        tpls = get_triplegs(study=study, engine=engine)
-
-        print("\t download trips")
-        trips = get_trips(study=study, engine=engine)
 
         print("\t download locations")
-        locs = ti.io.read_locations_postgis(
-            sql="select * from {}.locations".format(study),
-            con=engine,
-            geom_col="center",
-        )
+        locs = get_locations(study=study, engine=engine)
 
-        print("\t filter by tracking coverage")
+        if "tist" not in study:
 
-        sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.5, min_nb_good_days=14)
-        print("\t\t drop users with bad coverage")
-        tpls = tpls[tpls.user_id.isin(user_id_ix)]
-        trips = trips[trips.user_id.isin(user_id_ix)]
-        locs = locs[locs.user_id.isin(user_id_ix)]
+            print("\t download triplegs")
+            tpls = get_triplegs(study=study, engine=engine)
 
-        print("\tgenerate full graphs (transition counts)")
-        AG_dict = generate_graphs(locs=locs, sp=sp, study=study, trips=trips, plotting=True)
+            print("\t download trips")
+            trips = get_trips(study=study, engine=engine)
+
+            print("\t filter by tracking coverage")
+            if study == "geolife":
+                sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.5, min_nb_good_days=15)
+            else:
+                sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.9, min_nb_good_days=30)
+            print("\t\t drop users with bad coverage")
+            tpls = tpls[tpls.user_id.isin(user_id_ix)]
+            trips = trips[trips.user_id.isin(user_id_ix)]
+            locs = locs[locs.user_id.isin(user_id_ix)]
+
+            print("\tgenerate full graphs (transition counts)")
+            AG_dict = generate_graphs(locs=locs, sp=sp, study=study, trips=trips, plotting=True)
+
+        else:
+            print("\tgenerate full graphs (transition counts)\n")
+            AG_dict = generate_graphs(locs=locs, sp=sp, study=study, plotting=True)
 
         # print("generate daily graphs (transition counts)")
         # sp = filter_days_with_bad_tracking_coverage(sp=sp_merged, tpls=tpls, coverage=0.99)
@@ -307,4 +321,5 @@ if __name__ == "__main__":
                 psycopg_con=con,
                 file_name="graph_data",
             )
+
         # AG_dict2 = read_graphs_from_postgresql(graph_table_name=study, psycopg_con=con, file_name="graph_data")

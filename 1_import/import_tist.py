@@ -12,10 +12,12 @@ import json
 import trackintel as ti
 import datetime as dt
 from shapely.geometry import Point
+from dateutil import tz
+import datetime
 
-schema_name = "tist2"
+schema_name = "tist"
 
-dblogin_file = os.path.join("..", "dblogin.json")
+dblogin_file = os.path.join("dblogin.json")
 with open(dblogin_file) as json_file:
     login_data = json.load(json_file)
 
@@ -35,32 +37,42 @@ path_pois = os.path.join(r"E:\data_tist\dataset_TIST2015_POIs.txt")
 # load raw data
 print("Reading raw data")
 
-checkins = pd.read_csv(path_checkins, sep="\t", header=None, names=["user_id", "venue_id", "started_at", "timezone"])
-venues = pd.read_csv(path_pois, sep="\t", header=None, names=["venue_id", "lat", "lon", "category", "country_code"])
+checkins = pd.read_csv(path_checkins, sep="\t", header=None, names=["user_id", "venue_id", "started_at",
+                                                                    "timezone"])
+venues = pd.read_csv(path_pois, sep="\t", header=None, names=["venue_id", "lat", "lon", "purpose",
+                                                              "country_code"])
+print("Prepare time stamps")
+checkins["started_at"] = pd.to_datetime(checkins["started_at"], format="%a %b %d %H:%M:%S +0000 %Y", errors="coerce",
+                                        utc=True)
+checkins['started_at_local'] = checkins.apply(lambda x: x['started_at'].tz_convert(tz=tz.tzoffset(None, datetime.timedelta(minutes=x['timezone']))), axis=1)
+checkins["finished_at"] = pd.Series([pd.NaT], dtype=pd.api.types.DatetimeTZDtype(tz="utc"))
 
-checkins["started_at"] = pd.to_datetime(checkins["started_at"], format="%a %b %d %H:%M:%S +0000 %Y", errors="coerce")
-
+print("Prepare venues")
 # repair unicode error
-venues.loc[venues["category"] == "Caf", "category"] = "Café"
+venues.loc[venues["purpose"] == "Caf", "purpose"] = "Café"
 
+# prepare venues
+venues = gpd.GeoDataFrame(
+    venues, geometry=gpd.points_from_xy(venues.lon, venues.lat))
+venues.drop(["lat", "lon"], inplace=True, axis=1)
 venues = venues.set_index("venue_id")
-spts = checkins.join(venues, on="venue_id", how="left")
 
-spts["started_at"] = spts["started_at"].astype(pd.api.types.DatetimeTZDtype(tz="utc"))
-spts["finished_at"] = pd.Series([pd.NaT], dtype=pd.api.types.DatetimeTZDtype(tz="utc"))
+# prepare checkins as staypoins
+sp = checkins.join(venues, on="venue_id", how="left")
+sp = gpd.GeoDataFrame(sp, geometry='geometry')
+del venues, checkins
+print("Create locations")
+# create locations
+sp, locations = sp.as_staypoints.generate_locations(epsilon=10e-6, num_samples=1, distance_metric="euclidean")
+locations.drop("extent", axis=1, inplace=True)
 
-
-# creating a geometry column
-geometry = [Point(xy) for xy in zip(spts["lon"], spts["lat"])]
-spts = gpd.GeoDataFrame(spts, crs="epsg:4326", geometry=geometry)
-spts.drop(["lat", "lon"], inplace=True, axis=1)
+# sp_ = sp[sp['user_id'] == 391].sort_values('started_at')
 
 # tist is now in trackintel format.
-
-
-print("generate locations")
-locations, spts = spts.as_staypoints.generate_locations(epsilon=50, num_samples=4, distance_metric="haversine")
-print("Write back staypoints")
-ti.io.write_staypoints_postgis(spts, conn_string, schema=schema_name, table_name="staypoints", if_exists="replace")
 print("Write back locations ")
-ti.io.write_locations_postgis(locations, conn_string, schema=schema_name, table_name="locations", if_exists="replace")
+ti.io.write_locations_postgis(locations, con=conn_string, schema=schema_name, name="locations",
+                              if_exists="replace", chunksize=100000)
+print("Write back staypoints")
+ti.io.write_staypoints_postgis(sp, con=conn_string, schema=schema_name, name="staypoints", if_exists="replace",
+                               chunksize=100000)
+
