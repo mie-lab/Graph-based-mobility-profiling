@@ -3,7 +3,7 @@ import numpy as np
 import datetime
 import psycopg2
 import pickle
-
+import zlib
 
 def horizontal_merge_staypoints(sp, gap_threshold=20, custom_add_dict={}):
     """merge staypoints that are consecutive at the same place"""
@@ -65,7 +65,7 @@ def write_graphs_to_postgresql(
     graph_data, graph_table_name, psycopg_con, graph_schema_name="public", file_name="graph_data", drop_and_create=True
 ):
 
-    pickle_string = pickle.dumps(graph_data)
+    pickle_string = zlib.compress(pickle.dumps(graph_data))
 
     cur = psycopg_con.cursor()
     if drop_and_create:
@@ -103,6 +103,6 @@ def read_graphs_from_postgresql(graph_table_name, psycopg_con, graph_schema_name
     pickle_string2 = cur.fetchall()[0][0].tobytes()
 
     cur.close()
-    AG_dict2 = pickle.loads(pickle_string2)
+    AG_dict2 = pickle.loads(zlib.decompress(pickle_string2))
 
     return AG_dict2
