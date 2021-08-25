@@ -4,6 +4,7 @@ import logging
 import os
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pytz
 from shapely.geometry import Point
@@ -13,6 +14,8 @@ from db_login import DSN  # database login information
 from generate_graphs import get_staypoints, get_triplegs, get_trips, get_locations, generate_graphs
 from collections import defaultdict
 import pickle
+import numpy as np
+
 engine = create_engine(
     "postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}".format(
         **DSN
@@ -25,14 +28,12 @@ tpls_ = get_triplegs(study=study, engine=engine)
 trips_ = get_trips(study=study, engine=engine)
 locs = get_locations(study=study, engine=engine)
 
-user_dates_kg = pd.read_sql("select * from henry_dev.user_dates where abo_start is not null and user_id = 5040", con=engine, index_col="user_id")
+user_dates_kg = pd.read_sql("select * from henry_dev.user_dates where abo_start is not null", con=engine, index_col="user_id")
 
 sp = sp_.reset_index().set_index(['user_id', 'started_at'], drop=False).sort_index()
 tpls = tpls_.reset_index().set_index(['user_id', 'started_at'], drop=False).sort_index()
 trips = trips_.reset_index().set_index(['user_id', 'started_at'], drop=False).sort_index()
 
-# dfbefore_dict = defaultdict(dict)
-# dfafter_dict = defaultdict(dict)
 sp_before_list = []
 tpls_before_list = []
 trips_before_list = []
@@ -113,12 +114,33 @@ destination_missing = ~trips_after['destination_staypoint_id'].isin(sp_after.ind
 trips_after.loc[origin_missing, 'origin_staypoint_id'] = pd.NA
 trips_after.loc[destination_missing, 'destination_staypoint_id'] = pd.NA
 
+# only take intersection of users (users that are available in the before and after set)
+valid_users = np.intersect1d(sp_before.user_id.unique(), sp_after.user_id.unique(), assume_unique=True)
+
+sp_before = sp_before[sp_before['user_id'].isin(valid_users)]
+trips_before = trips_before[trips_before['user_id'].isin(valid_users)]
+locs_before = locs_before[locs_before['user_id'].isin(valid_users)]
+
+sp_after = sp_after[sp_after['user_id'].isin(valid_users)]
+trips_after = trips_after[trips_after['user_id'].isin(valid_users)]
+locs_after = locs_after[locs_after['user_id'].isin(valid_users)]
+
+
 # generate graphs
-AG_dict_before = generate_graphs(locs=locs_before, sp=sp_before, study=study, trips=trips_before, plotting=True)
-AG_dict_after = generate_graphs(locs=locs_after, sp=sp_after, study=study, trips=trips_after, plotting=True)
+AG_dict_before = generate_graphs(locs=locs_before, sp=sp_before, study=study, trips=trips_before, plotting=False)
+AG_dict_after = generate_graphs(locs=locs_after, sp=sp_after, study=study, trips=trips_after, plotting=False)
 
 GRAPH_OUTPUT = os.path.join(".", "data_out", "graph_data", study)
+
 out_name_before = open(os.path.join(GRAPH_OUTPUT, "counts_full_before.pkl"), "wb")
 out_name_after = open(os.path.join(GRAPH_OUTPUT, "counts_full_after.pkl"), "wb")
 pickle.dump(AG_dict_before, out_name_before)
 pickle.dump(AG_dict_after, out_name_after)
+out_name_after.close()
+out_name_before.close()
+
+# test if reading works
+pkl_name_before = open(os.path.join(GRAPH_OUTPUT, "counts_full_before.pkl"), "rb")
+pkl_name_after = open(os.path.join(GRAPH_OUTPUT, "counts_full_after.pkl"), "rb")
+AG_dict_before2 = pickle.load(pkl_name_before)
+AG_dict_after2 = pickle.load(pkl_name_after)
