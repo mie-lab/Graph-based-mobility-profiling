@@ -20,9 +20,8 @@ engine = create_engine("postgresql://{db_user}:{db_password}@{db_host}:{db_port}
 #
 data_folder = os.path.join("C:/", "yumuv", "data")  # todo move to config file
 cache_folder = os.path.join(data_folder, "cache")  # todo move to config file
-max_date = datetime.datetime(year=2021, month=3, day=1, tzinfo=pytz.utc)
-limit = "where user_fk < 4980"
-# limit = ""
+# limit = "where user_fk < 4980"
+limit = ""
 
 sp_sql = """select staypoint.*, study_code_sorted.study_id from
                         yumuv.staypoint left join 
