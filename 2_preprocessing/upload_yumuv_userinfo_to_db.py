@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 import os
 import pickle
 import json
-from future_trackintel.utils import write_graphs_to_postgresql, read_graphs_from_postgresql
+from future_trackintel.utils import write_graphs_to_postgresql
 import psycopg2
 
 CRS_WGS84 = "epsg:4326"
@@ -33,25 +33,9 @@ def get_engine(study, return_con=False):
 
 study = "yumuv_graph_rep"
 
-GRAPH_OUTPUT = os.path.join(".", "data_out", "graph_data", study)
-# GRAPH_FOLDER, _ = ntpath.split(GRAPH_OUTPUT)
-if not os.path.exists(GRAPH_OUTPUT):
-    os.mkdir(GRAPH_OUTPUT)
+pkl_name = open(os.path.join('D:/', 'temp', "yumuv_userinfo.pkl"), "rb")
+user_info = pickle.load(pkl_name)
 
-pkl_name = open(os.path.join(GRAPH_OUTPUT, "counts_full.pkl"), "rb")
-AG_dict = pickle.load(pkl_name)
+engine = get_engine(study, return_con=False)
 
-con = get_engine(study, return_con=True)
-
-write_graphs_to_postgresql(
-    graph_data=AG_dict,
-    graph_table_name="full_graph",
-    graph_schema_name=study,
-    psycopg_con=con,
-    file_name="graph_data",
-)
-
-AG_dict2 = read_graphs_from_postgresql(graph_table_name="full_graph",
-    graph_schema_name=study,
-    psycopg_con=con,
-    file_name="graph_data")
+user_info.to_sql(con=engine, schema='yumuv_graph_rep', name='user_info', index=False)

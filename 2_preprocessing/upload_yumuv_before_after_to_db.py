@@ -55,3 +55,5 @@ AG_dict2 = read_graphs_from_postgresql(graph_table_name="full_graph",
     graph_schema_name=study,
     psycopg_con=con,
     file_name="graph_data")
+
+assert ()
