@@ -1,3 +1,4 @@
+from zlib import decompress
 import networkx as nx
 from networkx.algorithms.shortest_paths.generic import shortest_path
 import numpy as np
@@ -39,22 +40,29 @@ class GraphFeatures:
             "mean_node_degree",
             "mean_betweenness_centrality",
         ]
-        self.random_walk_features = [
+        self.prev_rw_features = [
             "mean_distance_random_walk",
             "cycle_length_mu",
             "cycle_length_sigma",
             "ratio_nodes_random_walk",
-            "core_periphery_random_walk",
+            "hub_size_random_walk",
         ]
-        # default: Use random walk and power law features
-        self.default_features = self.random_walk_features + ["simple_powerlaw_transitions"]
+        self.default_features = [
+            "ratio_short_journeys",
+            "unique_journeys",
+            "mean_journey_length",
+            "hub_size_random_walk",
+            "transition_hhi",
+            "mean_distance_journeys",
+            "degree_hhi",
+        ]
         self.all_features = [f for f in dir(self) if not f.startswith("_")]
 
-    def load_graphs(self, study, node_importance):        
-        graphs, users = load_graphs_postgis(study, node_importance=node_importance)
+    def load_graphs(self, study, node_importance):
+        graphs, users = load_graphs_postgis(study, node_importance=node_importance, decompress=False)
         print("loaded graphs", len(graphs))
         return graphs, users
-        
+
     def _check_implemented(self, features):
         # check if all required features are implemented
         for feat in features:
@@ -174,6 +182,58 @@ class GraphFeatures:
         # 3) TODO: distribution of means of tranport or other node/edge features?
         # return list(cycles_on_walk)
 
+    def _home_cycle_lengths(self, graph):
+        """Get cycle lengths of journeys (starting and ending at home"""
+        nodes_on_rw, resets = self._random_walk(graph, return_resets=True)
+        assert (
+            len(resets) == 0 or len(np.unique(np.array(nodes_on_rw)[resets])) == 1
+        ), "reset indices must always be a home node"
+        cycle_lengths = []
+        home_node = nodes_on_rw[0]
+        at_home = np.where(np.array(nodes_on_rw) == home_node)[0]
+        for i in range(len(at_home) - 1):
+            if at_home[i + 1] not in resets:
+                cycle_lengths.append(at_home[i + 1] - at_home[i])
+        return cycle_lengths
+
+    def ratio_short_journeys(self, graph, cutoff=3):
+        """Compute ratio of cycles of length smaller cutoff
+        By default, compute ratio of cycles of length 1 or 2 (simple detour visits) to longer cycles
+        """
+        cycle_lengths = self._home_cycle_lengths(graph)
+        cycle_lengths = np.array(cycle_lengths)
+        if len(cycle_lengths) == 0:
+            return 1
+        return sum(cycle_lengths < cutoff) / len(cycle_lengths)
+
+    def mean_journey_length(self, graph):
+        cycle_lengths = self._home_cycle_lengths(graph)
+        return np.mean(cycle_lengths)
+
+    def unique_journeys(self, graph):
+        """Ratio of unique journeys of all journeys on random walk"""
+        nodes_on_rw, resets = self._random_walk(graph, return_resets=True)
+        unique_journeys = {}
+
+        nr_journeys = 0
+        home_node = nodes_on_rw[0]
+        at_home = np.where(np.array(nodes_on_rw) == home_node)[0]
+        for i in range(len(at_home) - 1):
+            # found journey
+            if at_home[i + 1] not in resets:
+                # count overall number of journeys
+                nr_journeys += 1
+                # add to unique journeys if it's new
+                len_of_cycle = at_home[i + 1] - at_home[i]
+                start_ind = at_home[i]
+                end_ind = at_home[i + 1]
+                # put journey sequence as key into dictionary (for hashing)
+                journey_sequence = tuple(nodes_on_rw[start_ind + 1 : end_ind])
+                # put into dictionary to hash this sequence
+                unique_journeys[journey_sequence] = 1
+
+        return len(unique_journeys.keys()) / nr_journeys
+
     def cycles_2_random_walk(self, graph):
         random_walk_sequence = self._random_walk(graph)
         return count_cycles(random_walk_sequence, cycle_len=2)
@@ -195,9 +255,9 @@ class GraphFeatures:
         uni, counts = np.unique(cycle_lengths, return_counts=True)
         # fix: if we only have cycles of length x, then we need to more zero-datapoints
         if len(uni) == 0:
-            uni = np.arange(10) +1
+            uni = np.arange(10) + 1
             counts = np.array([1] + [0 for _ in range(9)])
-        elif len(uni) ==1:
+        elif len(uni) == 1:
             uni = np.array(list(uni) + [uni[0] + i for i in range(1, 11)])
             counts = np.array(list(counts) + [0 for _ in range(10)])
         # normalize counts
@@ -221,7 +281,8 @@ class GraphFeatures:
         # get all distances on the random walk
         distances = [
             get_point_dist(locs_on_rw[i], locs_on_rw[i + 1], crs_is_projected=crs_is_projected)
-            for i in range(len(locs_on_rw) - 1) if i+1 not in resets
+            for i in range(len(locs_on_rw) - 1)
+            if i + 1 not in resets
         ]
         return distances
 
@@ -229,10 +290,38 @@ class GraphFeatures:
         distances = self._distances_random_walk(graph)
         # filter out 0 distances and far trips
         distances = [d for d in distances if d > 0 and d < cutoff]
-        if len(distances)==0:
+        if len(distances) == 0:
             distances = [0]
         # return median distance (in m)
         return np.median(distances)
+
+    def mean_distance_journeys(self, graph):
+        nodes_on_rw, resets = self._random_walk(graph, return_resets=True)
+
+        home_node = nodes_on_rw[0]
+        at_home = np.where(np.array(nodes_on_rw) == home_node)[0]
+
+        journey_distances = []
+        # iterate over journeys
+        for i in range(len(at_home) - 1):
+            # found journey
+            if at_home[i + 1] not in resets:
+                start_ind = at_home[i]
+                end_ind = at_home[i + 1]
+                # skip journeys that are only loops at one location
+                if end_ind == start_ind + 1:
+                    continue
+                # get sequence of locations on journey
+                journey_sequence = nodes_on_rw[start_ind : end_ind + 1]
+
+                locs_on_journey = [graph.nodes[node_ind]["center"] for node_ind in journey_sequence]
+                # get all distances on the random walk
+                distances = [
+                    get_point_dist(locs_on_journey[i], locs_on_journey[i + 1], crs_is_projected=False)
+                    for i in range(len(locs_on_journey) - 1)
+                ]
+                journey_distances.append(np.sum(distances))
+        return np.median(journey_distances)
 
     def ratio_nodes_random_walk(self, graph):
         """Ratio of the number of nodes that are encountered on a random walk"""
@@ -241,7 +330,7 @@ class GraphFeatures:
         uni = np.unique(nodes_on_rw)
         return len(uni) / total_nodes
 
-    def core_periphery_random_walk(self, graph, thresh=0.85):
+    def hub_size_random_walk(self, graph, thresh=0.8):
         nodes_on_rw = self._random_walk(graph)
         _, counts = np.unique(nodes_on_rw, return_counts=True)
         sorted_counts = np.sort(counts)[::-1]
@@ -249,6 +338,21 @@ class GraphFeatures:
         # number of nodes needed to cover thresh times the traffic
         nodes_in_core = np.where(cumulative_counts > thresh * np.sum(counts))[0][0] + 1
         return nodes_in_core
+
+    def _hhi(self, item_list, N=20):
+        """Compute HHI on the N most often occuring items"""
+        _, counts = np.unique(item_list, return_counts=True)
+        sorted_counts = np.sort(counts)[-N:]
+        sum_first_N = np.sum(sorted_counts)
+
+        hhi_out = 0
+        for c in sorted_counts:
+            hhi_out += (c / sum_first_N) ** 2
+        return hhi_out
+
+    def random_walk_hhi(self, graph):
+        nodes_on_rw = self._random_walk(graph)
+        return self._hhi(nodes_on_rw)
 
     # ---------- EDGE FEATURES ---------------------------
 
@@ -287,6 +391,10 @@ class GraphFeatures:
         )
         # returns list of 3 parameters
         return params
+
+    def transition_hhi(self, graph):
+        transitions = self._transitions(graph)
+        return self._hhi(transitions)
 
     # ---------- NODE FEATURES ---------------------------
 
@@ -346,6 +454,10 @@ class GraphFeatures:
         degree_count_bins[uni] = degree_counts
         return degree_count_bins
 
+    def degree_hhi(self, graph, mode="out"):
+        degrees = self._degree(graph, mode=mode)
+        return self._hhi(degrees)
+
     @get_distribution
     def dist_node_degree(self, graph, mode="out"):
         # return statistics of degree distribution
@@ -393,7 +505,7 @@ if __name__ == "__main__":
 
     study = args.study
     node_importance = args.nodes
-    out_dir = "test_get_all"
+    out_dir = "test"
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -428,5 +540,5 @@ if __name__ == "__main__":
 
     # Plot scatterplot matrix
 
-    use_features = graph_feat.random_walk_features
+    use_features = graph_feat.default_features
     scatterplot_matrix(cleaned_feat_df, use_features, clustering=kmeans.labels_, save_path=out_path + ".pdf")

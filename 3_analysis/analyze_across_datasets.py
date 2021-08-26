@@ -6,7 +6,7 @@ from clustering import normalize_and_cluster
 from compare_clustering import compute_all_scores
 
 
-def load_all(type="graph", node_importance=50):
+def load_all(path, type="graph", node_importance=50):
     """
     type: one of graph, raw
     """
@@ -14,13 +14,15 @@ def load_all(type="graph", node_importance=50):
     study_labels = []
     for study in STUDIES:  # , "yumuv_graph_rep"]: # _{node_importance}
         graph_features = pd.read_csv(
-            os.path.join("out_features", f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
+            os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
         )
         # TODO: need to filter raw features?
         if type == "graph":
             all_together.append(graph_features)
         elif type == "raw":
-            raw_features = pd.read_csv(os.path.join("out_features", f"{study}_raw_features.csv"), index_col="user_id")
+            raw_features = pd.read_csv(
+                os.path.join(path, f"{study}_raw_features_{node_importance}.csv"), index_col="user_id"
+            )
             raw_features = raw_features[raw_features.index.isin(graph_features.index)]
             all_together.append(raw_features)
 
@@ -44,10 +46,14 @@ def mean_features_by_study(features, out_path=None):
 
 
 if __name__ == "__main__":
-    STUDIES = ["gc1", "gc2","geolife", "yumuv_graph_rep"]
-
+    STUDIES = ["gc1", "gc2", "tist_toph100"]  #  "geolife", "yumuv_graph_rep",
+    # parameters
+    path = "gc_case_study"
     n_clusters = 2
-    features_all_datasets = load_all(type="graph")
+    node_importance = 0
+    feature_type = "raw"
+
+    features_all_datasets = load_all(path, type=feature_type, node_importance=node_importance)
     cluster_labels = normalize_and_cluster(
         np.array(features_all_datasets.drop(columns=["study"])), n_clusters=n_clusters
     )

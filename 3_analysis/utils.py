@@ -21,17 +21,17 @@ def sort_images_by_cluster(users, labels, in_img_path="graph_images/gc2/spring",
 
     # make dictionary
     map_dict = {user_id: cluster for (user_id, cluster) in zip(users, labels)}
-    
+
     # make out dir and subdirs for each cluster
     if not os.path.exists(out_img_path):
         os.makedirs(out_img_path)
     for cluster in np.unique(labels):
-        os.makedirs(os.path.join(out_img_path, "cluster_"+str(cluster)))
-        
+        os.makedirs(os.path.join(out_img_path, "cluster_" + str(cluster)))
+
     # copy the images
     for user, assigned_cluster in map_dict.items():
         in_path = os.path.join(in_img_path, user + ".png")
-        out_path =  os.path.join(out_img_path, "cluster_"+str(assigned_cluster), user + ".png")
+        out_path = os.path.join(out_img_path, "cluster_" + str(assigned_cluster), user + ".png")
         print("copying from", in_path, "to", out_path)
         shutil.copy(in_path, out_path)
 
@@ -224,7 +224,7 @@ def graph_dict_to_list(graph_dict, node_importance=50):
     nx_graphs = []
     for user_id, ag in graph_dict.items():
         users.append(user_id)
-        if node_importance ==0:
+        if node_importance == 0:
             ag_sub = ag.G
         else:
             # TODO: rewrite k importance nodes such that it is filtered by the fraction of occurence, not the abs number
@@ -258,11 +258,15 @@ def get_con():
     return con
 
 
-def load_graphs_postgis(study, node_importance=50):
+def load_graphs_postgis(study, node_importance=50, decompress=True):
     # load login data
     con = get_con()
     graph_dict = read_graphs_from_postgresql(
-        graph_table_name="full_graph", psycopg_con=con, graph_schema_name=study, file_name="graph_data"
+        graph_table_name="full_graph",
+        psycopg_con=con,
+        graph_schema_name=study,
+        file_name="graph_data",
+        decompress=decompress,
     )
     nx_graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
     return nx_graphs, users
@@ -273,14 +277,15 @@ def load_user_info(study, index_col="user_id"):
     user_info = pd.read_sql_query(sql=f"SELECT * FROM {study}.user_info".format(study), con=con, index_col=index_col)
     return user_info
 
+
 def split_yumuv_control_group(df):
     """
-    Splits dataframe into users which are in treatment group (study_id: 22) and the ones that are in control group 
+    Splits dataframe into users which are in treatment group (study_id: 22) and the ones that are in control group
     (study_id: 23)
     """
     user_info = load_user_info("yumuv_graph_rep", index_col="app_user_id")
-    users_tg = user_info[user_info["study_id"]==22].index
-    users_cg = user_info[user_info["study_id"]==23].index
+    users_tg = user_info[user_info["study_id"] == 22].index
+    users_cg = user_info[user_info["study_id"] == 23].index
     print("users in control group:", len(users_cg), "users in treatment group:", len(users_tg))
     df_cg = df[df.index.isin(users_cg)]
     df_tg = df[df.index.isin(users_tg)]

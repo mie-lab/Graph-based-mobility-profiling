@@ -27,7 +27,7 @@ if not os.path.exists(out_dir):
 for study in ["gc1", "gc2", "yumuv_graph_rep", "geolife"]:
     for feat_type in ["raw", "graph"]:
         # for yumuv I don't have the raw data
-        if study == "yumuv_graph_rep" and feat_type=="raw":
+        if study == "yumuv_graph_rep" and feat_type == "raw":
             continue
 
         print(" -------------- PROCESS", study, feat_type, " ---------------")
@@ -36,17 +36,19 @@ for study in ["gc1", "gc2", "yumuv_graph_rep", "geolife"]:
         tic = time.time()
         if feat_type == "raw":
             feat_class = RawFeatures(study)
+            select_features = "all"
         else:
             feat_class = GraphFeatures(study, node_importance=node_importance)
+            select_features = "default"
 
-        features = feat_class(features="default")
+        features = feat_class(features=select_features)
         print(features)
         print("time for feature generation", time.time() - tic)
 
         out_path = os.path.join(out_dir, f"{study}_{feat_type}_features_{node_importance}")
 
         features.to_csv(out_path + ".csv")
-        
+
         # for yumuv: split in cg and tg
         if study == "yumuv_graph_rep":
             cg, tg = split_yumuv_control_group(features)
@@ -56,5 +58,7 @@ for study in ["gc1", "gc2", "yumuv_graph_rep", "geolife"]:
         # geolife has nan rows, drop them first
         features.dropna(inplace=True)
         labels = normalize_and_cluster(np.array(features), n_clusters=2)
-        scatterplot_matrix(features, features.columns, clustering=labels, save_path=out_path + ".pdf")
-
+        try:
+            scatterplot_matrix(features, features.columns, clustering=labels, save_path=out_path + ".pdf")
+        except:
+            continue
