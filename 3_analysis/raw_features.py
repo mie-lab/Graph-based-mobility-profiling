@@ -16,6 +16,7 @@ from clustering import normalize_and_cluster
 from skmob.measures.individual import *
 from plotting import scatterplot_matrix
 
+
 class RawFeatures:
     def __init__(self, study):
         print("Loading data...")
@@ -119,8 +120,8 @@ class RawFeatures:
 
     def waiting_time_distribution(self):
         times = waiting_times(self._tdf)
-        waiting_time_dist = times["waiting_times"].apply(dist_to_stats)
-        col_names = dist_names("waiting_time")
+        waiting_time_dist = times["waiting_times"].apply(np.mean)  # dist_to_stats)
+        col_names = ["mean_waiting_time"]  # dist_names("waiting_time")
         time_df = pd.DataFrame(waiting_time_dist.tolist(), index=times.index, columns=col_names)
         time_df["uid"] = times["uid"]
         return time_df
@@ -171,7 +172,7 @@ class RawFeatures:
         if features == "default":
             features = self._default_features
         elif features == "all":
-            features = self._all_features  # + ["5_k_gyration", "10_k_gyration", "50_k_gyration"]
+            features = self._all_features
         self._check_implemented(features)
         print("The following features will be computed:", features)
 
