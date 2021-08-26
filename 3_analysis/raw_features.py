@@ -18,7 +18,8 @@ from plotting import scatterplot_matrix
 
 
 class RawFeatures:
-    def __init__(self, study):
+    def __init__(self, study, trips_available=True):
+        self._trips_available = trips_available
         print("Loading data...")
         self._load_data(study)
         self._tdf = self._to_skmob(self._sp, self._locations)
@@ -92,13 +93,14 @@ class RawFeatures:
             index_col="id",
         )
         # get trips
-        self._trips = gpd.GeoDataFrame.from_postgis(
-            sql="SELECT * FROM {}.trips".format(study),
-            con=con,
-            crs=CRS_WGS84,
-            geom_col="geom",  # center for locations
-            index_col="id",
-        )
+        if self._trips_available:
+            self._trips = gpd.GeoDataFrame.from_postgis(
+                sql="SELECT * FROM {}.trips".format(study),
+                con=con,
+                crs=CRS_WGS84,
+                geom_col="geom",  # center for locations
+                index_col="id",
+            )
 
     # ----------- STPS based features -----------------
 
@@ -173,19 +175,17 @@ class RawFeatures:
             features = self._default_features
         elif features == "all":
             features = self._all_features
+        # if trips are not available, exclude those features
+        if not self._trips_available:
+            features = [f for f in features if "trip" not in f]
         self._check_implemented(features)
         print("The following features will be computed:", features)
 
         collect_features = []
         for feat in features:
             print("----- ", feat, "----------")
-            # for radius of gyration, get k
-            if "k_gyration" in feat:
-                k = int(feat.split("_")[0])
-                feat_df = k_radius_of_gyration(self._tdf, k)
-            else:
-                # call corresponding method
-                feat_df = getattr(self, feat)()
+            # call corresponding method
+            feat_df = getattr(self, feat)()
             print(feat_df.columns)
 
             collect_features.append(feat_df)
@@ -203,14 +203,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     study = args.study
-    out_dir = "test_get_all"
+    out_dir = "test"
+
+    trips_available = "tist" not in study  # for tist, the trips are missing
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     out_path = os.path.join(out_dir, f"{study}_raw_features")
 
-    raw_feat = RawFeatures(study)
+    raw_feat = RawFeatures(study, trips_available=trips_available)
     raw_feature_df = raw_feat(features="all")
     raw_feature_df.to_csv(out_path + ".csv")
     print(raw_feature_df.head(10))

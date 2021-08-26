@@ -5,6 +5,7 @@ import psycopg2
 import pickle
 import zlib
 
+
 def horizontal_merge_staypoints(sp, gap_threshold=20, custom_add_dict={}):
     """merge staypoints that are consecutive at the same place"""
     # merge consecutive staypoints
@@ -48,7 +49,7 @@ def horizontal_merge_staypoints(sp, gap_threshold=20, custom_add_dict={}):
         "elevation": "first",
         "location_id": "first",
         "activity": "first",
-        "purpose": list
+        "purpose": list,
     }
 
     agg_dict.update(custom_add_dict)
@@ -98,7 +99,9 @@ def write_graphs_to_postgresql(
     cur.close()
 
 
-def read_graphs_from_postgresql(graph_table_name, psycopg_con, graph_schema_name="public", file_name="graph_data"):
+def read_graphs_from_postgresql(
+    graph_table_name, psycopg_con, graph_schema_name="public", file_name="graph_data", decompress=True
+):
     # retrieve string
     cur = psycopg_con.cursor()
     cur.execute(
@@ -110,6 +113,9 @@ def read_graphs_from_postgresql(graph_table_name, psycopg_con, graph_schema_name
     pickle_string2 = cur.fetchall()[0][0].tobytes()
 
     cur.close()
-    AG_dict2 = pickle.loads(zlib.decompress(pickle_string2))
+    if decompress:
+        AG_dict2 = pickle.loads(zlib.decompress(pickle_string2))
+    else:
+        AG_dict2 = pickle.loads(pickle_string2)
 
     return AG_dict2
