@@ -109,25 +109,29 @@ class activity_graph:
 
         try:
             counts = trips_a.groupby(by=["user_id", "location_id", "location_id_end"]).size().reset_index(name="counts")
+            temp_df = pd.DataFrame(
+                data=[
+                    pd.NA * np.ones(self.all_loc_ids.shape[0]),
+                    self.all_loc_ids,
+                    self.all_loc_ids,
+                    np.zeros(self.all_loc_ids.shape),
+                ],
+                index=["user_id", "location_id", "location_id_end", "counts"],
+            ).transpose()
+            temp_df["user_id"] = counts.iloc[0]["user_id"]
+
+            counts = counts.append(temp_df, ignore_index=True)
+
+
         except ValueError:
             # If there are only rows with nans, groupby throws an error but should
             # return an empty dataframe
             counts = pd.DataFrame(columns=["user_id", "location_id", "location_id_end", "counts"])
+            print("empty user?", staypoints.iloc[0]["user_id"])
         # make sure that all nodes are present when creating the edges
         # append a dataframe of self loops for all locations with weight 0
 
-        temp_df = pd.DataFrame(
-            data=[
-                pd.NA * np.ones(self.all_loc_ids.shape[0]),
-                self.all_loc_ids,
-                self.all_loc_ids,
-                np.zeros(self.all_loc_ids.shape),
-            ],
-            index=["user_id", "location_id", "location_id_end", "counts"],
-        ).transpose()
-        temp_df["user_id"] = counts.iloc[0]["user_id"]
 
-        counts = counts.append(temp_df, ignore_index=True)
         # create Adjacency matrix
         A, location_id_order, name = _create_adjacency_matrix_from_transition_counts(counts)
 
