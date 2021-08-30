@@ -219,5 +219,5 @@ if __name__ == "__main__":
     print(raw_feature_df.shape)
 
     raw_feature_df.dropna(inplace=True)
-    labels = normalize_and_cluster(np.array(raw_feature_df), n_clusters=2)
+    labels = normalize_and_cluster(raw_feature_df, n_clusters=2)
     scatterplot_matrix(raw_feature_df, raw_feature_df.columns, clustering=labels, save_path=out_path + ".pdf")

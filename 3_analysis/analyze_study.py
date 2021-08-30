@@ -8,7 +8,6 @@ from clustering import normalize_and_cluster, decision_tree_cluster
 
 
 def find_k(features):
-
     test_k = np.arange(2, 7, 1)
     scores = []
     for n_clusters in test_k:

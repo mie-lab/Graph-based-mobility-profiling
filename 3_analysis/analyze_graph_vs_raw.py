@@ -177,8 +177,8 @@ if __name__ == "__main__":
     sort_clusters_into_groups(characteristics)
 
     # cluster both with their features, compute similarity:
-    labels_graph = normalize_and_cluster(np.array(graph_features), algorithm=algorithm)
-    labels_raw = normalize_and_cluster(np.array(raw_features), algorithm=algorithm)
+    labels_graph = normalize_and_cluster(graph_features, algorithm=algorithm)
+    labels_raw = normalize_and_cluster(raw_features, algorithm=algorithm)
     print("rand score", adjusted_rand_score(labels_raw, labels_graph))
 
     # get best raw features to explain graph features

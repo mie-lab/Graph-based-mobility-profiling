@@ -58,7 +58,7 @@ for study in ["gc1", "gc2", "yumuv_graph_rep", "geolife", "tist_toph100"]:
 
         # geolife has nan rows, drop them first
         features.dropna(inplace=True)
-        labels = normalize_and_cluster(np.array(features), n_clusters=2)
+        labels = normalize_and_cluster(features, n_clusters=2)
         try:
             scatterplot_matrix(features, features.columns, clustering=labels, save_path=out_path + ".pdf")
         except:

@@ -162,10 +162,10 @@ def compute_all_scores(clustering_1, clustering_2):
     """Print out the comparison scores of two different clusterings
     clustering_1, clustering 2: lists of same length containing cluster for each datapoint
     """
-    print("Adjusted rand score: %0.2f"%adjusted_rand_score(clustering_1, clustering_2))
-    print("Adjusted mutual information score: %0.2f"%adjusted_mutual_info_score(clustering_1, clustering_2))
-    print("Rand score: %0.2f"%compare_clusters_rand_index(clustering_1, clustering_2))
-    print("Chi square score: %0.2f"%compare_clusters_chi_square(clustering_1, clustering_2))
+    print("Adjusted rand score: %0.2f" % adjusted_rand_score(clustering_1, clustering_2))
+    print("Adjusted mutual information score: %0.2f" % adjusted_mutual_info_score(clustering_1, clustering_2))
+    print("Rand score: %0.2f" % compare_clusters_rand_index(clustering_1, clustering_2))
+    print("Chi square score: %0.2f" % compare_clusters_chi_square(clustering_1, clustering_2))
 
 
 if __name__ == "__main__":
@@ -181,6 +181,6 @@ if __name__ == "__main__":
 
     # load features and cluster
     graph_features, raw_features = load_two("out_features", study, node_importance)
-    graph_labels = normalize_and_cluster(np.array(graph_features), n_clusters=n_clusters)
-    raw_labels = normalize_and_cluster(np.array(raw_features), n_clusters=n_clusters)
+    graph_labels = normalize_and_cluster(graph_features, n_clusters=n_clusters)
+    raw_labels = normalize_and_cluster(raw_features, n_clusters=n_clusters)
     compute_all_scores(graph_labels, raw_labels)

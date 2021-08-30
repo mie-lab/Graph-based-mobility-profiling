@@ -10,9 +10,11 @@ def normalize_and_cluster(feature_matrix, algorithm="kmeans", n_clusters=2, impu
     Normalize feature matrix and cluster it
     algorithm: One of kmeans, hierarchical, dbscan
     """
-    if isinstance(feature_matrix, pd.DataFrame):
-        feature_matrix = feature_matrix.dropna()
-        feature_matrix = np.array(feature_matrix)
+    assert isinstance(feature_matrix, pd.DataFrame)
+    prev_len = len(feature_matrix)
+    feature_matrix = feature_matrix.dropna()
+    print("Dropped nans, length now", len(feature_matrix), "vs prev length", prev_len)
+    feature_matrix = np.array(feature_matrix)
     if impute_outliers:
         feature_matrix = outlier_imputation(feature_matrix)
     std_cols = np.std(feature_matrix, axis=0)
