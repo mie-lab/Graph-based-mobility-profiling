@@ -24,7 +24,7 @@ if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
 
-for study in ["gc1", "gc2", "yumuv_graph_rep", "geolife"]:
+for study in ["gc1", "gc2", "yumuv_graph_rep", "geolife", "tist_toph100"]:
     for feat_type in ["raw", "graph"]:
         # for yumuv I don't have the raw data
         if study == "yumuv_graph_rep" and feat_type == "raw":
@@ -35,7 +35,8 @@ for study in ["gc1", "gc2", "yumuv_graph_rep", "geolife"]:
         # Generate feature matrix
         tic = time.time()
         if feat_type == "raw":
-            feat_class = RawFeatures(study)
+            trips_available = "tist" not in study  # for tist, the trips are missing
+            feat_class = RawFeatures(study, trips_available=trips_available)
             select_features = "all"
         else:
             feat_class = GraphFeatures(study, node_importance=node_importance)

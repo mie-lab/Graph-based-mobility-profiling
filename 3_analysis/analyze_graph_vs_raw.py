@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
     get_correlated_features(graph_features, raw_features)
 
-    labels = normalize_and_cluster(graph_features, impute_outliers=True, n_clusters=n_clusters, algorithm=algorithm)
+    labels = normalize_and_cluster(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
 
     # try to characterize clusters
     characteristics = cluster_characteristics(graph_features, labels)

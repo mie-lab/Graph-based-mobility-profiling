@@ -48,18 +48,16 @@ class GraphFeatures:
             "hub_size_random_walk",
         ]
         self.default_features = [
-            "ratio_short_journeys",
             "unique_journeys",
             "mean_journey_length",
             "hub_size_random_walk",
             "transition_hhi",
             "mean_distance_journeys",
-            "degree_hhi",
         ]
         self.all_features = [f for f in dir(self) if not f.startswith("_")]
 
     def load_graphs(self, study, node_importance):
-        graphs, users = load_graphs_postgis(study, node_importance=node_importance, decompress=False)
+        graphs, users = load_graphs_postgis(study, node_importance=node_importance, decompress=True)
         print("loaded graphs", len(graphs))
         return graphs, users
 
@@ -208,6 +206,8 @@ class GraphFeatures:
 
     def mean_journey_length(self, graph):
         cycle_lengths = self._home_cycle_lengths(graph)
+        if len(cycle_lengths) == 0:
+            return 0
         return np.mean(cycle_lengths)
 
     def unique_journeys(self, graph):
@@ -232,7 +232,9 @@ class GraphFeatures:
                 # put into dictionary to hash this sequence
                 unique_journeys[journey_sequence] = 1
 
-        return len(unique_journeys.keys()) / nr_journeys
+        if nr_journeys == 0:
+            return 0
+        return (len(unique_journeys.keys()) / nr_journeys) * self.random_walk_iters
 
     def cycles_2_random_walk(self, graph):
         random_walk_sequence = self._random_walk(graph)
@@ -505,7 +507,7 @@ if __name__ == "__main__":
 
     study = args.study
     node_importance = args.nodes
-    out_dir = "test"
+    out_dir = "final_1"
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)

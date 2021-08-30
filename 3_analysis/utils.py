@@ -283,7 +283,7 @@ def split_yumuv_control_group(df):
     Splits dataframe into users which are in treatment group (study_id: 22) and the ones that are in control group
     (study_id: 23)
     """
-    user_info = load_user_info("yumuv_graph_rep", index_col="app_user_id")
+    user_info = load_user_info("yumuv_graph_rep", index_col="user_id")
     users_tg = user_info[user_info["study_id"] == 22].index
     users_cg = user_info[user_info["study_id"] == 23].index
     print("users in control group:", len(users_cg), "users in treatment group:", len(users_tg))
