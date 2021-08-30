@@ -46,17 +46,15 @@ def mean_features_by_study(features, out_path=None):
 
 
 if __name__ == "__main__":
-    STUDIES = ["gc1", "gc2", "tist_toph100"]  #  "geolife", "yumuv_graph_rep",
+    STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
     # parameters
-    path = "final_1"
-    n_clusters = 2
+    path = "final_1_cleaned"
+    n_clusters = len(STUDIES)
     node_importance = 0
-    feature_type = "raw"
+    feature_type = "graph"
 
     features_all_datasets = load_all(path, type=feature_type, node_importance=node_importance)
-    cluster_labels = normalize_and_cluster(
-        features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters
-    )
+    cluster_labels = normalize_and_cluster(features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters)
     print(np.unique(cluster_labels, return_counts=True))
     # compare relation between cluster and study labels
     compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
