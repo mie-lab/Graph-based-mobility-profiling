@@ -223,13 +223,21 @@ def graph_dict_to_list(graph_dict, node_importance=50):
     users = []
     nx_graphs = []
     for user_id, ag in graph_dict.items():
-        users.append(user_id)
         if node_importance == 0:
             ag_sub = ag.G
         else:
-            # TODO: rewrite k importance nodes such that it is filtered by the fraction of occurence, not the abs number
             important_nodes = ag.get_k_importance_nodes(node_importance)
             ag_sub = ag.G.subgraph(important_nodes)
+
+        # delete edges with transition weight 0:
+        edges_to_delete = [(a, b) for a, b, attrs in ag_sub.edges(data=True) if attrs["weight"] < 1]
+        if len(edges_to_delete) > 0:
+            # print("delete edges of user", user_id, "nr edges", len(edges_to_delete))
+            ag_sub.remove_edges_from(edges_to_delete)
+        if ag_sub.number_of_edges() == 0:
+            print("zero edges for user", user_id, " --> skip!")
+            continue
+        users.append(user_id)
         nx_graphs.append(ag_sub)
     return nx_graphs, users
 
@@ -258,7 +266,21 @@ def get_con():
     return con
 
 
-def load_graphs_postgis(study, node_importance=50, decompress=True):
+def load_graphs_cross_sectional(before_or_after="before", node_importance=0):
+    con = get_con()
+    graph_table_name = "before_after" if before_or_after != "full" else "full_graph"
+    graph_dict = read_graphs_from_postgresql(
+        graph_table_name=graph_table_name,
+        psycopg_con=con,
+        graph_schema_name="yumuv_graph_rep",
+        file_name=before_or_after,
+        decompress=True,
+    )
+    nx_graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
+    return nx_graphs, users
+
+
+def load_graphs_postgis(study, node_importance=0, decompress=True):
     # load login data
     con = get_con()
     graph_dict = read_graphs_from_postgresql(

@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 from utils import split_yumuv_control_group
-from clustering import normalize_and_cluster
+from clustering import ClusterWrapper
 from plotting import scatterplot_matrix
 from graph_features import GraphFeatures
 from raw_features import RawFeatures
@@ -49,6 +49,7 @@ def clean_features(path, cutoff=4):
         outlier_arr = np.array(outlier_arr)
         #     print(outlier_arr.shape)
         outlier_arr = np.any(outlier_arr, axis=0)
+        print("removed users", list(feature_df[outlier_arr].index))
         feature_df = feature_df[~outlier_arr]
         print(len(feature_df))
 
@@ -56,26 +57,13 @@ def clean_features(path, cutoff=4):
         graph_features.to_csv(os.path.join(out_path, f))
         if "yumuv" not in f:
             raw_features = raw_features[raw_features.index.isin(feature_df.index)]
-            graph_features.to_csv(os.path.join(out_path, f).replace("graph", "raw"))
+            raw_features.to_csv(os.path.join(out_path, f).replace("graph", "raw"))
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--out_dir", type=str, default="out_features", help="output directory")
-    parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set -1 for all nodes")
-    args = parser.parse_args()
+def get_graph_and_raw(out_dir, node_importance):
 
-    out_dir = args.out_dir
-    node_importance = args.nodes
-
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    for study in ["gc1", "gc2", "yumuv_graph_rep", "geolife", "tist_toph100"]:
+    for study in ["gc1", "gc2", "geolife", "tist_toph100"]:
         for feat_type in ["raw", "graph"]:
-            # for yumuv I don't have the raw data
-            if study == "yumuv_graph_rep" and feat_type == "raw":
-                continue
 
             print(" -------------- PROCESS", study, feat_type, " ---------------")
 
@@ -97,18 +85,44 @@ if __name__ == "__main__":
 
             features.to_csv(out_path + ".csv")
 
-            # for yumuv: split in cg and tg
-            if study == "yumuv_graph_rep":
-                cg, tg = split_yumuv_control_group(features)
-                cg.to_csv(out_path.replace("yumuv_graph_rep", "yumuv_cg") + ".csv")
-                tg.to_csv(out_path.replace("yumuv_graph_rep", "yumuv_tg") + ".csv")
-
             # geolife has nan rows, drop them first
             features.dropna(inplace=True)
-            labels = normalize_and_cluster(features, n_clusters=2)
+            cluster_wrapper = ClusterWrapper()
+            labels = cluster_wrapper(features, n_clusters=2)
             try:
                 scatterplot_matrix(features, features.columns, clustering=labels, save_path=out_path + ".pdf")
             except:
                 continue
 
     clean_features(out_dir)
+
+
+def get_yumuv(out_dir, node_importance):
+
+    print("Run yumuv before")
+    runner_before_feat = GraphFeatures("yumuv_before", node_importance=node_importance)
+    before_features = runner_before_feat(features="default")
+
+    print("Run yumuv after")
+    runner_after_feat = GraphFeatures("yumuv_after", node_importance=node_importance)
+    after_features = runner_after_feat(features="default")
+
+    # split in cg and tg
+    for features, name in zip([before_features, after_features], ["before", "after"]):
+        tg, cg = split_yumuv_control_group(features)
+        cg.to_csv(os.path.join(out_dir, f"yumuv_{name}_cg_graph_features_{node_importance}.csv"))
+        tg.to_csv(os.path.join(out_dir, f"yumuv_{name}_tg_graph_features_{node_importance}.csv"))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-o", "--out_dir", type=str, default="out_features/test", help="output directory")
+    parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set 0 for all nodes")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.out_dir):
+        os.makedirs(args.out_dir)
+
+    # Process graph and raw features for all studies except yumuv
+    # get_graph_and_raw(args.out_dir, args.nodes)
+    get_yumuv(args.out_dir, args.nodes)

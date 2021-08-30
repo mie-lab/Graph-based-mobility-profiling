@@ -25,7 +25,14 @@ class GraphFeatures:
         # self.graphs, self.users = load_graphs_pkl(
         #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
         # )
-        self.graphs, self.users = self.load_graphs(study, node_importance)
+        if "yumuv" in study:
+            # for yumuv: get before or after
+            assert study[:6] == "yumuv_", "must be named yumuv_before, yumuv_after or yumuv_full"
+            before_or_after = study.split("_")[1]
+            self.graphs, self.users = load_graphs_cross_sectional(before_or_after, node_importance)
+        else:
+            self.graphs, self.users = self.load_graphs(study, node_importance)
+        print("Loaded data", len(self.graphs))
 
         # specify necessary parameters for the feature extraction
         self.random_walk_iters = random_walk_iters
@@ -97,7 +104,9 @@ class GraphFeatures:
                 delayed(compute_feat)(graph, features) for graph in self.graphs
             )
         else:
-            feature_matrix = [compute_feat(graph, features) for graph in self.graphs]
+            feature_matrix = []
+            for user, graph in zip(self.users, self.graphs):
+                feature_matrix.append(compute_feat(graph, features))
         feature_matrix = np.array(feature_matrix)
         print("feature matrix shape", feature_matrix.shape)
         # convert to dataframe
@@ -147,7 +156,11 @@ class GraphFeatures:
             # check if we are at a dead end OR if we get stuck at one node and only make cycles of len 1 there
             at_dead_end = len(neighbor_edges) == 0
             at_inf_loop = len(neighbor_edges) == 1 and [n[1] for n in neighbor_edges][0] == current_node
-            if at_dead_end or at_inf_loop:
+            # or we have a transition weight of 0
+            at_zero_transition = (
+                len(neighbor_edges) > 0 and np.sum(np.array([n[2]["weight"] for n in neighbor_edges])) == 0
+            )
+            if at_dead_end or at_inf_loop or at_zero_transition:
                 # increase number of walks counter
                 number_of_walks += 1
                 # reset current node
@@ -160,8 +173,11 @@ class GraphFeatures:
                 reset_to_home.append(step + 1 + prev_added)
 
             out_weights = np.array([n[2]["weight"] for n in neighbor_edges])
+            out_weights = out_weights[~np.isnan(out_weights)]
             out_probs = out_weights / np.sum(out_weights)
             next_node = [n[1] for n in neighbor_edges]
+            if np.any(np.isnan(out_probs)):
+                print(out_probs, out_weights, at_zero_transition)
             # draw one neightbor randomly, weighted by transition count
             current_node = np.random.choice(next_node, p=out_probs)
             # print("used node with weight", out_weights[next_node.index(current_node)])
@@ -323,6 +339,8 @@ class GraphFeatures:
                     for i in range(len(locs_on_journey) - 1)
                 ]
                 journey_distances.append(np.sum(distances))
+        if len(journey_distances) == 0:
+            return 0
         return np.median(journey_distances)
 
     def ratio_nodes_random_walk(self, graph):
@@ -507,7 +525,7 @@ if __name__ == "__main__":
 
     study = args.study
     node_importance = args.nodes
-    out_dir = "final_1"
+    out_dir = "out_features/test"
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)

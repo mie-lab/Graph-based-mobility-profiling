@@ -7,39 +7,58 @@ import os
 import json
 import scipy
 
-from clustering import normalize_and_cluster, decision_tree_cluster
+from clustering import ClusterWrapper, decision_tree_cluster
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import adjusted_rand_score
 
+
+# groups = {
+#     "travelers": {
+#         "mean_distance_random_walk": "high",
+#         "cycle_length_mu": "high",
+#         "core_periphery_random_walk": "high",
+#         "ratio_nodes_random_walk": "low",
+#     },
+#     "city_people": {
+#         "mean_distance_random_walk": "low",
+#         "cycle_length_mu": "high",
+#         "cycle_length_sigma": "low",
+#         "core_periphery_random_walk": "low",
+#         "ratio_nodes_random_walk": "high",
+#         "simple_powerlaw_transitions": "low",
+#     },
+#     "unpredictable": {
+#         "cycle_length_mu": "high",
+#         "core_periphery_random_walk": "high",
+#         "simple_powerlaw_transitions": "high",
+#         "ratio_nodes_random_walk": "low",
+#     },
+#     "inactive": {
+#         "mean_distance_random_walk": "low",
+#         "cycle_length_mu": "low",
+#         "cycle_length_sigma": "high",
+#         "core_periphery_random_walk": "low",
+#         "ratio_nodes_random_walk": "high",
+#     },
+# }
+
 groups = {
-    "travelers": {
-        "mean_distance_random_walk": "high",
-        "cycle_length_mu": "high",
-        "core_periphery_random_walk": "high",
-        "ratio_nodes_random_walk": "low",
+    "travellers": {"unique_journeys": "high", "mean_distance_journeys": "high", "mean_journey_length": "high"},
+    "city_people/outgoing": {
+        "mean_distance_journeys": "low",
+        "hub_size_random_walk": "high",
+        "mean_journey_length": "high",
     },
-    "city_people": {
-        "mean_distance_random_walk": "low",
-        "cycle_length_mu": "high",
-        "cycle_length_sigma": "low",
-        "core_periphery_random_walk": "low",
-        "ratio_nodes_random_walk": "high",
-        "simple_powerlaw_transitions": "low",
-    },
-    "unpredictable": {
-        "cycle_length_mu": "high",
-        "core_periphery_random_walk": "high",
-        "simple_powerlaw_transitions": "high",
-        "ratio_nodes_random_walk": "low",
-    },
-    "inactive": {
-        "mean_distance_random_walk": "low",
-        "cycle_length_mu": "low",
-        "cycle_length_sigma": "high",
-        "core_periphery_random_walk": "low",
-        "ratio_nodes_random_walk": "high",
+    "pendler": {"mean_distance_journeys": "high", "hub_size_random_walk": "low", "mean_journey_length": "high"},
+    "distributed_small": {"transition_hhi": "low", "mean_distance_journeys": "low"},
+    "home_sitters": {
+        "mean_distance_journeys": "low",
+        "hub_size_random_walk": "low",
+        "unique_journeys": "low",
+        "transition_hhi": "high",
     },
 }
+
 interpret_dict = {
     "mean_distance_random_walk": {"high": "high distances", "low": "low distances"},
     "cycle_length_mu": {"high": "high variance of cycle lengths", "low": "low variance of cycle length"},
@@ -69,8 +88,6 @@ def cluster_characteristics(in_features, cluster_labels=None):
             # skip cluster column
             if column == "cluster":
                 continue
-            if "waiting_time" in column and column != "waiting_time_mean":
-                continue
             this_cluster = features.loc[features["cluster"] == cluster, column]
             other_clusters = features.loc[features["cluster"] != cluster, column]
             #         print(this_cluster)
@@ -79,8 +96,8 @@ def cluster_characteristics(in_features, cluster_labels=None):
             res, p_value = scipy.stats.mannwhitneyu(this_cluster, other_clusters)
             direction = "low" if np.mean(this_cluster) < np.mean(other_clusters) else "high"
             if p_value < 0.05:
-                #                 print(f"{direction} {column} (p-value:{round(p_value, 3)})")
-                print(interpret_dict[column][direction])
+                print(f"{direction} {column} (p-value:{round(p_value, 3)})")
+                # print(interpret_dict[column][direction])
                 characteristics[cluster][column] = direction
             else:
                 # TODO: middle features? compare to each cluster?
@@ -88,12 +105,13 @@ def cluster_characteristics(in_features, cluster_labels=None):
     return characteristics
 
 
-def sort_clusters_into_groups(characteristics):
+def sort_clusters_into_groups(characteristics, min_equal=1):
     print("--------- Sorting cluster into predefined groups ------------")
     for cluster, cluster_characteristics in characteristics.items():
         # check whether we can put it in any group:
         for group_name, group in groups.items():
-            is_group = True
+            is_group = False
+            equal_feats = 0
             for key, val in cluster_characteristics.items():
                 # maybe group is not characterized by this
                 if key not in group:
@@ -101,6 +119,12 @@ def sort_clusters_into_groups(characteristics):
                 # not part of group if one characteristic is different
                 if group[key] != val:
                     is_group = False
+                    break
+                else:
+                    equal_feats += 1
+                    if equal_feats > min_equal:
+                        is_group = True
+
             if is_group:
                 print(f"Cluster {cluster} is part of group", group_name)
                 break
@@ -138,6 +162,8 @@ def returner_explorers(path_to_returner, graph_features):
     k_returners["explorer"] = k_returners["k_returner"].apply(lambda x: x > median_k)
     # align index
     k_returners = k_returners.loc[graph_features.index]
+    # set the returner vs explorer feature as index
+    print("NOTE: cluster 0 are returners, cluster 1 are explorers")
     graph_features.loc[k_returners.index, "cluster"] = k_returners["explorer"].astype(int)
 
     print("Features that are significantly different between returners and explorers:")
@@ -152,9 +178,8 @@ def returner_explorers(path_to_returner, graph_features):
 
 
 if __name__ == "__main__":
-
-    path = "gc_case_study"
-    study = "gc1"
+    path = "final_1_cleaned"
+    study = "gc2"
     node_importance = 0
     n_clusters = 4
     algorithm = "kmeans"
@@ -170,15 +195,17 @@ if __name__ == "__main__":
 
     get_correlated_features(graph_features, raw_features)
 
-    labels = normalize_and_cluster(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
+    cluster_wrapper = ClusterWrapper()
+    labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
 
     # try to characterize clusters
     characteristics = cluster_characteristics(graph_features, labels)
     sort_clusters_into_groups(characteristics)
+    print("\n ----------------------------------- \n")
 
     # cluster both with their features, compute similarity:
-    labels_graph = normalize_and_cluster(graph_features, algorithm=algorithm)
-    labels_raw = normalize_and_cluster(raw_features, algorithm=algorithm)
+    labels_graph = cluster_wrapper(graph_features, algorithm=algorithm)
+    labels_raw = cluster_wrapper(raw_features, algorithm=algorithm)
     print("rand score", adjusted_rand_score(labels_raw, labels_graph))
 
     # get best raw features to explain graph features
@@ -186,11 +213,11 @@ if __name__ == "__main__":
 
     raw_filtered = raw_features[selected_features]
     print("Selected columns", raw_filtered.columns)
-    raw_labels_filtered = normalize_and_cluster(raw_filtered, algorithm=algorithm)
+    raw_labels_filtered = cluster_wrapper(raw_filtered, algorithm=algorithm)
     print("rand score", adjusted_rand_score(raw_labels_filtered, labels_graph))
 
     # get five most important features:
     # important_feature_inds = np.argsort(feature_importances)[-5:]
     # print(np.array(raw_features.columns)[important_feature_inds], feature_importances[important_feature_inds])
 
-    # returner_explorers("test_get_all/gc1_returner_explorer.csv", graph_features)
+    returner_explorers(os.path.join(path, f"{study}_returner_explorer.csv"), graph_features)

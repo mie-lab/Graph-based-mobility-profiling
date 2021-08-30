@@ -4,7 +4,7 @@ import argparse
 import pandas as pd
 
 from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score
-from clustering import normalize_and_cluster
+from clustering import ClusterWrapper
 
 """
 Functions to evaluate clustering: 
@@ -181,6 +181,7 @@ if __name__ == "__main__":
 
     # load features and cluster
     graph_features, raw_features = load_two("out_features", study, node_importance)
-    graph_labels = normalize_and_cluster(graph_features, n_clusters=n_clusters)
-    raw_labels = normalize_and_cluster(raw_features, n_clusters=n_clusters)
+    cluster_wrapper = ClusterWrapper
+    graph_labels = cluster_wrapper(graph_features, n_clusters=n_clusters)
+    raw_labels = cluster_wrapper(raw_features, n_clusters=n_clusters)
     compute_all_scores(graph_labels, raw_labels)

@@ -4,26 +4,48 @@ from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 
 algorithm_dict = {"kmeans": KMeans, "hierarchical": AgglomerativeClustering, "dbscan": DBSCAN}
 
+from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 
-def normalize_and_cluster(feature_matrix, algorithm="kmeans", n_clusters=2, impute_outliers=False, return_normed=False):
-    """
-    Normalize feature matrix and cluster it
-    algorithm: One of kmeans, hierarchical, dbscan
-    """
-    assert isinstance(feature_matrix, pd.DataFrame)
-    prev_len = len(feature_matrix)
-    feature_matrix = feature_matrix.dropna()
-    print("Dropped nans, length now", len(feature_matrix), "vs prev length", prev_len)
-    feature_matrix = np.array(feature_matrix)
-    if impute_outliers:
-        feature_matrix = outlier_imputation(feature_matrix)
-    std_cols = np.std(feature_matrix, axis=0)
-    means_cols = np.mean(feature_matrix, axis=0)
-    normed_feature_matrix = (feature_matrix - means_cols) / std_cols
-    kmeans = algorithm_dict[algorithm](n_clusters=n_clusters).fit(normed_feature_matrix)
-    if return_normed:
-        return kmeans.labels_, normed_feature_matrix
-    return kmeans.labels_
+
+class ClusterWrapper:
+    def __init__(self):
+        self.algorithm_dict = {"kmeans": KMeans, "hierarchical": AgglomerativeClustering, "dbscan": DBSCAN}
+        self.cluster_centers = None
+
+    def __call__(self, feature_matrix, algorithm="kmeans", n_clusters=2, impute_outliers=False, return_normed=False):
+        """
+        Normalize feature matrix and cluster it
+        algorithm: One of kmeans, hierarchical, dbscan
+        """
+        assert isinstance(feature_matrix, pd.DataFrame)
+        prev_len = len(feature_matrix)
+        # feature_matrix = feature_matrix.dropna()
+        # print("Dropped nans, length now", len(feature_matrix), "vs prev length", prev_len)
+        feature_matrix = np.array(feature_matrix)
+        if impute_outliers:
+            feature_matrix = outlier_imputation(feature_matrix)
+        self.std_cols = np.std(feature_matrix, axis=0)
+        self.means_cols = np.mean(feature_matrix, axis=0)
+        normed_feature_matrix = self.normalize(feature_matrix)
+        kmeans = algorithm_dict[algorithm](n_clusters=n_clusters).fit(normed_feature_matrix)
+        # save cluster centers
+        self.cluster_centers = kmeans.cluster_centers_
+
+        if return_normed:
+            return kmeans.labels_, normed_feature_matrix
+        return kmeans.labels_
+
+    def normalize(self, data):
+        return (data - self.means_cols) / self.std_cols
+
+    def transform(self, data):
+        if self.cluster_centers is None:
+            raise RuntimeError("Must first call the class to create a clustering!")
+        normed = self.normalize(np.array(data))
+        labels = []
+        for feat in normed:
+            labels.append(np.argmin([np.linalg.norm(feat - center) for center in self.cluster_centers]))
+        return labels
 
 
 def outlier_imputation(features, cutoff=3):

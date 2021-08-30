@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from clustering import normalize_and_cluster
+from clustering import ClusterWrapper
 from compare_clustering import compute_all_scores
 
 
@@ -54,7 +54,8 @@ if __name__ == "__main__":
     feature_type = "graph"
 
     features_all_datasets = load_all(path, type=feature_type, node_importance=node_importance)
-    cluster_labels = normalize_and_cluster(features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters)
+    cluster_wrapper = ClusterWrapper()
+    cluster_labels = cluster_wrapper(features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters)
     print(np.unique(cluster_labels, return_counts=True))
     # compare relation between cluster and study labels
     compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))

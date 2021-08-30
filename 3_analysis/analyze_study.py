@@ -4,14 +4,15 @@ import pandas as pd
 from sklearn.metrics import silhouette_score
 
 from utils import load_user_info
-from clustering import normalize_and_cluster, decision_tree_cluster
+from clustering import ClusterWrapper, decision_tree_cluster
 
 
 def find_k(features):
     test_k = np.arange(2, 7, 1)
     scores = []
     for n_clusters in test_k:
-        labels, normed_feature_matrix = normalize_and_cluster(features, n_clusters=n_clusters, return_normed=True)
+        cluster_wrapper = ClusterWrapper()
+        labels, normed_feature_matrix = cluster_wrapper(features, n_clusters=n_clusters, return_normed=True)
         print()
         print(n_clusters)
         print("Number of samples per cluster", np.unique(labels, return_counts=True))
@@ -112,7 +113,8 @@ if __name__ == "__main__":
     opt_k = find_k(features)
     print("Optimal k", opt_k)
 
-    labels = normalize_and_cluster(features, n_clusters=opt_k)
+    cluster_wrapper = ClusterWrapper()
+    labels = cluster_wrapper(features, n_clusters=opt_k)
 
     # print decision tree:
     feature_importances = decision_tree_cluster(features, labels)
