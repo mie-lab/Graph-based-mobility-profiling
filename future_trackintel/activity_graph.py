@@ -7,7 +7,11 @@ import networkx as nx
 from scipy.sparse import coo_matrix
 import matplotlib.pyplot as plt
 import functools
-from future_trackintel.activity_graphs_utils import draw_smopy_basemap, nx_coordinate_layout_smopy, initialize_multigraph
+from future_trackintel.activity_graphs_utils import (
+    draw_smopy_basemap,
+    nx_coordinate_layout_smopy,
+    initialize_multigraph,
+)
 from future_trackintel.activity_graphs_utils import haversine_dist_of_shapely_objs as h_dist
 from pathlib import Path
 
@@ -18,6 +22,7 @@ class activity_graph:
         self.node_feature_names = node_feature_names
         self.user_id = staypoints["user_id"].iloc[0]
         self.init_activity_dict()
+        self.all_loc_ids = locations.index.unique().values
         if trips is not None:
             self.validate_user(trips, locations)
             self.weights_transition_count_trips(trips=trips, staypoints=staypoints)
@@ -51,9 +56,9 @@ class activity_graph:
             f"data have staypoints: {user_locations} and locations: {user_locations}"
         )
 
-    def add_node_features_from_staypoints(self, sp, agg_dict={'started_at': list,
-                                                              'finished_at': list,
-                                                              "purpose": list}):
+    def add_node_features_from_staypoints(
+        self, sp, agg_dict={"started_at": list, "finished_at": list, "purpose": list}
+    ):
         """
         agg_dict is a dictionary passed on to pandas dataframe.agg()
 
@@ -61,7 +66,7 @@ class activity_graph:
         sp_grp_by_loc = sp.groupby("location_id").agg(agg_dict)
 
         for node_id, node_data in self.G.nodes(data=True):
-            location_id = node_data['location_id']
+            location_id = node_data["location_id"]
             self.G.nodes[node_id].update(sp_grp_by_loc.loc[location_id].to_dict())
 
     def weights_transition_count_trips(self, trips, staypoints, adjacency_dict=None):
@@ -108,7 +113,21 @@ class activity_graph:
             # If there are only rows with nans, groupby throws an error but should
             # return an empty dataframe
             counts = pd.DataFrame(columns=["user_id", "location_id", "location_id_end", "counts"])
+        # make sure that all nodes are present when creating the edges
+        # append a dataframe of self loops for all locations with weight 0
 
+        temp_df = pd.DataFrame(
+            data=[
+                pd.NA * np.ones(self.all_loc_ids.shape[0]),
+                self.all_loc_ids,
+                self.all_loc_ids,
+                np.zeros(self.all_loc_ids.shape),
+            ],
+            index=["user_id", "location_id", "location_id_end", "counts"],
+        ).transpose()
+        temp_df["user_id"] = counts.iloc[0]["user_id"]
+
+        counts = counts.append(temp_df, ignore_index=True)
         # create Adjacency matrix
         A, location_id_order, name = _create_adjacency_matrix_from_transition_counts(counts)
 
@@ -225,10 +244,12 @@ class activity_graph:
         G_dict = {}
         # we want the location id
         locations.index.name = "location_id"
+        assert locations.index.is_unique
+
         locations.reset_index(inplace=True)
         locations = locations.set_index("user_id", drop=False)
         locations.index.name = "user_id_ix"
-        locations.sort_index(inplace=True)
+        locations.sort_values(by='location_id', inplace=True)
 
         if "extent" not in locations.columns:
             locations["extent"] = pd.NA
@@ -245,7 +266,10 @@ class activity_graph:
             A = A_list[ix]
             location_id_order = location_id_order_list[ix]
             edge_name = edge_name_list[ix]
-            # todo: assert location_id_order
+            # assert location_id_order
+            for node_ix, location_id in enumerate(location_id_order):
+                assert location_id == G.nodes[node_ix]['location_id']
+
             G_temp = nx.from_scipy_sparse_matrix(A, create_using=nx.MultiDiGraph())
             edge_list = nx.to_edgelist(G_temp)
 
@@ -256,6 +280,8 @@ class activity_graph:
 
             G.add_edges_from(edge_list, weight="weight")
             G.graph["edge_keys"].append(edge_name)
+
+            assert len(G.nodes) == A.shape[0]
 
         return G
 
@@ -328,7 +354,7 @@ class activity_graph:
                 with_labels=False,
                 node_size=node_sizes,
                 pos=nx_coordinate_layout_smopy(G, smap),
-                connectionstyle="arc3, rad = 0.1",
+                # connectionstyle="arc3, rad = 0.1",
             )
 
         elif layout == "spring":

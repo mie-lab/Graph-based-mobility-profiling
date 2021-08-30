@@ -31,11 +31,18 @@ def get_engine(study, return_con=False):
     else:
         return engine
 
+
 study = "yumuv_graph_rep"
 
-pkl_name = open(os.path.join('D:/', 'temp', "yumuv_userinfo.pkl"), "rb")
+pkl_name = open(os.path.join("D:/", "temp", "yumuv_userinfo.pkl"), "rb")
 user_info = pickle.load(pkl_name)
 
 engine = get_engine(study, return_con=False)
 
-user_info.to_sql(con=engine, schema='yumuv_graph_rep', name='user_info', index=False)
+user_info.to_sql(con=engine, schema="yumuv_graph_rep", name="user_info", index=False, if_exists="replace")
+con = engine.connect()
+con.execute(
+    """GRANT SELECT, INSERT, UPDATE, DELETE
+ON ALL TABLES IN SCHEMA yumuv_graph_rep
+TO wnina;"""
+)
