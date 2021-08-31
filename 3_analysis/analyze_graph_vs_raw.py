@@ -169,17 +169,17 @@ def returner_explorers(path_to_returner, graph_features):
     print("Features that are significantly different between returners and explorers:")
     cluster_characteristics(graph_features)
 
-    print("Feature importances to predict returners and explorers according to decision tree:")
-    feature_importances = decision_tree_cluster(
-        graph_features.drop(columns=["cluster"]), graph_features["cluster"].values
-    )
-    important_feature_inds = np.flip(np.argsort(feature_importances)[-4:])
-    print(np.array(graph_features.columns)[important_feature_inds], feature_importances[important_feature_inds])
+    # print("Feature importances to predict returners and explorers according to decision tree:")
+    # feature_importances = decision_tree_cluster(
+    #     graph_features.drop(columns=["cluster"]), graph_features["cluster"].values
+    # )
+    # important_feature_inds = np.flip(np.argsort(feature_importances)[-4:])
+    # print(np.array(graph_features.columns)[important_feature_inds], feature_importances[important_feature_inds])
 
 
 if __name__ == "__main__":
-    path = "final_1_cleaned"
-    study = "gc2"
+    path = "out_features/final_1_cleaned"
+    study = "gc1"
     node_importance = 0
     n_clusters = 4
     algorithm = "kmeans"
@@ -206,18 +206,20 @@ if __name__ == "__main__":
     # cluster both with their features, compute similarity:
     labels_graph = cluster_wrapper(graph_features, algorithm=algorithm)
     labels_raw = cluster_wrapper(raw_features, algorithm=algorithm)
-    print("rand score", adjusted_rand_score(labels_raw, labels_graph))
+    print("rand score before", adjusted_rand_score(labels_raw, labels_graph))
 
     # get best raw features to explain graph features
     selected_features, importances = get_important_features(raw_features, labels)
 
     raw_filtered = raw_features[selected_features]
-    print("Selected columns", raw_filtered.columns)
+    print("Selected raw features to predict graph features:", list(raw_filtered.columns))
     raw_labels_filtered = cluster_wrapper(raw_filtered, algorithm=algorithm)
-    print("rand score", adjusted_rand_score(raw_labels_filtered, labels_graph))
+    print("rand score after filtering", adjusted_rand_score(raw_labels_filtered, labels_graph))
 
     # get five most important features:
     # important_feature_inds = np.argsort(feature_importances)[-5:]
     # print(np.array(raw_features.columns)[important_feature_inds], feature_importances[important_feature_inds])
-
-    returner_explorers(os.path.join(path, f"{study}_returner_explorer.csv"), graph_features)
+    returner_path = os.path.join(path, f"{study}_returner_explorer.csv")
+    if os.path.exists(returner_path):
+        print("\n ------------------ Returner explorer ----------------")
+        returner_explorers(returner_path, graph_features)

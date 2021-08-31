@@ -236,6 +236,12 @@ class RawFeatures:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
+    parser.add_argument(
+        "-e",
+        "--explorer",
+        action="store_true",
+        help="Compute not the feature, but instead only the returner explorer info?",
+    )
     args = parser.parse_args()
 
     study = args.study
@@ -249,13 +255,18 @@ if __name__ == "__main__":
     out_path = os.path.join(out_dir, f"{study}_raw_features")
 
     raw_feat = RawFeatures(study, trips_available=trips_available)
-    raw_feat._returner_explorer("final_1_cleaned")
-    # raw_feature_df = raw_feat(features="all")
-    # raw_feature_df.to_csv(out_path + ".csv")
-    # print(raw_feature_df.head(10))
-    # print(raw_feature_df.shape)
+    # compute only the returners and explorers
+    if args.explorer:
+        print("Compute returners and explorers")
+        raw_feat._returner_explorer(out_dir)
+        exit()
+    # compute features
+    raw_feature_df = raw_feat(features="all")
+    raw_feature_df.to_csv(out_path + ".csv")
+    print(raw_feature_df.head(10))
+    print(raw_feature_df.shape)
 
-    # raw_feature_df.dropna(inplace=True)
-    # cluster_wrapper = ClusterWrapper()
-    # labels = cluster_wrapper(raw_feature_df, n_clusters=2)
-    # scatterplot_matrix(raw_feature_df, raw_feature_df.columns, clustering=labels, save_path=out_path + ".pdf")
+    raw_feature_df.dropna(inplace=True)
+    cluster_wrapper = ClusterWrapper()
+    labels = cluster_wrapper(raw_feature_df, n_clusters=2)
+    scatterplot_matrix(raw_feature_df, raw_feature_df.columns, clustering=labels, save_path=out_path + ".pdf")

@@ -52,7 +52,7 @@ def plot_longitudinal(before_after_cluster):
 
 
 if __name__ == "__main__":
-    path = "out_features/cross_sectional"
+    path = "out_features/final_1_cleaned"
     node_importance = 0
     n_clusters = 3
 

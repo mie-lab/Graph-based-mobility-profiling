@@ -48,7 +48,7 @@ def mean_features_by_study(features, out_path=None):
 if __name__ == "__main__":
     STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
     # parameters
-    path = "final_1_cleaned"
+    path = "out_features/final_1_cleaned"
     n_clusters = len(STUDIES)
     node_importance = 0
     feature_type = "graph"

@@ -38,7 +38,7 @@ def _rename_nans(df_raw, label, cluster):
     return df_in
 
 
-def entropy(df_in, label, cluster, treat_nans="remove"):
+def entropy(df_in, label, cluster, treat_nans="remove", print_parts=False):
     """Entropy of labels over the clusters. See Ben-Gal et al paper"""
     # clean the nans:
     if treat_nans == "remove":
@@ -55,10 +55,11 @@ def entropy(df_in, label, cluster, treat_nans="remove"):
         # number of points in this cluster
         n_k = len(cluster_df)
         uni, counts = np.unique(cluster_df[label].values, return_counts=True)
+        if print_parts:
+            print(c, counts, uni)
         # compute entropy of
         inner_entropy = 0
         for (u, c) in zip(uni, counts):
-            # print(u, c/n_k)
             inner_entropy += (c / n_k) * np.log2(c / n_k)
         # overall entropy is weighted sum of inner entropy
         entropy -= inner_entropy * (n_k / n)
@@ -100,11 +101,42 @@ def get_numeric_columns(df):
     return [d for d in all_numeric if not "id" in d]
 
 
+def load_all_questions(path="yumuv_data/yumuv_questions_all.csv"):
+    return pd.read_csv(path, index_col="qname")
+
+
+def load_question_mapping(before_after="before", group="cg"):
+    if before_after == "before":
+        group = ""
+    question_mapping = pd.read_csv(f"yumuv_data/yumuv_{before_after}_{group}.csv", delimiter=";").drop(
+        columns="Unnamed: 0"
+    )
+    # only the qname leads to unique questions
+    return question_mapping.set_index("qname")
+
+
+def get_q_for_col(col, questions):
+    if col[0] == "q":
+        col_to_qname = "Q" + col.split("_")[0][1:]
+    else:
+        col_to_qname = col
+    try:
+        corresponding_q = questions.loc[col_to_qname]["question"]
+    except KeyError:
+        corresponding_q = col
+    return corresponding_q
+
+
 if __name__ == "__main__":
     study = "yumuv_graph_rep"
     feat_type = "graph"
     node_importance = 0
-    path = "final_1"
+    path = "out_features/final_1_cleaned"
+
+    # Load the question mapping
+    if "yumuv" in study:
+        questions = load_all_questions()
+    # study = "yumuv_before"
 
     name = f"{study}_{feat_type}_features_{node_importance}.csv"
     features = pd.read_csv(os.path.join(path, name), index_col="user_id")
@@ -149,11 +181,18 @@ if __name__ == "__main__":
             continue
         not_nan = pd.isna(joined[col]).sum()
         if not_nan / len(joined) > 0.5:
-            print("Skipping because too many missing values:", col)
+            # print("Skipping because too many missing values:", col)
             continue
 
-        print("------", col, "------")
         # entropy is not symmetric, compute both
         entropy_1 = entropy(joined, col, "cluster")
-        entropy_2 = entropy(joined, "cluster", col)
-        print("Entropy:", round(entropy_1, 2), round(entropy_2, 2))
+        # entropy_2 = entropy(joined, "cluster", col)
+        corresponding_q = get_q_for_col(col, questions)
+        if entropy_1 < 0.92:
+            print("\n------", col, "------")
+            print(corresponding_q)
+            entropy_1 = entropy(joined, col, "cluster", print_parts=True)
+            print("\nEntropy:", round(entropy_1, 2), "\n")
+        else:
+            pass
+            # print("high entropy", col, entropy_1)
