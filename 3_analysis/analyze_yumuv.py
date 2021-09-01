@@ -6,6 +6,7 @@ import os
 from collections import defaultdict
 
 from clustering import ClusterWrapper
+from utils import load_all_questions, load_question_mapping, load_user_info
 
 
 def plot_longitudinal(before_after_cluster):
@@ -51,10 +52,44 @@ def plot_longitudinal(before_after_cluster):
     plt.show()
 
 
+def longitudinal_labels(test_group):
+    # ---------- Compare to user interviews ------------
+    # get info when someone switched cluster over time
+    test_group["switched"] = test_group["cluster_before"] != test_group["cluster_after"]
+    # load answers to questions
+    user_info = load_user_info("yumuv_graph_rep")
+    tg_user_info = user_info[user_info["study_id"] == 22]
+    # load questions
+    q_tg = load_question_mapping(before_after="after", group="tg")
+    for i, row in q_tg.iterrows():
+        q = row["question"]
+        # only use questions about yumuv
+        if "umuv" in q:
+            q_id = "q" + i[1:]
+            try:
+                question_col = tg_user_info[q_id]
+            except KeyError:
+                print("Question not found in user_info", q_id)
+                continue
+            question_col = question_col[~pd.isna(question_col)]
+            if len(np.unique(question_col.values)) > 4:
+                print("Too many unique values", q_id)
+                continue
+            print("\n", q)
+            for value in np.unique(question_col.values):
+                print("Reply:", value)
+                users_reply = tg_user_info[question_col == value].index
+                # filter the ones that did this reply
+                filtered_switched = test_group[test_group.index.isin(users_reply)]
+                nr_switched = sum(filtered_switched["switched"] == True) / len(filtered_switched)
+                print(f"Out of those, {nr_switched} have switched cluster")
+            print()
+
+
 if __name__ == "__main__":
     path = "out_features/final_1_cleaned"
     node_importance = 0
-    n_clusters = 3
+    n_clusters = 4
 
     data = defaultdict(dict)
     for group in ["cg", "tg"]:
@@ -89,3 +124,6 @@ if __name__ == "__main__":
         "Ratio of TEST group that did not switch cluster:",
         np.sum(test_group["cluster_before"] == test_group["cluster_after"]) / len(test_group),
     )
+
+    # ---------- Compare to user interviews ------------
+    longitudinal_labels(test_group)

@@ -300,6 +300,20 @@ def load_user_info(study, index_col="user_id"):
     return user_info
 
 
+def load_all_questions(path="yumuv_data/yumuv_questions_all.csv"):
+    return pd.read_csv(path, index_col="qname")
+
+
+def load_question_mapping(before_after="before", group="cg"):
+    if before_after == "before":
+        group = ""
+    question_mapping = pd.read_csv(f"yumuv_data/yumuv_{before_after}_{group}.csv", delimiter=";").drop(
+        columns="Unnamed: 0"
+    )
+    # only the qname leads to unique questions
+    return question_mapping.set_index("qname")
+
+
 def split_yumuv_control_group(df):
     """
     Splits dataframe into users which are in treatment group (study_id: 22) and the ones that are in control group

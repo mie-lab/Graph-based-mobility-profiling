@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import silhouette_score
 
-from utils import load_user_info
+from utils import load_user_info, load_all_questions
 from clustering import ClusterWrapper, decision_tree_cluster
 
 
@@ -38,8 +38,10 @@ def _rename_nans(df_raw, label, cluster):
     return df_in
 
 
-def entropy(df_in, label, cluster, treat_nans="remove", print_parts=False):
+def entropy(df_in, label, cluster, treat_nans="remove", print_parts=False, nr_bins=4):
     """Entropy of labels over the clusters. See Ben-Gal et al paper"""
+    # only need these two columns
+    df_in = df_in[[cluster, label]]
     # clean the nans:
     if treat_nans == "remove":
         df = _rm_nans(df_in, label, cluster)
@@ -48,6 +50,20 @@ def entropy(df_in, label, cluster, treat_nans="remove", print_parts=False):
     else:
         df = df_in.copy()
 
+    # bin labels for numeric columns
+    col_vals = df[label]
+    mapping = {}
+    if len(np.unique(col_vals)) > 4 and not isinstance(col_vals.values[0], str):
+        lower_cutoff = 0
+        for bin in range(nr_bins):
+            upper_cutoff = np.quantile(df[label], (bin + 1) / nr_bins)
+            cond = (col_vals <= upper_cutoff) & (col_vals >= lower_cutoff)
+            df.loc[cond, label] = bin
+            mapping[bin] = f"{lower_cutoff}-{upper_cutoff}"
+            lower_cutoff = upper_cutoff
+
+    if len(mapping) > 0 and print_parts:
+        print(mapping)
     n = len(df)  # total number of points
     uni, counts = np.unique(cluster, return_counts=True)
     entropy = 0
@@ -56,7 +72,7 @@ def entropy(df_in, label, cluster, treat_nans="remove", print_parts=False):
         n_k = len(cluster_df)
         uni, counts = np.unique(cluster_df[label].values, return_counts=True)
         if print_parts:
-            print(c, counts, uni)
+            print(c, np.around(counts / n_k, 2), uni)
         # compute entropy of
         inner_entropy = 0
         for (u, c) in zip(uni, counts):
@@ -101,20 +117,6 @@ def get_numeric_columns(df):
     return [d for d in all_numeric if not "id" in d]
 
 
-def load_all_questions(path="yumuv_data/yumuv_questions_all.csv"):
-    return pd.read_csv(path, index_col="qname")
-
-
-def load_question_mapping(before_after="before", group="cg"):
-    if before_after == "before":
-        group = ""
-    question_mapping = pd.read_csv(f"yumuv_data/yumuv_{before_after}_{group}.csv", delimiter=";").drop(
-        columns="Unnamed: 0"
-    )
-    # only the qname leads to unique questions
-    return question_mapping.set_index("qname")
-
-
 def get_q_for_col(col, questions):
     if col[0] == "q":
         col_to_qname = "Q" + col.split("_")[0][1:]
@@ -132,21 +134,25 @@ if __name__ == "__main__":
     feat_type = "graph"
     node_importance = 0
     path = "out_features/final_1_cleaned"
+    n_clusters = 3
 
     # Load the question mapping
     if "yumuv" in study:
         questions = load_all_questions()
+    else:
+        questions = pd.DataFrame()
     # study = "yumuv_before"
 
     name = f"{study}_{feat_type}_features_{node_importance}.csv"
     features = pd.read_csv(os.path.join(path, name), index_col="user_id")
     features.dropna(inplace=True)
     # find optimal k
-    opt_k = find_k(features)
-    print("Optimal k", opt_k)
+    if n_clusters is None:
+        n_clusters = find_k(features)
+        print("Optimal k", n_clusters)
 
     cluster_wrapper = ClusterWrapper()
-    labels = cluster_wrapper(features, n_clusters=opt_k)
+    labels = cluster_wrapper(features, n_clusters=n_clusters)
 
     # print decision tree:
     feature_importances = decision_tree_cluster(features, labels)
@@ -166,7 +172,7 @@ if __name__ == "__main__":
     joined["cluster"] = labels
 
     # # Decision tree for NUMERIC data - first fill nans
-    numeric_columns = get_numeric_columns(user_info)
+    # numeric_columns = get_numeric_columns(user_info)
     # if len(numeric_columns) > 0:
     #     tree_input = joined[numeric_columns]
     #     tree_input = tree_input.fillna(value=tree_input.mean())
@@ -177,7 +183,7 @@ if __name__ == "__main__":
 
     # Entropy for CATEGORICAL data
     for col in user_info.columns:
-        if col in numeric_columns or "id" in col:
+        if "id" in col:
             continue
         not_nan = pd.isna(joined[col]).sum()
         if not_nan / len(joined) > 0.5:
@@ -188,7 +194,7 @@ if __name__ == "__main__":
         entropy_1 = entropy(joined, col, "cluster")
         # entropy_2 = entropy(joined, "cluster", col)
         corresponding_q = get_q_for_col(col, questions)
-        if entropy_1 < 0.92:
+        if entropy_1 < 0.95:
             print("\n------", col, "------")
             print(corresponding_q)
             entropy_1 = entropy(joined, col, "cluster", print_parts=True)
