@@ -154,6 +154,27 @@ def get_important_features(features, labels, n_important=4, method="forest"):
     return np.array(features.columns)[important_feature_inds], feature_importances[important_feature_inds]
 
 
+def predict_cluster_RF(graph_features, raw_features):
+    assert all(raw_features.index == graph_features.index)
+
+    for n_clusters in range(2, 5):
+        # cluster with both separately
+        cluster_wrapper = ClusterWrapper()
+        labels_graph = cluster_wrapper(graph_features, n_clusters=n_clusters)
+        labels_raw = cluster_wrapper(raw_features, n_clusters=n_clusters)
+
+        # predict graph clusters with raw features
+        print("------------", n_clusters)
+        for feats_in, feat_name in zip([np.array(raw_features), np.array(graph_features)], ["raw", "graph"]):
+            for clusters_in, cluster_name in zip([labels_raw, labels_graph], ["raw", "graph"]):
+                forest = RandomForestClassifier(oob_score=True)
+                forest.fit(feats_in, clusters_in)
+                print(
+                    f"Ability to predict {cluster_name} clusters with {feat_name} features:",
+                    round(forest.oob_score_, 2),
+                )
+
+
 def returner_explorers(path_to_returner, graph_features):
     k_returners = pd.read_csv(path_to_returner, index_col="user_id")
     # fill Nans with highest k
@@ -201,6 +222,11 @@ if __name__ == "__main__":
     # try to characterize clusters
     characteristics = cluster_characteristics(graph_features, labels)
     sort_clusters_into_groups(characteristics)
+    print("\n ----------------------------------- \n")
+
+    # Use random forest RF to predict graph clusters with raw features and the other way round:
+    predict_cluster_RF(graph_features, raw_features)
+
     print("\n ----------------------------------- \n")
 
     # cluster both with their features, compute similarity:
