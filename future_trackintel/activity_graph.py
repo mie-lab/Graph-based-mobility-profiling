@@ -118,7 +118,7 @@ class activity_graph:
                 ],
                 index=["user_id", "location_id", "location_id_end", "counts"],
             ).transpose()
-            temp_df["user_id"] = counts.iloc[0]["user_id"]
+            temp_df["user_id"] = trips.iloc[0]["user_id"]
 
             counts = counts.append(temp_df, ignore_index=True)
 
@@ -443,6 +443,7 @@ def _create_adjacency_matrix_from_transition_counts(counts):
         shape = (max_ix, max_ix)
 
         A = coo_matrix((values, (row_ix, col_ix)), shape=shape)
+        A.eliminate_zeros()
         location_id_order = org_ix
 
     return A, location_id_order, "transition_counts"
