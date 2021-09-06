@@ -6,6 +6,7 @@ import psycopg2
 import functools
 import warnings
 import pandas as pd
+import networkx as nx
 
 import trackintel as ti
 from future_trackintel.utils import read_graphs_from_postgresql
@@ -236,7 +237,7 @@ def graph_dict_to_list(graph_dict, node_importance=50):
             ag_sub = ag.G
         else:
             important_nodes = ag.get_k_importance_nodes(node_importance)
-            ag_sub = ag.G.subgraph(important_nodes)
+            ag_sub = nx.DiGraph(ag.G.subgraph(important_nodes))
 
         # delete edges with transition weight 0:
         edges_to_delete = [(a, b) for a, b, attrs in ag_sub.edges(data=True) if attrs["weight"] < 1]

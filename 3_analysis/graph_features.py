@@ -25,7 +25,7 @@ class GraphFeatures:
         # self.graphs, self.users = load_graphs_pkl(
         #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
         # )
-        if "yumuv" in study:
+        if "yumuv" in study and study != "yumuv_graph_rep":
             # for yumuv: get before or after
             assert study[:6] == "yumuv_", "must be named yumuv_before, yumuv_after or yumuv_full"
             before_or_after = study.split("_")[1]
@@ -59,7 +59,7 @@ class GraphFeatures:
             "mean_journey_length",
             "hub_size_random_walk",
             "transition_hhi",
-            "mean_distance_journeys",
+            "median_distance_journeys",
         ]
         self.all_features = [f for f in dir(self) if not f.startswith("_")]
 
@@ -313,7 +313,7 @@ class GraphFeatures:
         # return median distance (in m)
         return np.median(distances)
 
-    def mean_distance_journeys(self, graph):
+    def median_distance_journeys(self, graph):
         nodes_on_rw, resets = self._random_walk(graph, return_resets=True)
 
         home_node = nodes_on_rw[0]

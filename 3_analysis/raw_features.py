@@ -20,7 +20,7 @@ from plotting import scatterplot_matrix
 class RawFeatures:
     def __init__(self, study, trips_available=True):
         self._trips_available = trips_available
-        self.study = study
+        self._study = study
         print("Loading data...")
         self._load_data(study)
         self._tdf = self._to_skmob(self._sp, self._locations)
@@ -230,7 +230,7 @@ class RawFeatures:
         returner_explorer.reset_index(inplace=True)
         returner_explorer.rename(columns={"uid": "user_id"}, inplace=True)
         returner_explorer.set_index("user_id", inplace=True)
-        returner_explorer.to_csv(os.path.join(out_path, f"{self.study}_returner_explorer.csv"))
+        returner_explorer.to_csv(os.path.join(out_path, f"{self._study}_returner_explorer.csv"))
 
 
 if __name__ == "__main__":

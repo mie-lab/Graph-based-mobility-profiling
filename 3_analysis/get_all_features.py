@@ -20,7 +20,8 @@ def clean_features(path, cutoff=4):
         os.makedirs(out_path)
 
     for f in os.listdir(path):
-        if f[-3:] != "csv" or "raw" in f:
+        # skip raw features or after features becuase they must be matched
+        if f[-3:] != "csv" or "raw" in f or "after" in f:
             continue
         print("---------", f)
         graph_path = os.path.join(path, f)
@@ -32,7 +33,12 @@ def clean_features(path, cutoff=4):
             raw_features = pd.read_csv(raw_path, index_col="user_id")
             feature_df = pd.merge(graph_features, raw_features, on="user_id", how="inner")
         else:
-            feature_df = graph_features
+            if "before" in f:
+                raw_path = os.path.join(path, f).replace("before", "after")
+                after_features = pd.read_csv(raw_path, index_col="user_id")
+                feature_df = pd.merge(graph_features, after_features, on="user_id", how="inner")
+            else:
+                feature_df = graph_features
         print("len prev", len(feature_df))
 
         feature_df = feature_df.dropna()
@@ -58,12 +64,15 @@ def clean_features(path, cutoff=4):
         if "yumuv" not in f:
             raw_features = raw_features[raw_features.index.isin(feature_df.index)]
             raw_features.to_csv(os.path.join(out_path, f).replace("graph", "raw"))
+        elif "before" in f:
+            after_features = after_features[after_features.index.isin(feature_df.index)]
+            after_features.to_csv(os.path.join(out_path, f).replace("before", "after"))
 
 
 def get_graph_and_raw(out_dir, node_importance):
 
     for study in ["gc1", "gc2", "geolife", "tist_toph100"]:
-        for feat_type in ["raw", "graph"]:
+        for feat_type in ["graph"]:
 
             print(" -------------- PROCESS", study, feat_type, " ---------------")
 
@@ -94,10 +103,13 @@ def get_graph_and_raw(out_dir, node_importance):
             except:
                 continue
 
-    clean_features(out_dir)
-
 
 def get_yumuv(out_dir, node_importance):
+
+    print("Run full yumuv")
+    runner_before_feat = GraphFeatures("yumuv_graph_rep", node_importance=node_importance)
+    full_features = runner_before_feat(features="default")
+    full_features.to_csv(os.path.join(out_dir, f"yumuv_graph_rep_graph_features_{node_importance}.csv"))
 
     print("Run yumuv before")
     runner_before_feat = GraphFeatures("yumuv_before", node_importance=node_importance)
@@ -123,6 +135,7 @@ if __name__ == "__main__":
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
 
-    # Process graph and raw features for all studies except yumuv
-    # get_graph_and_raw(args.out_dir, args.nodes)
+    # Process graph and raw features for all studies, then add yumuv, then clean
+    get_graph_and_raw(args.out_dir, args.nodes)
     get_yumuv(args.out_dir, args.nodes)
+    clean_features(args.out_dir)

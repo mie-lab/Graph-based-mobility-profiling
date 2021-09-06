@@ -36,9 +36,9 @@ def load_all(path, type="graph", node_importance=50):
 
 def mean_features_by_study(features, out_path=None):
     # leave away last column because it's the study label
-    agg = {feat: "mean" for feat in features.columns[:-1]}
+    agg = {feat: ["mean", "std"] for feat in features.columns[:-1]}
     # group and aggregate
-    mean_features = features.groupby("study").agg(agg)
+    mean_features = features.groupby("study").agg(agg).round(2)
     if out_path:
         mean_features.to_csv(out_path)
     else:
@@ -46,17 +46,27 @@ def mean_features_by_study(features, out_path=None):
 
 
 if __name__ == "__main__":
-    STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+    STUDIES = [
+        "gc1",
+        "gc2",
+        "tist_toph100",
+        "geolife",
+        "yumuv_graph_rep",
+        "yumuv_before_cg",
+        "yumuv_after_cg",
+        "yumuv_before_tg",
+        "yumuv_after_tg",
+    ]
     # parameters
-    path = "out_features/final_1_cleaned"
+    nodes = 0
+    path = f"out_features/final_2_n{nodes}_cleaned"
     n_clusters = len(STUDIES)
-    node_importance = 0
     feature_type = "graph"
 
-    features_all_datasets = load_all(path, type=feature_type, node_importance=node_importance)
+    features_all_datasets = load_all(path, type=feature_type, node_importance=nodes)
     cluster_wrapper = ClusterWrapper()
     cluster_labels = cluster_wrapper(features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters)
     print(np.unique(cluster_labels, return_counts=True))
     # compare relation between cluster and study labels
     compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
-    mean_features_by_study(features_all_datasets, out_path="out_features/dataset_comp.csv")
+    mean_features_by_study(features_all_datasets, out_path=f"out_features/dataset_comparison_{nodes}.csv")
