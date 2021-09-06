@@ -1,3 +1,4 @@
+from networkx.algorithms.operators.unary import reverse
 import sklearn
 from sklearn.cluster import KMeans
 import numpy as np
@@ -8,56 +9,10 @@ import json
 import scipy
 
 from clustering import ClusterWrapper, decision_tree_cluster
+from utils import sort_images_by_cluster
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import adjusted_rand_score
 
-
-# groups = {
-#     "travelers": {
-#         "mean_distance_random_walk": "high",
-#         "cycle_length_mu": "high",
-#         "core_periphery_random_walk": "high",
-#         "ratio_nodes_random_walk": "low",
-#     },
-#     "city_people": {
-#         "mean_distance_random_walk": "low",
-#         "cycle_length_mu": "high",
-#         "cycle_length_sigma": "low",
-#         "core_periphery_random_walk": "low",
-#         "ratio_nodes_random_walk": "high",
-#         "simple_powerlaw_transitions": "low",
-#     },
-#     "unpredictable": {
-#         "cycle_length_mu": "high",
-#         "core_periphery_random_walk": "high",
-#         "simple_powerlaw_transitions": "high",
-#         "ratio_nodes_random_walk": "low",
-#     },
-#     "inactive": {
-#         "mean_distance_random_walk": "low",
-#         "cycle_length_mu": "low",
-#         "cycle_length_sigma": "high",
-#         "core_periphery_random_walk": "low",
-#         "ratio_nodes_random_walk": "high",
-#     },
-# }
-
-groups = {
-    "travellers": {"unique_journeys": "high", "mean_distance_journeys": "high", "mean_journey_length": "high"},
-    "city_people/outgoing": {
-        "mean_distance_journeys": "low",
-        "hub_size_random_walk": "high",
-        "mean_journey_length": "high",
-    },
-    "pendler": {"mean_distance_journeys": "high", "hub_size_random_walk": "low", "mean_journey_length": "high"},
-    "distributed_small": {"transition_hhi": "low", "mean_distance_journeys": "low"},
-    "home_sitters": {
-        "mean_distance_journeys": "low",
-        "hub_size_random_walk": "low",
-        "unique_journeys": "low",
-        "transition_hhi": "high",
-    },
-}
 
 interpret_dict = {
     "mean_distance_random_walk": {"high": "high distances", "low": "low distances"},
@@ -75,14 +30,15 @@ interpret_dict = {
 }
 
 
-def cluster_characteristics(in_features, cluster_labels=None):
+def cluster_characteristics(in_features, cluster_labels=None, printout=True):
     features = in_features.copy()
     if cluster_labels is not None:
         features["cluster"] = cluster_labels
     labels = features["cluster"]
     characteristics = {}
     for cluster in np.unique(labels):
-        print(f"------- Cluster {cluster} of {np.sum(labels==cluster)} samples -------------")
+        if printout:
+            print(f"------- Cluster {cluster} of {np.sum(labels==cluster)} samples -------------")
         characteristics[cluster] = {}
         for column in features.columns:
             # skip cluster column
@@ -96,7 +52,8 @@ def cluster_characteristics(in_features, cluster_labels=None):
             res, p_value = scipy.stats.mannwhitneyu(this_cluster, other_clusters)
             direction = "low" if np.mean(this_cluster) < np.mean(other_clusters) else "high"
             if p_value < 0.05:
-                print(f"{direction} {column} (p-value:{round(p_value, 3)})")
+                if printout:
+                    print(f"{direction} {column} (p-value:{round(p_value, 3)})")
                 # print(interpret_dict[column][direction])
                 characteristics[cluster][column] = direction
             else:
@@ -105,29 +62,52 @@ def cluster_characteristics(in_features, cluster_labels=None):
     return characteristics
 
 
-def sort_clusters_into_groups(characteristics, min_equal=1):
-    print("--------- Sorting cluster into predefined groups ------------")
+def sort_clusters_into_groups(characteristics, min_equal=1, printout=True):
+    with open("groups.json", "r") as infile:
+        groups = json.load(infile)
+    other_groups = [int(k.split("_")[-1]) for k in groups.keys() if "other" in k]
+    num_other_groups = max(other_groups) if len(other_groups) > 0 else 0
+
+    # iterate over each cluster
+    cluster_assignment = {}
     for cluster, cluster_characteristics in characteristics.items():
-        # check whether we can put it in any group:
+        # check in which groups we could put it
+        possible_groups = []
         for group_name, group in groups.items():
-            is_group = False
+            is_group = True
             equal_feats = 0
             for key, val in cluster_characteristics.items():
-                # maybe group is not characterized by this
-                if key not in group:
-                    continue
-                # not part of group if one characteristic is different
-                if group[key] != val:
+                # if the key is in the group, check whether high/low is same
+                if group.get(key, val) != val:
                     is_group = False
                     break
-                else:
+                elif key in group:
                     equal_feats += 1
-                    if equal_feats > min_equal:
-                        is_group = True
-
             if is_group:
-                print(f"Cluster {cluster} is part of group", group_name)
-                break
+                # remember the group and how many equal feats we found
+                possible_groups.append((group_name, equal_feats))
+
+        # print(f"Cluster {cluster} could be part of", sorted(possible_groups, key=lambda x: x[1], reverse=True))
+        if len(possible_groups) > 0:
+            most_fitting_group = sorted(possible_groups, key=lambda x: x[1], reverse=True)[0][0]
+            if printout:
+                print(f"Cluster {cluster} is part of", most_fitting_group)
+            cluster_assignment[cluster] = most_fitting_group
+        else:
+            if printout:
+                print("No group possible for cluster", cluster, ", assign to other")
+            cluster_assignment[cluster] = "other"
+        # if is_group:
+        #     print(f"Cluster {cluster} is part of group", group_name)
+        #     break
+        if len(possible_groups) == 0 and len(cluster_characteristics) > 1:
+            num_other_groups += 1
+            groups["other_" + str(num_other_groups)] = cluster_characteristics
+
+    # # save updated groups
+    # with open("groups.json", "w") as outfile:
+    #     json.dump(groups, outfile)
+    return cluster_assignment
 
 
 def get_correlated_features(graph_features, raw_features):
@@ -200,10 +180,10 @@ def returner_explorers(path_to_returner, graph_features):
 
 if __name__ == "__main__":
     path = "out_features/final_1_cleaned"
-    study = "gc1"
+    study = "gc2"
     node_importance = 0
-    n_clusters = 4
-    algorithm = "kmeans"
+    n_clusters = 5
+    algorithm = "dbscan"
 
     # load features
     graph_features = pd.read_csv(
@@ -214,18 +194,32 @@ if __name__ == "__main__":
     assert all(raw_features.index == graph_features.index)
     print(graph_features.shape, raw_features.shape)
 
-    get_correlated_features(graph_features, raw_features)
+    # get_correlated_features(graph_features, raw_features)
 
     cluster_wrapper = ClusterWrapper()
     labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
 
     # try to characterize clusters
     characteristics = cluster_characteristics(graph_features, labels)
-    sort_clusters_into_groups(characteristics)
+    print()
+    print("--------- Sorting cluster into predefined groups ------------")
+    cluster_assigment = sort_clusters_into_groups(characteristics)
     print("\n ----------------------------------- \n")
 
+    # sort_images_by_cluster(
+    #     list(graph_features.index),
+    #     labels,
+    #     name_mapping=cluster_assigment,
+    #     in_img_path="graph_images/gc2/coords",
+    #     out_img_path="gc2_coords_" + algorithm,
+    # )
+
     # Use random forest RF to predict graph clusters with raw features and the other way round:
+    print("Predict with random forest:")
     predict_cluster_RF(graph_features, raw_features)
+    print()
+    print("Cluster characteristics by raw feature")
+    _ = cluster_characteristics(raw_features, labels)
 
     print("\n ----------------------------------- \n")
 

@@ -8,7 +8,9 @@ from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 
 
 class ClusterWrapper:
-    def __init__(self):
+    def __init__(self, random_state=0):
+        # random state for reproducability
+        self.random_state = random_state
         self.algorithm_dict = {"kmeans": KMeans, "hierarchical": AgglomerativeClustering, "dbscan": DBSCAN}
         self.cluster_centers = None
 
@@ -27,9 +29,16 @@ class ClusterWrapper:
         self.std_cols = np.std(feature_matrix, axis=0)
         self.means_cols = np.mean(feature_matrix, axis=0)
         normed_feature_matrix = self.normalize(feature_matrix)
-        kmeans = algorithm_dict[algorithm](n_clusters=n_clusters).fit(normed_feature_matrix)
+        if algorithm == "dbscan":
+            kmeans = algorithm_dict[algorithm](min_samples=3, eps=1)
+        else:
+            kmeans = algorithm_dict[algorithm](n_clusters=n_clusters)  # , random_state=self.random_state) # TODO
+        kmeans = kmeans.fit(normed_feature_matrix)
         # save cluster centers
-        self.cluster_centers = kmeans.cluster_centers_
+        try:
+            self.cluster_centers = kmeans.cluster_centers_
+        except AttributeError:
+            pass
 
         if return_normed:
             return kmeans.labels_, normed_feature_matrix

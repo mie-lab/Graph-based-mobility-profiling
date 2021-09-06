@@ -5,6 +5,7 @@ from sklearn.metrics import silhouette_score
 
 from utils import load_user_info, load_all_questions
 from clustering import ClusterWrapper, decision_tree_cluster
+from analyze_graph_vs_raw import cluster_characteristics, sort_clusters_into_groups
 
 
 def find_k(features):
@@ -130,7 +131,7 @@ def get_q_for_col(col, questions):
 
 
 if __name__ == "__main__":
-    study = "yumuv_graph_rep"
+    study = "gc1"
     feat_type = "graph"
     node_importance = 0
     path = "out_features/final_1_cleaned"
@@ -154,11 +155,16 @@ if __name__ == "__main__":
     cluster_wrapper = ClusterWrapper()
     labels = cluster_wrapper(features, n_clusters=n_clusters)
 
-    # print decision tree:
-    feature_importances = decision_tree_cluster(features, labels)
-    # get five most important features:
-    important_feature_inds = np.argsort(feature_importances)[-5:]
-    print(np.array(features.columns)[important_feature_inds], feature_importances[important_feature_inds])
+    # Interpret characteristics
+    characteristics = cluster_characteristics(features, labels)
+    print()
+    sort_clusters_into_groups(characteristics)
+
+    # # print decision tree:
+    # feature_importances = decision_tree_cluster(features, labels)
+    # # get five most important features:
+    # important_feature_inds = np.argsort(feature_importances)[-5:]
+    # print(np.array(features.columns)[important_feature_inds], feature_importances[important_feature_inds])
 
     # load labels
     # GC1

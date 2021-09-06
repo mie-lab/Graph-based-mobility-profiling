@@ -6,7 +6,8 @@ import os
 from collections import defaultdict
 
 from clustering import ClusterWrapper
-from utils import load_all_questions, load_question_mapping, load_user_info
+from utils import load_question_mapping, load_user_info
+from analyze_graph_vs_raw import cluster_characteristics, sort_clusters_into_groups
 
 
 def plot_longitudinal(before_after_cluster):
@@ -86,6 +87,20 @@ def longitudinal_labels(test_group):
             print()
 
 
+def cross_sectional(data):
+    features_cg_bef = data["cg"]["before"].drop(columns=["cluster"])
+    labels_cg_bef = data["cg"]["before"]["cluster"]
+    # try to characterize clusters
+    characteristics = cluster_characteristics(features_cg_bef, labels_cg_bef, printout=False)
+    cluster_assigment = sort_clusters_into_groups(characteristics, printout=False)
+    groups_cg_bef = [cluster_assigment[cluster] for cluster in labels_cg_bef]
+    uni, counts = np.unique(groups_cg_bef, return_counts=True)
+    print("CG bef:", {u: round(c / np.sum(counts), 2) for u, c in zip(uni, counts)})
+    groups_tg_bef = [cluster_assigment[cluster] for cluster in data["tg"]["before"]["cluster"]]
+    uni, counts = np.unique(groups_tg_bef, return_counts=True)
+    print("TG aft:", {u: round(c / np.sum(counts), 2) for u, c in zip(uni, counts)})
+
+
 if __name__ == "__main__":
     path = "out_features/final_1_cleaned"
     node_importance = 0
@@ -126,4 +141,8 @@ if __name__ == "__main__":
     )
 
     # ---------- Compare to user interviews ------------
+    print("\nLONGITUDINAL\n")
     longitudinal_labels(test_group)
+
+    print("\nCROSS SECTIONAL\n")
+    cross_sectional(data)

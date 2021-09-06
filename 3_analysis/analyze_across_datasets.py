@@ -59,4 +59,4 @@ if __name__ == "__main__":
     print(np.unique(cluster_labels, return_counts=True))
     # compare relation between cluster and study labels
     compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
-    mean_features_by_study(features_all_datasets)
+    mean_features_by_study(features_all_datasets, out_path="out_features/dataset_comp.csv")

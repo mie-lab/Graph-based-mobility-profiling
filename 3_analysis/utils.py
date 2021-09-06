@@ -4,13 +4,16 @@ import os
 import json
 import psycopg2
 import functools
+import warnings
 import pandas as pd
 
 import trackintel as ti
 from future_trackintel.utils import read_graphs_from_postgresql
 
 
-def sort_images_by_cluster(users, labels, in_img_path="graph_images/gc2/spring", out_img_path="sorted_by_cluster"):
+def sort_images_by_cluster(
+    users, labels, name_mapping={}, in_img_path="graph_images/gc2/spring", out_img_path="sorted_by_cluster"
+):
     """
     users: list of strings
     labels: list of same lengths containig assigned cluster for each user
@@ -25,13 +28,19 @@ def sort_images_by_cluster(users, labels, in_img_path="graph_images/gc2/spring",
     # make out dir and subdirs for each cluster
     if not os.path.exists(out_img_path):
         os.makedirs(out_img_path)
+    else:
+        warnings.warn("WARNING: out dir already exists")
     for cluster in np.unique(labels):
-        os.makedirs(os.path.join(out_img_path, "cluster_" + str(cluster)))
+        # to name the directory, use the name from the mapping dict or by default "cluster_1" etc
+        cluster_dir_name = name_mapping.get(cluster, "cluster_" + str(cluster))
+        if not os.path.exists(os.path.join(out_img_path, cluster_dir_name)):
+            os.makedirs(os.path.join(out_img_path, cluster_dir_name))
 
     # copy the images
     for user, assigned_cluster in map_dict.items():
         in_path = os.path.join(in_img_path, user + ".png")
-        out_path = os.path.join(out_img_path, "cluster_" + str(assigned_cluster), user + ".png")
+        cluster_dir_name = name_mapping.get(assigned_cluster, "cluster_" + str(assigned_cluster))
+        out_path = os.path.join(out_img_path, cluster_dir_name, user + ".png")
         print("copying from", in_path, "to", out_path)
         shutil.copy(in_path, out_path)
 
