@@ -2,6 +2,7 @@ import warnings
 import seaborn as sns
 import pandas as pd
 import numpy as np
+import scipy
 import matplotlib.pyplot as plt
 
 from future_trackintel.activity_graph import activity_graph
@@ -58,6 +59,23 @@ def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None
     else:
         sns.pairplot(feature_df)
     plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
+    else:
+        plt.show()
+
+
+def plot_correlation_matrix(feat1, feat2, save_path=None):
+    correlations = np.zeros((len(feat1.columns), len(feat1.columns)))
+    for i, raw_feat in enumerate(feat1.columns):
+        for j, graph_feat in enumerate(feat2.columns):
+            r, p = scipy.stats.pearsonr(feat1[raw_feat], feat2[graph_feat])
+            correlations[i, j] = r
+    plt.figure(figsize=(20, 10))
+    for i in range(len(correlations)):
+        correlations[i, i] = 0
+    df = pd.DataFrame(correlations, columns=feat1.columns, index=feat2.columns)
+    sns.heatmap(df, annot=True, cmap="PiYG")
     if save_path:
         plt.savefig(save_path)
     else:

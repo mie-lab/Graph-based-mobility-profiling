@@ -1,4 +1,5 @@
 from networkx.algorithms.operators.unary import reverse
+from numpy.lib.stride_tricks import broadcast_shapes
 import sklearn
 from sklearn.cluster import KMeans
 import numpy as np
@@ -12,6 +13,7 @@ from clustering import ClusterWrapper, decision_tree_cluster
 from utils import sort_images_by_cluster
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import adjusted_rand_score
+from plotting import plot_correlation_matrix
 
 
 interpret_dict = {
@@ -110,7 +112,7 @@ def sort_clusters_into_groups(characteristics, min_equal=1, printout=True):
     return cluster_assignment
 
 
-def get_correlated_features(graph_features, raw_features):
+def print_correlated_features(graph_features, raw_features):
     for raw_feat in raw_features.columns:
         # exclude waiting times, not useful
         if "waiting_time" in raw_feat:
@@ -194,7 +196,11 @@ if __name__ == "__main__":
     assert all(raw_features.index == graph_features.index)
     print(graph_features.shape, raw_features.shape)
 
-    # get_correlated_features(graph_features, raw_features)
+    # # CORRELATIONS
+    # plot correlation matrix of all features to each other
+    # both = raw_features.join(graph_features)
+    # plot_correlation_matrix(both, both)
+    # print_correlated_features(graph_features, raw_features)
 
     cluster_wrapper = ClusterWrapper()
     labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
