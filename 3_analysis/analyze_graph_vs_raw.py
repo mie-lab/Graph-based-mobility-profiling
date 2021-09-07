@@ -180,27 +180,61 @@ def returner_explorers(path_to_returner, graph_features):
     # print(np.array(graph_features.columns)[important_feature_inds], feature_importances[important_feature_inds])
 
 
+def group_consistency(graph_features, out_path=None, nr_iters=20):
+    res = np.empty((len(graph_features), nr_iters), dtype="<U10")
+    for i in range(nr_iters):
+        cluster_wrapper = ClusterWrapper()
+        labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
+
+        # try to characterize clusters
+        characteristics = cluster_characteristics(graph_features, labels, printout=False)
+        cluster_assigment = sort_clusters_into_groups(characteristics, printout=False)
+        groups = [cluster_assigment[lab] for lab in labels]
+        res[:, i] = groups
+    df = pd.DataFrame(res, columns=[i for i in range(nr_iters)], index=graph_features.index)
+    if out_path:
+        df.to_csv(out_path)
+
+    consistency = []
+    for i, row in df.iterrows():
+        vals = row.values
+        _, counts = np.unique(vals, return_counts=True)
+        consistency.append(np.max(counts) / len(vals))
+
+    print("Average consistency:", np.mean(consistency))
+    print(
+        "Explanation: This means, the group that is assigned to a user is assigned to this user on avg in x% of the clusterings"
+    )
+
+
 if __name__ == "__main__":
     path = "out_features/final_1_cleaned"
-    study = "gc2"
+    study = "gc1"
     node_importance = 0
     n_clusters = 5
-    algorithm = "dbscan"
+    algorithm = "kmeans"
 
     # load features
     graph_features = pd.read_csv(
         os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
     )
-    raw_features = pd.read_csv(os.path.join(path, f"{study}_raw_features_{node_importance}.csv"), index_col="user_id")
-    raw_features = raw_features.loc[graph_features.index]
-    assert all(raw_features.index == graph_features.index)
-    print(graph_features.shape, raw_features.shape)
+    if "yumuv" not in study:
+        raw_features = pd.read_csv(
+            os.path.join(path, f"{study}_raw_features_{node_importance}.csv"), index_col="user_id"
+        )
+        raw_features = raw_features.loc[graph_features.index]
+        assert all(raw_features.index == graph_features.index)
+        print("features shape:", graph_features.shape, raw_features.shape)
 
     # # CORRELATIONS
     # plot correlation matrix of all features to each other
     # both = raw_features.join(graph_features)
     # plot_correlation_matrix(both, both)
+    # plot_correlation_matrix(graph_features, raw_features)
     # print_correlated_features(graph_features, raw_features)
+
+    # CLUSTER CONSISTENCY
+    group_consistency(graph_features)
 
     cluster_wrapper = ClusterWrapper()
     labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
@@ -217,7 +251,7 @@ if __name__ == "__main__":
     #     labels,
     #     name_mapping=cluster_assigment,
     #     in_img_path="graph_images/gc2/coords",
-    #     out_img_path="gc2_coords_" + algorithm,
+    #     out_img_path="graph_images/gc2_coords_" + algorithm,
     # )
 
     # Use random forest RF to predict graph clusters with raw features and the other way round:
