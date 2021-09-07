@@ -61,7 +61,11 @@ if __name__ == "__main__":
     nodes = 0
     path = f"out_features/final_2_n{nodes}_cleaned"
     n_clusters = len(STUDIES)
-    feature_type = "graph"
+    feature_type = "raw"
+
+    # tist does not have trip data
+    if feature_type == "raw" and "tist_toph100" in STUDIES:
+        STUDIES.remove("tist_toph100")
 
     features_all_datasets = load_all(path, type=feature_type, node_importance=nodes)
     cluster_wrapper = ClusterWrapper()
