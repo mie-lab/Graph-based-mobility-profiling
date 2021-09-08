@@ -229,7 +229,7 @@ class GraphFeatures:
                 # add to unique journeys if it's new
                 len_of_cycle = at_home[i + 1] - at_home[i]
                 if len_of_cycle < 2:
-                    print("Cycle of length 1 found")
+                    # print("Cycle of length 1 found")
                     continue
                 start_ind = at_home[i]
                 end_ind = at_home[i + 1]

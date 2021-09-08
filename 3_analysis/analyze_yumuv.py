@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from clustering import ClusterWrapper
 from utils import load_question_mapping, load_user_info
-from analyze_graph_vs_raw import cluster_characteristics, sort_clusters_into_groups
+from find_groups import cluster_characteristics, sort_clusters_into_groups
 
 
 def plot_longitudinal(before_after_cluster):

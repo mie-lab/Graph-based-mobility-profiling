@@ -5,7 +5,7 @@ from sklearn.metrics import silhouette_score
 
 from utils import load_user_info, load_all_questions
 from clustering import ClusterWrapper, decision_tree_cluster
-from analyze_graph_vs_raw import cluster_characteristics, sort_clusters_into_groups
+from find_groups import cluster_characteristics, sort_clusters_into_groups
 
 
 def find_k(features):

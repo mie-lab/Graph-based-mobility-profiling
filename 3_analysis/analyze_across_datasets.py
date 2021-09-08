@@ -4,6 +4,7 @@ import pandas as pd
 
 from clustering import ClusterWrapper
 from compare_clustering import compute_all_scores
+from analyze_study import entropy
 
 
 def load_all(path, type="graph", node_importance=50):
@@ -58,10 +59,11 @@ if __name__ == "__main__":
         "yumuv_after_tg",
     ]
     # parameters
-    nodes = 0
-    path = f"out_features/final_2_n{nodes}_cleaned"
+    nodes = 50
+    feat_id = 3
+    path = f"out_features/final_{feat_id}_n{nodes}_cleaned"
     n_clusters = len(STUDIES)
-    feature_type = "raw"
+    feature_type = "graph"
 
     # tist does not have trip data
     if feature_type == "raw" and "tist_toph100" in STUDIES:
@@ -70,7 +72,11 @@ if __name__ == "__main__":
     features_all_datasets = load_all(path, type=feature_type, node_importance=nodes)
     cluster_wrapper = ClusterWrapper()
     cluster_labels = cluster_wrapper(features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters)
-    print(np.unique(cluster_labels, return_counts=True))
-    # compare relation between cluster and study labels
-    compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
-    mean_features_by_study(features_all_datasets, out_path=f"out_features/dataset_comparison_{nodes}.csv")
+
+    features_all_datasets["cluster"] = cluster_labels
+    print("Entropy", entropy(features_all_datasets, "study", "cluster", print_parts=True))
+
+    # print(np.unique(cluster_labels, return_counts=True))
+    # # compare relation between cluster and study labels
+    # compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
+    mean_features_by_study(features_all_datasets, out_path=f"out_features/datasets_{feat_id}_{nodes}.csv")
