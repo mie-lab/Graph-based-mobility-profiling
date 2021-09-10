@@ -246,14 +246,22 @@ class GraphFeatures:
         degrees = list(dict(use_function[mode]).values())
         return degrees
 
-    def _fit_powerlaw(self, item_list, cutoff=25):
+    def _fit_powerlaw(self, item_list):
         if len(item_list) == 0 or np.sum(item_list) == 0:
             return 0
-        sorted_vals = (sorted(item_list)[::-1])[:cutoff]
-        normed_degrees = sorted_vals / np.sum(sorted_vals)
+
+        sorted_vals = sorted(item_list)[::-1]
+        # get relative probability
+        normed_vals = sorted_vals / np.sum(sorted_vals)
+        # Normalize by first value! Because: power function 1/x^beta always passes through (1,1) - we want to fit this
+        normed_vals = normed_vals / normed_vals[0]
         params, _ = curve_fit(
-            func_simple_powerlaw, np.arange(len(normed_degrees)) + 1, normed_degrees, maxfev=3000, bounds=(0, 4)
+            func_simple_powerlaw, np.arange(len(normed_vals)) + 1, normed_vals, maxfev=3000, bounds=(0, 5)
         )
+
+        # Prev version: with cutoff and no normalization
+        # sorted_vals = (sorted(item_list)[::-1])[:cutoff]
+        # normed_degrees = sorted_vals / np.sum(sorted_vals)
         return params[0]
 
     def degree_beta(self, graph):
