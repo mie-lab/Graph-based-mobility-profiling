@@ -247,8 +247,13 @@ def graph_dict_to_list(graph_dict, node_importance=50):
         if ag_sub.number_of_edges() == 0:
             print("zero edges for user", user_id, " --> skip!")
             continue
+
+        # get only the largest connected component:
+        cc = sorted(nx.connected_components(ag_sub.to_undirected()), key=len, reverse=True)
+        graph_cleaned = ag_sub.subgraph(cc[0])
+
         users.append(user_id)
-        nx_graphs.append(ag_sub)
+        nx_graphs.append(graph_cleaned)
     return nx_graphs, users
 
 
