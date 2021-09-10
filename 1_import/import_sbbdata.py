@@ -91,8 +91,15 @@ for study in studies:
     sp = horizontal_merge_staypoints(sp, custom_add_dict={"purpose_detected": list})
     sp = ti.io.read_staypoints_gpd(sp, geom_col='geom')
 
-    sp, tpls, trips = ti.preprocessing.generate_trips(sp, tpls)
+    sp, tpls, trips = ti.preprocessing.generate_trips(sp, tpls, gap_threshold=25)
     tpls.index.name = "id"
+
+    # time threshld for activities
+    meaningful_purpose = ~sp["purpose"].isin(["wait", "unknown"])
+    meaningful_duration = sp["finished_at"] - sp["started_at"] >= pd.Timedelta("25min")
+    sp["activity"] = sp["activity"] | meaningful_purpose | meaningful_duration
+
+
 
     print("\twrite staypoints to database")
     ti.io.write_staypoints_postgis(

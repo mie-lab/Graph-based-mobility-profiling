@@ -63,6 +63,8 @@ sp = gpd.GeoDataFrame(sp, geometry='geometry')
 del venues, checkins
 print("Create locations")
 # create locations
+# 10e-6 is a very small search radius to ensure that every venue gets detected as a location (if it has a unique
+# location)
 sp, locations = sp.as_staypoints.generate_locations(epsilon=10e-6, num_samples=1, distance_metric="euclidean")
 locations.drop("extent", axis=1, inplace=True)
 

@@ -16,6 +16,10 @@ from db_login import DSN  # database login information
 import numpy as np
 from future_trackintel.utils import horizontal_merge_staypoints
 
+
+min_date = datetime.datetime(year=2020, month=7, day=13, tzinfo=pytz.utc)
+max_date = datetime.datetime(year=2020, month=11, day=15, tzinfo=pytz.utc)
+
 engine = create_engine("postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}".format(**DSN))
 #
 data_folder = os.path.join("C:/", "yumuv", "data")  # todo move to config file
@@ -45,6 +49,9 @@ sp["activity"] = sp["activity"] | meaningful_purpose
 sp = sp.rename(columns={"geometry": "geom", "stay_purpose": "purpose"})
 sp = sp.set_geometry("geom")
 
+sp_date_flag = (sp['started_at'] >= min_date) & (sp['finished_at'] <= max_date)
+sp = sp[sp_date_flag]
+
 sp, locs = sp.as_staypoints.generate_locations(
     method="dbscan", epsilon=30, num_samples=1, distance_metric="haversine", agg_level="user",
 )
@@ -72,12 +79,14 @@ tpls = tpls[tpls.geometry.is_valid]
 tpls = ti.io.read_triplegs_gpd(tpls, user_id="user_fk", geom_col="geom", tz="UTC")
 
 
+
+tpls_date_flag = (tpls['started_at'] >= min_date) & (tpls['finished_at'] <= max_date)
+tpls = tpls[tpls_date_flag]
+
 print("generate trips")
-tpls2 = tpls[tpls.index.duplicated()]
-sp2 = sp[sp.index.duplicated()]
 assert sp.index.is_unique
 assert tpls.index.is_unique
-sp, tpls, trips = generate_trips(sp, tpls)
+sp, tpls, trips = generate_trips(sp, tpls, gap_threshold=25)
 tpls.index.name = "id"
 
 

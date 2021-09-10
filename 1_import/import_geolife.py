@@ -14,6 +14,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import psycopg2
 import trackintel as ti
+import numpy as np
 
 # connect to postgis database
 config_file = os.path.join(".", "dblogin.json")
@@ -25,18 +26,21 @@ engine = create_engine(conn_string)
 conn = engine.connect()
 
 geolife_path = r"E:\Geolife Trajectories 1.3\Data"
-# geolife_path = r"D:\temp\geolife55"
+# geolife_path = r"D:\temp\geolife10"
 # geolife_path = r"D:\temp\geolife_13_users"
+# geolife_path = r"D:\temp\geolife_7_users"
 # geolife_path = r"C:\Users\henry\OneDrive\Programming\21_mobility-graph-representation\data_in\data_geolife"
 schema_name = "geolife"
 
 pfs, mode_labels = ti.io.dataset_reader.read_geolife(geolife_path, print_progress=True)
 
 print("extract staypoints")
-pfs, spts = pfs.as_positionfixes.generate_staypoints(gap_threshold=15, include_last=True, print_progress=True, n_jobs=4)
+pfs, spts = pfs.as_positionfixes.generate_staypoints(
+    gap_threshold=24 * 60, include_last=True, print_progress=True, dist_threshold=200, time_threshold=30, n_jobs=4
+)
 
 print("extract triplegs")
-pfs, tpls = pfs.as_positionfixes.generate_triplegs(spts, method="between_staypoints", gap_threshold=15)
+pfs, tpls = pfs.as_positionfixes.generate_triplegs(spts, method="between_staypoints", gap_threshold=25)
 
 print("attach labels to triplegs")
 tpls = ti.io.dataset_reader.geolife_add_modes_to_triplegs(tpls, mode_labels)
@@ -44,24 +48,31 @@ tpls = ti.io.dataset_reader.geolife_add_modes_to_triplegs(tpls, mode_labels)
 # drop entries with invalid timestamps
 valid_tstamp_flag_sp = spts.started_at <= spts.finished_at
 valid_tstamp_flag_tpls = tpls.started_at <= tpls.finished_at
-print("\t\ttimestamps of {} sp and {} tpls corrupted. corrupted ts are dropped".format(spts.shape[0] - sum(
-    valid_tstamp_flag_sp), tpls.shape[0] - sum(valid_tstamp_flag_tpls)))
+print(
+    "\t\ttimestamps of {} sp and {} tpls corrupted. corrupted ts are dropped".format(
+        spts.shape[0] - sum(valid_tstamp_flag_sp), tpls.shape[0] - sum(valid_tstamp_flag_tpls)
+    )
+)
 
 sp = spts[valid_tstamp_flag_sp]
 tpls = tpls[valid_tstamp_flag_tpls]
+# filter staypoints that are too long
+duration_too_long = (sp['finished_at'] - sp['started_at']) > pd.Timedelta("20h")
+sp = sp[(sp['finished_at'] - sp['started_at']) < pd.Timedelta("20")]
 
 
 print("extract locations")
 spts, locs = spts.as_staypoints.generate_locations(
-    method="dbscan", epsilon=50, num_samples=1, distance_metric="haversine", agg_level="user")
+    method="dbscan", epsilon=30, num_samples=1, distance_metric="haversine", agg_level="user"
+)
 
 spts = ti.analysis.location_identifier(spts, method="FREQ", pre_filter=True)
 
 print("add activity flag to staypoints")
-spts = spts.as_staypoints.create_activity_flag(method="time_threshold", time_threshold=15)
+spts = spts.as_staypoints.create_activity_flag(method="time_threshold", time_threshold=25)
 
 print("extract trips")
-spts, triplegs, trips = ti.preprocessing.triplegs.generate_trips(spts, tpls, gap_threshold=15)
+spts, triplegs, trips = ti.preprocessing.triplegs.generate_trips(spts, tpls, gap_threshold=25)
 
 print("write to database")
 
