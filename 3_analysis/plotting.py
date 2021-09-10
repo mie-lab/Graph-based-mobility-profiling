@@ -116,6 +116,28 @@ def plot_extremes_features(feat_path="out_features/final_4_n0_cleaned/gc1_graph_
             plt.show()
 
 
+def plot_powerlaw_rank_fit(g):
+    from scipy.optimize import curve_fit
+
+    def func_simple_powerlaw(x, beta):
+        return x ** (-beta)
+
+    vals = np.array(list(dict(g.out_degree()).values()))
+    # degrees: np.array(list(dict(graph.out_degree()).values()))
+    # transitions: np.array([edge[2]["weight"] for edge in g.edges(data=True)])
+    sorted_vals = (sorted(vals)[::-1])[:20]
+    normed_vals = sorted_vals / np.sum(sorted_vals)
+    normed_vals = normed_vals / normed_vals[0]
+    params = curve_fit(func_simple_powerlaw, np.arange(len(normed_vals)) + 1, normed_vals, maxfev=3000, bounds=(0, 5))
+    beta = params[0]
+    x = np.arange(1, 20, 0.1)
+    y = func_simple_powerlaw(x, beta)
+    plt.plot(np.arange(len(normed_vals)) + 1, normed_vals)
+    plt.plot(x, y)
+    plt.title("Beta is " + str(beta))
+    plt.show()
+
+
 if __name__ == "__main__":
     study = "gc1"
     from utils import get_con
