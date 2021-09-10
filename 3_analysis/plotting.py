@@ -82,6 +82,40 @@ def plot_correlation_matrix(feat1, feat2, save_path=None):
         plt.show()
 
 
+def plot_extremes_features(feat_path="out_features/final_4_n0_cleaned/gc1_graph_features_0.csv", nr_plot=1):
+    feats = pd.read_csv("out_features/final_4_n0_cleaned/gc1_graph_features_0.csv", index_col="user_id")
+    for feature in feats.columns:
+        vals = feats[feature].values
+        smallest = feats[feats[feature] < np.quantile(vals, 0.05)].index
+        highest = feats[feats[feature] > np.quantile(vals, 0.95)].index
+        print("FEATURE", feature)
+        for i in range(nr_plot):
+            img_small = plt.imread("graph_images/gc1/coords/" + str(smallest[i]) + ".png")
+            img_high = plt.imread("graph_images/gc1/coords/" + str(highest[i]) + ".png")
+            img_small_spring = plt.imread("graph_images/gc1/spring/" + str(smallest[i]) + ".png")
+            img_high_spring = plt.imread("graph_images/gc1/spring/" + str(highest[i]) + ".png")
+            plt.figure(figsize=(20, 8))
+            plt.subplot(1, 4, 1)
+            plt.imshow(img_small)
+            plt.title("small " + feature)
+            plt.axis("off")
+            plt.subplot(1, 4, 2)
+            plt.imshow(img_small_spring)
+            plt.title("small " + feature)
+            plt.axis("off")
+
+            plt.subplot(1, 4, 3)
+            plt.imshow(img_high)
+            plt.title("high " + feature)
+            plt.axis("off")
+            plt.subplot(1, 4, 4)
+            plt.imshow(img_high_spring)
+            plt.title("high " + feature)
+            plt.axis("off")
+            plt.tight_layout()
+            plt.show()
+
+
 if __name__ == "__main__":
     study = "gc1"
     from utils import get_con
