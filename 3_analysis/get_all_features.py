@@ -107,8 +107,8 @@ def get_graph_and_raw(out_dir, node_importance):
 def get_yumuv(out_dir, node_importance):
 
     print("Run full yumuv")
-    runner_before_feat = GraphFeatures("yumuv_graph_rep", node_importance=node_importance)
-    full_features = runner_before_feat(features="default")
+    runner_all_feat = GraphFeatures("yumuv_graph_rep", node_importance=node_importance)
+    full_features = runner_all_feat(features="default")
     full_features.to_csv(os.path.join(out_dir, f"yumuv_graph_rep_graph_features_{node_importance}.csv"))
 
     print("Run yumuv before")

@@ -1,6 +1,4 @@
-from zlib import decompress
 import networkx as nx
-from networkx.algorithms.shortest_paths.generic import shortest_path
 import numpy as np
 import os
 import time
@@ -23,7 +21,7 @@ class GraphFeatures:
         node_importance: int, only keep x most important nodes for each graph
         """
         # Load from pickle
-        # self.graphs, self.users = load_graphs_pkl(
+        # self._graphs, self._users = load_graphs_pkl(
         #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
         # )
         self._debug = False
@@ -31,42 +29,17 @@ class GraphFeatures:
             # for yumuv: get before or after
             assert study[:6] == "yumuv_", "must be named yumuv_before, yumuv_after or yumuv_full"
             before_or_after = study.split("_")[1]
-            self.graphs, self.users = load_graphs_cross_sectional(before_or_after, node_importance)
+            self._graphs, self._users = load_graphs_cross_sectional(before_or_after, node_importance)
         else:
-            self.graphs, self.users = self.load_graphs(study, node_importance)
-        print("Loaded data", len(self.graphs))
+            self._graphs, self._users = self._load_graphs(study, node_importance)
+        print("Loaded data", len(self._graphs))
 
         # specify necessary parameters for the feature extraction
-        self.random_walk_iters = random_walk_iters
+        self._random_walk_iters = random_walk_iters
 
-        self.prev_features = [
-            "nr_edges",
-            "cycles_2_random_walk",
-            "cycles_3_random_walk",
-            "simple_powerlaw_transitions",
-            "mean_distance_random_walk",
-            "mean_sp_length",
-            "mean_node_degree",
-            "mean_betweenness_centrality",
-        ]
-        self.prev_rw_features = [
-            "mean_distance_random_walk",
-            "cycle_length_mu",
-            "cycle_length_sigma",
-            "ratio_nodes_random_walk",
-            "hub_size",
-        ]
-        self.default_features = [
-            "unique_journeys",
-            "journey_length",
-            "hub_size",
-            "transition_hhi",
-            "trip_distance",
-            "degree_hhi",
-        ]
         self.all_features = [f for f in dir(self) if not f.startswith("_")]
 
-    def load_graphs(self, study, node_importance):
+    def _load_graphs(self, study, node_importance):
         graphs, users = load_graphs_postgis(study, node_importance=node_importance, decompress=True)
         print("loaded graphs", len(graphs))
         return graphs, users
@@ -79,12 +52,13 @@ class GraphFeatures:
 
     def __call__(self, features="default", parallelize=False, **kwargs):
         """Compute desired features for all graphs and possibly parallelize over graphs"""
-        if features == "default":
-            features = self.default_features
-        if features == "all":
-            features = self.all_features
-        if features == "random_walk":
-            features = self.random_walk_features
+        # if features == "default":
+        #     features = self.default_features
+        # if features == "all":
+        #     features = self.all_features
+        # if features == "random_walk":
+        #     features = self.random_walk_features
+        features = self.all_features
         # Check that the features are computable
         self._check_implemented(features)
 
@@ -104,31 +78,35 @@ class GraphFeatures:
 
         if parallelize:
             feature_matrix = Parallel(n_jobs=4, prefer="threads")(
-                delayed(compute_feat)(graph, features) for graph in self.graphs
+                delayed(compute_feat)(graph, features) for graph in self._graphs
             )
         else:
             feature_matrix = []
-            for user, graph in zip(self.users, self.graphs):
+            for user, graph in zip(self._users, self._graphs):
                 feature_matrix.append(compute_feat(graph, features))
         feature_matrix = np.array(feature_matrix)
         print("feature matrix shape", feature_matrix.shape)
         # convert to dataframe
-        feature_df = pd.DataFrame(feature_matrix, index=self.users, columns=features)
+        feature_df = pd.DataFrame(feature_matrix, index=self._users, columns=features)
         feature_df.index.set_names("user_id", inplace=True)
 
         return feature_df
 
     def _test_feature(self, feature, nr_do="all"):
-        # self._debug = True
-        if nr_do == "all":
-            nr_do = len(self.users)
-        feature_avg = []
-        for user, graph in zip(self.users[:nr_do], self.graphs[:nr_do]):
-            feature_function = getattr(self, feature)
-            this_feat_out = feature_function(graph)
-            feature_avg.append(this_feat_out)
-            # print("Feature output:", this_feat_out)
-        print("AVG", feature, np.mean(feature_avg))
+        for feature in self.all_features:
+            # print(feature)
+            tic = time.time()
+            # self._debug = True
+            if nr_do == "all":
+                nr_do = len(self._users)
+            feature_avg = []
+            for user, graph in zip(self._users[:nr_do], self._graphs[:nr_do]):
+                feature_function = getattr(self, feature)
+                this_feat_out = feature_function(graph)
+                feature_avg.append(this_feat_out)
+                # print("Feature output:", this_feat_out)
+            # print(time.time() - tic)
+            print("AVG", feature, np.mean(feature_avg), np.std(feature_avg))
         exit()
 
     def _random_walk(self, graph, return_resets=False):
@@ -145,7 +123,7 @@ class GraphFeatures:
         number_of_walks = 0
         # keep track of when we reset the position to home --> necessary for cycle count
         reset_to_home = []
-        for step in range(self.random_walk_iters):
+        for step in range(self._random_walk_iters):
             # get out neighbors with corresponding transition number
             neighbor_edges = graph.out_edges(current_node, data=True)
             # check if we are at a dead end OR if we get stuck at one node and only make cycles of len 1 there
@@ -241,47 +219,23 @@ class GraphFeatures:
 
         if nr_journeys == 0:
             return 0
-        return self.random_walk_iters * len(unique_journeys.keys()) / (nr_journeys * graph.number_of_nodes())
-
-    def hub_size(self, graph, thresh=0.8):
-        nodes_on_rw = self._random_walk(graph)
-        _, counts = np.unique(nodes_on_rw, return_counts=True)
-        sorted_counts = np.sort(counts)[::-1]
-        cumulative_counts = np.cumsum(sorted_counts)
-        # number of nodes needed to cover thresh times the traffic
-        nodes_in_core = np.where(cumulative_counts > thresh * np.sum(counts))[0][0] + 1
-        return nodes_in_core / graph.number_of_nodes()
-
-    def _hhi(self, item_list):
-        """Compute HHI on the N most often occuring items"""
-        item_list = np.array(item_list)
-        shares = item_list / np.sum(item_list) * 100
-        if self._debug:
-            print("HHI:", shares)
-        return np.sum(shares ** 2)
+        return len(unique_journeys.keys()) / np.sqrt(graph.number_of_nodes())
+        # self._random_walk_iters * len(unique_journeys.keys()) / (nr_journeys * graph.number_of_nodes())
 
     def _transitions(self, graph):
         """Get all edge weights"""
         transition_counts = [edge[2]["weight"] for edge in graph.edges(data=True)]
         return transition_counts
 
-    def transition_hhi(self, graph):
-        transitions = self._transitions(graph)
-        if self._debug:
-            print(np.array(transitions).astype(int))
-        return self._hhi(transitions)
-
-    def trip_distance(self, graph):
-        sum_of_weights = 0
-        weighted_distance = 0
+    def median_trip_distance(self, graph):
+        dist_list = []
         for (u, v, data) in graph.edges(data=True):
             loc_u = graph.nodes[u]["center"]
             loc_v = graph.nodes[v]["center"]
             weight = data["weight"]
-            sum_of_weights += weight
             dist = get_point_dist(loc_u, loc_v, crs_is_projected=False)
-            weighted_distance += dist * weight
-        return weighted_distance / sum_of_weights
+            dist_list.extend([dist for _ in range(int(weight))])
+        return np.median(dist_list)
 
     def _degree(self, graph, mode="out"):
         """
@@ -292,9 +246,27 @@ class GraphFeatures:
         degrees = list(dict(use_function[mode]).values())
         return degrees
 
-    def degree_hhi(self, graph, mode="in"):
-        degrees = self._degree(graph, mode=mode)
-        return self._hhi(degrees)
+    def _fit_powerlaw(self, item_list, cutoff=25):
+        if len(item_list) == 0 or np.sum(item_list) == 0:
+            return 0
+        sorted_vals = (sorted(item_list)[::-1])[:cutoff]
+        normed_degrees = sorted_vals / np.sum(sorted_vals)
+        params, _ = curve_fit(
+            func_simple_powerlaw, np.arange(len(normed_degrees)) + 1, normed_degrees, maxfev=3000, bounds=(0, 4)
+        )
+        return params[0]
+
+    def degree_beta(self, graph):
+        degrees = np.array(list(dict(graph.out_degree()).values()))
+        return self._fit_powerlaw(degrees)
+
+    def transition_beta(self, graph):
+        transitions = np.array([edge[2]["weight"] for edge in graph.edges(data=True)])
+        return self._fit_powerlaw(transitions)
+
+    def mean_clustering_coeff(self, graph):
+        clusterings = nx.algorithms.cluster.clustering(nx.DiGraph(graph))
+        return np.mean(list(dict(clusterings).values()))
 
 
 if __name__ == "__main__":
@@ -319,7 +291,7 @@ if __name__ == "__main__":
     tic = time.time()
     graph_feat = GraphFeatures(study, node_importance=node_importance)
     # TESTING:
-    # graph_feat._test_feature("unique_journeys")
+    graph_feat._test_feature("unique_journeys")
 
     feat_matrix = graph_feat(features="default", parallelize=False)
     print(feat_matrix)

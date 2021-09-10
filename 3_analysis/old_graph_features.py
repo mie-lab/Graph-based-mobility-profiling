@@ -1,11 +1,6 @@
-from zlib import decompress
 import networkx as nx
-from networkx.algorithms.shortest_paths.generic import shortest_path
 import numpy as np
-import os
-import time
 from numpy.core.fromnumeric import sort
-import pandas as pd
 import argparse
 
 from scipy.optimize import curve_fit
@@ -18,6 +13,39 @@ from graph_features import GraphFeatures
 
 
 class OldGraphFeatures(GraphFeatures):
+    def __init__(self):
+        super().__init__(self)
+
+        self.prev_features = [
+            "nr_edges",
+            "cycles_2_random_walk",
+            "cycles_3_random_walk",
+            "simple_powerlaw_transitions",
+            "mean_distance_random_walk",
+            "mean_sp_length",
+            "mean_node_degree",
+            "mean_betweenness_centrality",
+        ]
+        self.prev_rw_features = [
+            "mean_distance_random_walk",
+            "cycle_length_mu",
+            "cycle_length_sigma",
+            "ratio_nodes_random_walk",
+            "hub_size",
+        ]
+        self.default_features = [
+            "unique_journeys",
+            "journey_length",
+            "hub_size",
+            "transition_hhi",
+            "trip_distance",
+            "degree_hhi",
+            "log_hub_size",
+            "degree_powerlaw",
+            "transition_powerlaw",
+            "power_betweenness_centrality",
+        ]
+
     # --------------------- GRAPH LEVEL FEATURES --------------------
     def nr_nodes(self, graph):
         return graph.number_of_nodes()
@@ -282,3 +310,75 @@ class OldGraphFeatures(GraphFeatures):
     @get_mean
     def mean_betweenness_centrality(self, graph):
         return self._betweenness_centrality(graph)
+
+    def hub_size(self, graph, thresh=0.8):
+        nodes_on_rw = self._random_walk(graph)
+        _, counts = np.unique(nodes_on_rw, return_counts=True)
+        sorted_counts = np.sort(counts)[::-1]
+        cumulative_counts = np.cumsum(sorted_counts)
+        # number of nodes needed to cover thresh times the traffic
+        nodes_in_core = np.where(cumulative_counts > thresh * np.sum(counts))[0][0] + 1
+        return nodes_in_core / graph.number_of_nodes()
+
+    def log_hub_size(self, graph, thresh=0.8):
+        nodes_on_rw = self._random_walk(graph)
+        _, counts = np.unique(nodes_on_rw, return_counts=True)
+        sorted_counts = np.sort(counts)[::-1]
+        sorted_counts = np.log(sorted_counts)
+        cumulative_counts = np.cumsum(sorted_counts)
+        # number of nodes needed to cover thresh times the traffic
+        nodes_in_core = np.where(cumulative_counts > thresh * np.sum(sorted_counts))[0][0] + 1
+        return nodes_in_core / graph.number_of_nodes()
+
+    def _hhi(self, item_list):
+        """Compute HHI on the N most often occuring items"""
+        item_list = np.array(item_list)
+        shares = item_list / np.sum(item_list) * 100
+        if self._debug:
+            print("HHI:", shares)
+        return np.sum(shares ** 2)
+
+    def transition_hhi(self, graph):
+        transitions = self._transitions(graph)
+        if self._debug:
+            print(np.array(transitions).astype(int))
+        return self._hhi(transitions)
+
+    def degree_hhi(self, graph, mode="in"):
+        degrees = self._degree(graph, mode=mode)
+        return self._hhi(degrees)
+
+    def _betweenness_centrality(self, graph):
+        if isinstance(graph, nx.classes.multidigraph.MultiDiGraph):
+            graph = nx.DiGraph(graph)
+        centrality = nx.algorithms.centrality.betweenness_centrality(graph)
+        return list(centrality.values())
+
+    def betweenness_beta(self, graph):
+        centrality_vals = self._betweenness_centrality(graph)
+        return self._fit_powerlaw(np.array(centrality_vals))
+
+    def _sp_length(self, graph):
+        """
+        Returns discrete histogram of path length occurences
+        """
+        all_sp = nx.floyd_warshall(graph)
+        all_sp_lens = [v for sp_dict in all_sp.values() for v in list(sp_dict.values())]
+        return all_sp_lens
+
+    def mean_sp_length(self, graph):
+        all_sp_lens = self._sp_length(graph)
+        sp_lengths = [v for v in all_sp_lens if v < np.inf]
+        return np.mean(sp_lengths)
+
+    def mean_trip_distance(self, graph):
+        sum_of_weights = 0
+        weighted_distance = 0
+        for (u, v, data) in graph.edges(data=True):
+            loc_u = graph.nodes[u]["center"]
+            loc_v = graph.nodes[v]["center"]
+            weight = data["weight"]
+            sum_of_weights += weight
+            dist = get_point_dist(loc_u, loc_v, crs_is_projected=False)
+            weighted_distance += dist * weight
+        return weighted_distance / sum_of_weights

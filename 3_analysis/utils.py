@@ -39,10 +39,10 @@ def sort_images_by_cluster(
 
     # copy the images
     for user, assigned_cluster in map_dict.items():
-        in_path = os.path.join(in_img_path, user + ".png")
+        in_path = os.path.join(in_img_path, str(user) + ".png")
         cluster_dir_name = name_mapping.get(assigned_cluster, "cluster_" + str(assigned_cluster))
-        out_path = os.path.join(out_img_path, cluster_dir_name, user + ".png")
-        print("copying from", in_path, "to", out_path)
+        out_path = os.path.join(out_img_path, cluster_dir_name, str(user) + ".png")
+        # print("copying from", in_path, "to", out_path)
         shutil.copy(in_path, out_path)
 
 
