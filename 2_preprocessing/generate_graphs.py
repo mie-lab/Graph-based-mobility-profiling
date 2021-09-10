@@ -78,7 +78,7 @@ def get_locations(study, engine, limit=""):
     locs = ti.io.read_locations_postgis(
         sql="select * from {}.locations {}".format(study, limit),
         con=engine,
-        geom_col="center",
+        center="center",
     )
     return locs
 
@@ -102,7 +102,7 @@ def get_trips(study, engine, limit=""):
     return trips
 
 
-def filter_user_by_number_of_days(sp, tpls, coverage=0.9, min_nb_good_days=30, filter_sp=True):
+def filter_user_by_number_of_days(sp, tpls, coverage=0.7, min_nb_good_days=28, filter_sp=True):
     # could be replaced by https://github.com/mie-lab/trackintel/issues/258 once implemented
     nb_users = len(sp.user_id.unique())
 
@@ -245,9 +245,9 @@ def generate_graphs_daily(locs, sp, out_name, study, trips=None, plotting=False)
 # globals
 # study name is used as schema name in database
 studies = ["gc2", "gc1", "geolife"]
-studies = ["yumuv_graph_rep"]
-studies = ['tist_top10', 'tist_toph10', 'tist_top100', 'tist_toph100', 'tist_top500', 'tist_toph500', 'tist_top1000',
-           'tist_toph1000']
+# studies = ['geolife']
+# studies = ["yumuv_graph_rep"]
+studies = studies + ['tist_top10', 'tist_toph10', 'tist_top100', 'tist_toph100', 'tist_top500', 'tist_toph500']
 # limit = "where user_id > 1670"
 limit = ""
 single_user = False
@@ -282,9 +282,9 @@ if __name__ == "__main__":
 
             print("\t filter by tracking coverage")
             if study == "geolife":
-                sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.5, min_nb_good_days=15)
+                sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.7, min_nb_good_days=14)
             else:
-                sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.9, min_nb_good_days=30)
+                sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.7, min_nb_good_days=14)
             print("\t\t drop users with bad coverage")
             tpls = tpls[tpls.user_id.isin(user_id_ix)]
             trips = trips[trips.user_id.isin(user_id_ix)]

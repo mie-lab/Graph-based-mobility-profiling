@@ -21,7 +21,7 @@ engine = create_engine(
         **DSN
     )
 )
-file_prefix = "210905"
+file_prefix = "210910"
 study = "yumuv_graph_rep"
 limit = "" #"where user_id in (5652, 5609, 4979, 5008, 6007)"
 sp_ = get_staypoints(study=study, engine=engine, limit=limit)
@@ -118,8 +118,8 @@ trips_after.loc[destination_missing, 'destination_staypoint_id'] = pd.NA
 
 # tracking quality
 print("\t\t drop users with bad coverage")
-sp_before, _ = filter_user_by_number_of_days(sp=sp_before, tpls=tpls_before, coverage=0.9, min_nb_good_days=14)
-sp_after, _ = filter_user_by_number_of_days(sp=sp_after, tpls=trips_after, coverage=0.9, min_nb_good_days=14)
+sp_before, _ = filter_user_by_number_of_days(sp=sp_before, tpls=tpls_before, coverage=0.7, min_nb_good_days=14)
+sp_after, _ = filter_user_by_number_of_days(sp=sp_after, tpls=trips_after, coverage=0.7, min_nb_good_days=14)
 
 
 # only take intersection of users (users that are available in the before and after set)
@@ -155,3 +155,8 @@ pkl_name_before = open(os.path.join(GRAPH_OUTPUT, "counts_full_before_{}.pkl".fo
 pkl_name_after = open(os.path.join(GRAPH_OUTPUT, "counts_full_after_{}.pkl".format(file_prefix)), "rb")
 AG_dict_before2 = pickle.load(pkl_name_before)
 AG_dict_after2 = pickle.load(pkl_name_after)
+
+nb_users_tg = np.sum(user_dates_kg.index.isin(AG_dict_after.keys()))
+nb_users_cg = len(AG_dict_after.keys()) - nb_users_tg
+print("\t nb of users treatment group: ", nb_users_tg, "nb of users control group: ", nb_users_cg)
+print("\t nb of users treatment group before filtering: ", len(user_dates_kg))
