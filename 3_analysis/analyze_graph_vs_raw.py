@@ -10,7 +10,6 @@ import argparse
 import scipy
 
 from clustering import ClusterWrapper, decision_tree_cluster
-from utils import sort_images_by_cluster
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import adjusted_rand_score
 from plotting import plot_correlation_matrix

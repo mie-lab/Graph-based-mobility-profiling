@@ -1,10 +1,12 @@
 import os
 import numpy as np
 import pandas as pd
+import scipy
 
 from clustering import ClusterWrapper
 from compare_clustering import compute_all_scores
 from analyze_study import entropy
+from plotting import plot_correlation_matrix
 
 
 def load_all(path, type="graph", node_importance=50):
@@ -59,9 +61,9 @@ if __name__ == "__main__":
         "yumuv_after_tg",
     ]
     # parameters
-    nodes = 50
+    nodes = 0
     feat_id = 3
-    path = f"out_features/final_{feat_id}_n{nodes}_cleaned"
+    path = f"out_features/test"  # final_{feat_id}_n{nodes}_cleaned"
     n_clusters = len(STUDIES)
     feature_type = "graph"
 
@@ -79,4 +81,8 @@ if __name__ == "__main__":
     # print(np.unique(cluster_labels, return_counts=True))
     # # compare relation between cluster and study labels
     # compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
-    mean_features_by_study(features_all_datasets, out_path=f"out_features/datasets_{feat_id}_{nodes}.csv")
+    mean_features_by_study(features_all_datasets, out_path=f"out_features/dataset_{feat_id}_{nodes}.csv")
+
+    # Plot correlation matrix
+    feats_wostudy = features_all_datasets.drop(columns=["study"])
+    plot_correlation_matrix(feats_wostudy, feats_wostudy, save_path="out_features/correlation.png")

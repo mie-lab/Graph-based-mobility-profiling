@@ -6,6 +6,7 @@ import json
 import argparse
 
 from clustering import ClusterWrapper
+from utils import sort_images_by_cluster
 
 
 def cluster_characteristics(in_features, cluster_labels=None, printout=True):
@@ -40,7 +41,7 @@ def cluster_characteristics(in_features, cluster_labels=None, printout=True):
     return characteristics
 
 
-def sort_clusters_into_groups(characteristics, min_equal=1, printout=True):
+def sort_clusters_into_groups(characteristics, min_equal=2, add_groups=False, printout=True):
     with open("groups.json", "r") as infile:
         groups = json.load(infile)
     other_groups = [int(k.split("_")[-1]) for k in groups.keys() if "other" in k]
@@ -65,26 +66,29 @@ def sort_clusters_into_groups(characteristics, min_equal=1, printout=True):
                 # remember the group and how many equal feats we found
                 possible_groups.append((group_name, equal_feats))
 
-        # print(f"Cluster {cluster} could be part of", sorted(possible_groups, key=lambda x: x[1], reverse=True))
-        if len(possible_groups) > 0:
-            most_fitting_group = sorted(possible_groups, key=lambda x: x[1], reverse=True)[0][0]
+        sorted_possible_groups = sorted(possible_groups, key=lambda x: x[1], reverse=True)
+        if printout:
+            print(f"Cluster {cluster} could be part of", sorted_possible_groups)
+        no_tie = len(sorted_possible_groups) < 2 or sorted_possible_groups[0][1] != sorted_possible_groups[1][1]
+        # Conditions: at least one group, where at least min_equal elems are the same, and there is no tie
+        if len(possible_groups) > 0 and sorted_possible_groups[0][1] >= min_equal and no_tie:
+            most_fitting_group = sorted_possible_groups[0][0]
             if printout:
                 print(f"Cluster {cluster} is part of", most_fitting_group)
             cluster_assignment[cluster] = most_fitting_group
         else:
-            if printout:
-                print("No group possible for cluster", cluster, ", assign to other")
-            cluster_assignment[cluster] = "other"
-        # if is_group:
-        #     print(f"Cluster {cluster} is part of group", group_name)
-        #     break
-        if len(possible_groups) == 0 and len(cluster_characteristics) > 1:
+            # make new group
             num_other_groups += 1
             groups["other_" + str(num_other_groups)] = cluster_characteristics
 
+            if printout:
+                print("No group possible for cluster", cluster, ", assign to other", num_other_groups)
+            cluster_assignment[cluster] = "other"
+
     # # save updated groups
-    # with open("groups.json", "w") as outfile:
-    #     json.dump(groups, outfile)
+    if add_groups:
+        with open("groups.json", "w") as outfile:
+            json.dump(groups, outfile)
     return cluster_assignment
 
 
@@ -126,6 +130,8 @@ if __name__ == "__main__":
     study = args.study
     node_importance = args.nodes
 
+    add_groups = True
+
     n_clusters = 5
     algorithm = "kmeans"
 
@@ -144,15 +150,15 @@ if __name__ == "__main__":
     characteristics = cluster_characteristics(graph_features, labels)
     print()
     print("--------- Sorting cluster into predefined groups ------------")
-    cluster_assigment = sort_clusters_into_groups(characteristics)
+    cluster_assigment = sort_clusters_into_groups(characteristics, add_groups=add_groups)
     print("\n ----------------------------------- \n")
 
     # sort_images_by_cluster(
     #     list(graph_features.index),
     #     labels,
     #     name_mapping=cluster_assigment,
-    #     in_img_path="graph_images/gc2/coords",
-    #     out_img_path="graph_images/gc2_coords_" + algorithm,
+    #     in_img_path=f"graph_images/{study}/coords",
+    #     out_img_path=f"graph_images/{study}_coords_" + algorithm,
     # )
 
     # # CHARACTERIZE WITH RAW FEATURES
