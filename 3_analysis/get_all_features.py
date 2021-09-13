@@ -125,6 +125,10 @@ def get_yumuv(out_dir, node_importance):
         cg.to_csv(os.path.join(out_dir, f"yumuv_{name}_cg_graph_features_{node_importance}.csv"))
         tg.to_csv(os.path.join(out_dir, f"yumuv_{name}_tg_graph_features_{node_importance}.csv"))
 
+    # save cg for yumuv with whole time period
+    tg, cg_all = split_yumuv_control_group(full_features)
+    cg_all.to_csv(os.path.join(out_dir, f"yumuv_cg_graph_features_{node_importance}.csv"))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

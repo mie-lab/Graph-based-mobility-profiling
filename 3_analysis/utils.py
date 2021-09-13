@@ -79,7 +79,7 @@ def dist_names(feature):
 
 # ----------------- DISTRIBUTIONS TO FIT ----------------------
 def func_simple_powerlaw(x, beta):
-    return x ** (-(1 + beta))
+    return x ** (-beta)
 
 
 def func_truncated_powerlaw(x, delta_x, beta, kappa):
