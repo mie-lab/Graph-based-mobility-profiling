@@ -4,12 +4,13 @@ import pandas as pd
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
+import matplotlib
+
+matplotlib.rcParams.update({"font.size": 15, "axes.labelsize": 15})
 
 from future_trackintel.activity_graph import activity_graph
 import os
 import pickle
-
-plt.rcParams["axes.labelsize"] = 15
 
 
 def plot_all_graphs(AG_dict, study):
@@ -44,6 +45,7 @@ def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None
     Arguments
         clustering: List of cluster labels for each item
     """
+    map_cluster_to_col = {cluster: i for i, cluster in enumerate(np.unique(clustering))}
     if len(use_features) > 6:
         warnings.warn("More than 6 features does not make sense in scatterplot matrix, only using first 6")
         use_features = use_features[:6]
@@ -54,11 +56,11 @@ def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None
     feature_df = feature_df.loc[:, use_features]
     if clustering is not None:
         feature_df["cluster"] = clustering
-        col_dict = {cluster: sns.color_palette()[cluster] for cluster in clustering}
+        col_dict = {cluster: sns.color_palette()[map_cluster_to_col[cluster]] for cluster in clustering}
+        print(col_dict)
         sns.pairplot(feature_df, hue="cluster", palette=col_dict)
     else:
         sns.pairplot(feature_df)
-    plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
     else:
@@ -139,7 +141,7 @@ def plot_powerlaw_rank_fit(g):
 
 
 if __name__ == "__main__":
-    study = "gc1"
+    study = "yumuv_graph_rep"
     from utils import get_con
     from future_trackintel.utils import read_graphs_from_postgresql
 
