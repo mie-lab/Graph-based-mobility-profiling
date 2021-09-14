@@ -177,7 +177,7 @@ if __name__ == "__main__":
     print()
     characteristics = cluster_characteristics(graph_features, labels)
     print("\n--------- Sorting cluster into predefined groups ------------")
-    cluster_assigment = sort_clusters_into_groups(characteristics, add_groups=add_groups)
+    cluster_assignment = sort_clusters_into_groups(characteristics, add_groups=add_groups)
     print("\n ----------------------------------- \n")
 
     # SCATTERPLOT
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         )
         assert all(raw_features.index == graph_features.index)
         print("features shape:", graph_features.shape, raw_features.shape)
-    print()
-    print("Cluster characteristics by raw feature")
-    _ = cluster_characteristics(raw_features, labels)
+        print()
+        print("Cluster characteristics by raw feature")
+        _ = cluster_characteristics(raw_features, labels)
     f.close()
