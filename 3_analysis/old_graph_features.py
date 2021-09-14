@@ -318,7 +318,7 @@ class OldGraphFeatures(GraphFeatures):
         cumulative_counts = np.cumsum(sorted_counts)
         # number of nodes needed to cover thresh times the traffic
         nodes_in_core = np.where(cumulative_counts > thresh * np.sum(counts))[0][0] + 1
-        return nodes_in_core / graph.number_of_nodes()
+        return nodes_in_core / np.sqrt(graph.number_of_nodes())
 
     def log_hub_size(self, graph, thresh=0.8):
         nodes_on_rw = self._random_walk(graph)

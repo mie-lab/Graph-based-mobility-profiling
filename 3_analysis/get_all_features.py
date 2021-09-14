@@ -132,7 +132,9 @@ def get_yumuv(out_dir, node_importance):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--out_dir", type=str, default="out_features/test", help="output directory")
+    parser.add_argument(
+        "-o", "--out_dir", type=str, default=os.path.join("out_features", "test"), help="output directory"
+    )
     parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set 0 for all nodes")
     args = parser.parse_args()
 

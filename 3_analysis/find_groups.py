@@ -194,7 +194,7 @@ if __name__ == "__main__":
             list(graph_features.index),
             labels,
             name_mapping={lab: lab for lab in np.unique(labels)},
-            in_img_path=f"graph_images/{study}/{type}",
+            in_img_path=os.path.join("graph_images", "study", "type"),
             out_img_path=os.path.join(out_dir, f"{study}_{type}_" + algorithm),
         )
 

@@ -143,12 +143,16 @@ def barplot_clusters(labels1, labels2, name1="Group 1", name2="Group 2", out_pat
 
 
 if __name__ == "__main__":
-    path = "out_features/final_5_n0_cleaned"
-    out_path = "results/1_results_yumuv"
+    path = os.path.join("out_features", "final_5_n0_cleaned")
+    out_path = "results_yumuv_report"
     if not os.path.exists(out_path):
         os.makedirs(out_path)
     node_importance = 0
     n_clusters = 8
+
+    if not os.path.exists(path):
+        raise RuntimeError("First need to download out_features folder")
+
 
     # write terminal output to file:
     f = open(os.path.join(out_path, "terminal.txt"), "w")

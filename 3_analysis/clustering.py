@@ -13,6 +13,8 @@ class ClusterWrapper:
         self.random_state = random_state
         self.algorithm_dict = {"kmeans": KMeans, "hierarchical": AgglomerativeClustering, "dbscan": DBSCAN}
         self.cluster_centers = None
+        # to sort clusters into groups
+        self.cluster_assignment = None
 
     def __call__(self, feature_matrix, algorithm="kmeans", n_clusters=2, impute_outliers=False, return_normed=False):
         """
@@ -54,6 +56,8 @@ class ClusterWrapper:
         labels = []
         for feat in normed:
             labels.append(np.argmin([np.linalg.norm(feat - center) for center in self.cluster_centers]))
+        if self.cluster_assignment:
+            return [self.cluster_assignment[lab] for lab in labels]
         return labels
 
 

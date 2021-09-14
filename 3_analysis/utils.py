@@ -13,7 +13,11 @@ from future_trackintel.utils import read_graphs_from_postgresql
 
 
 def sort_images_by_cluster(
-    users, labels, name_mapping={}, in_img_path="graph_images/gc2/spring", out_img_path="sorted_by_cluster"
+    users,
+    labels,
+    name_mapping={},
+    in_img_path=os.path.join("graph_images", "gc2", "spring"),
+    out_img_path="sorted_by_cluster",
 ):
     """
     users: list of strings
@@ -267,7 +271,7 @@ def load_graphs_pkl(path, node_importance=50):
 
 
 def get_con():
-    DBLOGIN_FILE = os.path.join("./dblogin.json")
+    DBLOGIN_FILE = os.path.join("dblogin.json")
     with open(DBLOGIN_FILE) as json_file:
         LOGIN_DATA = json.load(json_file)
 
@@ -315,14 +319,14 @@ def load_user_info(study, index_col="user_id"):
     return user_info
 
 
-def load_all_questions(path="yumuv_data/yumuv_questions_all.csv"):
+def load_all_questions(path=os.path.join("yumuv_data", "yumuv_questions_all.csv")):
     return pd.read_csv(path, index_col="qname")
 
 
 def load_question_mapping(before_after="before", group="cg"):
     if before_after == "before":
         group = ""
-    question_mapping = pd.read_csv(f"yumuv_data/yumuv_{before_after}_{group}.csv", delimiter=";").drop(
+    question_mapping = pd.read_csv(os.path.join("yumuv_data", f"yumuv_{before_after}_{group}.csv"), delimiter=";").drop(
         columns="Unnamed: 0"
     )
     # only the qname leads to unique questions

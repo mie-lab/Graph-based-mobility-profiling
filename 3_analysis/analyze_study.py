@@ -134,7 +134,7 @@ if __name__ == "__main__":
     study = "gc1"
     feat_type = "graph"
     node_importance = 0
-    path = "out_features/final_1_cleaned"
+    path = os.path.join("out_features", "final_1_cleaned")
     n_clusters = 3
 
     # Load the question mapping
