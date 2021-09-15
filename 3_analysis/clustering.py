@@ -25,6 +25,8 @@ class ClusterWrapper:
         prev_len = len(feature_matrix)
         # feature_matrix = feature_matrix.dropna()
         # print("Dropped nans, length now", len(feature_matrix), "vs prev length", prev_len)
+        if "study" in feature_matrix.columns:
+            feature_matrix = feature_matrix.drop(columns=["study"])
         feature_matrix = np.array(feature_matrix)
         if impute_outliers:
             feature_matrix = outlier_imputation(feature_matrix)
