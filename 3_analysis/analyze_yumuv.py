@@ -4,9 +4,12 @@ import numpy as np
 import pandas as pd
 import os
 import sys
+import seaborn as sns
 from collections import defaultdict
 from matplotlib.lines import Line2D
 
+from utils import sort_images_by_cluster
+from plotting import barplot_clusters, print_chisquare
 from clustering import ClusterWrapper
 from utils import load_question_mapping, load_user_info
 from find_groups import cluster_characteristics, sort_clusters_into_groups
@@ -29,6 +32,20 @@ def plot_longitudinal(before_after_cluster, out_path=None):
                 edges.append([c1, c2, {"weight": transferred}])
     print("Transitions between clusters:")
     print(transition_matrix)
+
+    # plot confusion matrix
+    plt.figure(figsize=(15, 10))
+    print(np.sum(transition_matrix, axis=1))
+    print(transition_matrix / np.sum(transition_matrix, axis=0))
+    normalized = np.swapaxes(np.swapaxes(transition_matrix, 1, 0) / np.sum(transition_matrix, axis=1), 1, 0)
+    df = pd.DataFrame(normalized, columns=cluster_names, index=cluster_names)
+    df_unnormalized = pd.DataFrame(transition_matrix, columns=cluster_names, index=cluster_names)
+    sns.heatmap(df, annot=True, cmap="Blues")
+    # plt.xticks(rotation=20)
+    if out_path:
+        plt.savefig(out_path.replace("longitudinal", "longitudinal_matrix"), dpi=600)
+    else:
+        plt.show
 
     # put into graph
     G = nx.DiGraph()
@@ -62,9 +79,10 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     plt.legend(handles=legend_elements, loc="lower right", fontsize=10)
     plt.tight_layout()
     if out_path is not None:
-        plt.savefig(out_path)
+        plt.savefig(out_path, dpi=600)
     else:
         plt.show()
+    return df_unnormalized
 
 
 def longitudinal_labels(test_group, out_path=None):
@@ -120,28 +138,6 @@ def print_cross_sectional(groups_cg_bef, groups_tg_bef):
     print("TG aft:", {u: round(c / np.sum(counts), 2) for u, c in zip(uni, counts)})
 
 
-def barplot_clusters(labels1, labels2, name1="Group 1", name2="Group 2", out_path=None, title=""):
-    occuring_labels = np.unique(list(labels1) + list(labels2))
-    labels1 = np.array(labels1)
-    labels2 = np.array(labels2)
-
-    occ1 = [sum(labels1 == lab) / len(labels1) for lab in occuring_labels]
-    occ2 = [sum(labels2 == lab) / len(labels2) for lab in occuring_labels]
-    x = np.arange(len(occuring_labels))
-    plt.figure(figsize=(10, 8))
-    plt.bar(x - 0.2, occ1, 0.4, label=name1)
-    plt.bar(x + 0.2, occ2, 0.4, label=name2)
-    plt.xticks(x, occuring_labels, rotation=90)
-    plt.ylabel("Ratio of users")
-    plt.legend()
-    plt.title(title, fontsize=10)
-    plt.tight_layout()
-    if out_path is not None:
-        plt.savefig(os.path.join(out_path, name1 + " vs " + name2 + ".png"))
-    else:
-        plt.show()
-
-
 if __name__ == "__main__":
     path = os.path.join("out_features", "final_5_n0_cleaned")
     out_path = "results_yumuv_report"
@@ -152,11 +148,6 @@ if __name__ == "__main__":
 
     if not os.path.exists(path):
         raise RuntimeError("First need to download out_features folder")
-
-
-    # write terminal output to file:
-    f = open(os.path.join(out_path, "terminal.txt"), "w")
-    sys.stdout = f
 
     data = defaultdict(dict)
     for group in ["cg", "tg"]:
@@ -177,6 +168,23 @@ if __name__ == "__main__":
     clustering.cluster_assignment = cluster_assignment
     labels_cg_both = [cluster_assignment[ind] for ind in int_labels_cg_both]
 
+    # # SORT IMAGES INTO FOLDERS
+    # print(np.unique(labels_cg_both))
+    # cg_both_wo = pd.concat((data["cg"]["before"], data["cg"]["after"]))
+    # for type in ["coords", "spring"]:
+    #     sort_images_by_cluster(
+    #         list(cg_both_wo.index),
+    #         labels_cg_both,
+    #         name_mapping={lab: lab for lab in np.unique(labels_cg_both)},
+    #         in_img_path=os.path.join("graph_images", "yumuv_graph_rep", type),
+    #         out_img_path=os.path.join(out_path, f"yumuv_sorted_images_" + type),
+    #     )
+    # exit()
+
+    # # write terminal output to file:
+    f = open(os.path.join(out_path, "terminal.txt"), "w")
+    sys.stdout = f
+
     print("\nLONGITUDINAL\n")
 
     # transform control group after
@@ -190,7 +198,7 @@ if __name__ == "__main__":
         "Ratio of CONTROL group that switched cluster:",
         np.sum(control_group["cluster_before"] != control_group["cluster_after"]) / len(control_group),
     )
-    plot_longitudinal(control_group, out_path=os.path.join(out_path, "longitudinal_control_group.png"))
+    long_cg = plot_longitudinal(control_group, out_path=os.path.join(out_path, "longitudinal_control_group.png"))
 
     # Fit test group:
     data["tg"]["before"]["cluster"] = clustering.transform(data["tg"]["before"])
@@ -202,7 +210,24 @@ if __name__ == "__main__":
         "Ratio of TEST group that switched cluster:",
         np.sum(test_group["cluster_before"] != test_group["cluster_after"]) / len(test_group),
     )
-    plot_longitudinal(test_group, out_path=os.path.join(out_path, "longitudinal_test_group.png"))
+    long_tg = plot_longitudinal(test_group, out_path=os.path.join(out_path, "longitudinal_test_group.png"))
+
+    # chi square analysis long
+    print("------------ Chi square test for movement between clustern -----------")
+    for col in long_cg.columns:
+        if col not in long_tg.columns:
+            long_tg[col] = 0
+    long_tg = long_tg.reindex(columns=long_cg.columns)
+    # print(long_tg)
+    for feat, row in long_cg.iterrows():
+        # print(feat, row)
+        print("--------------- ", feat)
+        if feat not in long_tg.index:
+            print("feat not there")
+            continue
+        occ1 = list(row.values)
+        occ2 = list(long_tg.loc[feat].values)
+        print_chisquare(occ1, occ2)
 
     # ---------- Compare to user interviews ------------
     longitudinal_labels(test_group, out_path=out_path)
@@ -213,15 +238,15 @@ if __name__ == "__main__":
     barplot_clusters(
         data["cg"]["before"]["cluster"],
         data["tg"]["before"]["cluster"],
-        "control group (before)",
-        "test group (before)",
+        "Kontrollgruppe (vorher)",
+        "Testgruppe (vorher)",
         out_path=out_path,
     )
     barplot_clusters(
         data["tg"]["before"]["cluster"],
         data["tg"]["after"]["cluster"],
-        "test group before",
-        "test group after",
+        "Test Gruppe vorher",
+        "Test Gruppe nachher",
         out_path=out_path,
     )
     f.close()

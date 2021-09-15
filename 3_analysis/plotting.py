@@ -5,6 +5,7 @@ import numpy as np
 import scipy
 import matplotlib.pyplot as plt
 import matplotlib
+from scipy.stats import chi2_contingency, contingency
 
 matplotlib.rcParams.update({"font.size": 15, "axes.labelsize": 15})
 
@@ -140,6 +141,47 @@ def plot_powerlaw_rank_fit(g):
     plt.plot(x, y)
     plt.title("Beta is " + str(beta))
     plt.show()
+
+
+def print_chisquare(occ1, occ2):
+    # occ1 = np.array(occ1)
+    # occ2 = np.array(occ2)
+    # print("chisquare input:", occ1 / np.sum(occ1) * 100 + 1, occ2 / np.sum(occ2) * 100 + 1)
+    # print("CHISQUARE", chisquare(occ1 / np.sum(occ1) * 100 + 1, occ2 / np.sum(occ2) * 100 + 1))
+    contingency_table = np.array([occ1, occ2])
+    print("Contingency table")
+    print("Kontrollgruppe:", occ1)
+    print("Testgruppe:", occ2)
+    # print(contingency_table)
+    contingency_table = contingency_table[:, np.any(contingency_table, axis=0)]
+    stat, p, dof, expected = chi2_contingency(contingency_table)
+    print(f"CHI SQUARE TEST: With p={round(p, 2)}, the groups are significantly different")
+
+
+def barplot_clusters(labels1, labels2, name1="Group 1", name2="Group 2", out_path=None, title=""):
+    occuring_labels = np.unique(list(labels1) + list(labels2))
+    labels1 = np.array(labels1)
+    labels2 = np.array(labels2)
+
+    occ1 = [sum(labels1 == lab) / len(labels1) for lab in occuring_labels]
+    occ2 = [sum(labels2 == lab) / len(labels2) for lab in occuring_labels]
+    occ1_unnormalized = [sum(labels1 == lab) for lab in occuring_labels]
+    occ2_unnormalized = [sum(labels2 == lab) for lab in occuring_labels]
+    x = np.arange(len(occuring_labels))
+    plt.figure(figsize=(10, 8))
+    plt.bar(x - 0.2, occ1, 0.4, label=name1)
+    plt.bar(x + 0.2, occ2, 0.4, label=name2)
+    plt.xticks(x, occuring_labels, rotation=90)
+    plt.ylabel("Ratio of users")
+    plt.legend()
+    plt.title(title, fontsize=15)
+    plt.tight_layout()
+    if out_path is not None:
+        plt.savefig(os.path.join(out_path, name1 + " vs " + name2 + ".png"), dpi=600)
+    else:
+        plt.show()
+    print("Do chi square test for ", name1, name2)
+    print_chisquare(occ1_unnormalized, occ2_unnormalized)
 
 
 if __name__ == "__main__":
