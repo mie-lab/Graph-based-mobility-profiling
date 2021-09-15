@@ -3,6 +3,7 @@ import os
 import time
 import pandas as pd
 import numpy as np
+import sys
 
 from utils import split_yumuv_control_group
 from clustering import ClusterWrapper
@@ -35,11 +36,17 @@ def clean_features(path, cutoff=4):
         else:
             if "before" in f:
                 raw_path = os.path.join(path, f).replace("before", "after")
-                after_features = pd.read_csv(raw_path, index_col="user_id")
-                feature_df = pd.merge(graph_features, after_features, on="user_id", how="inner")
+                raw_features = pd.read_csv(raw_path, index_col="user_id")
+                feature_df = pd.merge(graph_features, raw_features, on="user_id", how="inner")
             else:
+                raw_features = graph_features.copy()
                 feature_df = graph_features
         print("len prev", len(feature_df))
+
+        u_o1 = [u_id for u_id in graph_features.index if u_id not in feature_df.index]
+        print("Users in graph features but not in raw (bzw for yumuv, in before but not in after):", len(u_o1), u_o1)
+        u_o2 = [u_id for u_id in raw_features.index if u_id not in feature_df.index]
+        print("Users in raw features but not in graph (bzw for yumuv, in after but not in before):", len(u_o2), u_o2)
 
         feature_df = feature_df.dropna()
         features = np.array(feature_df)
@@ -55,7 +62,8 @@ def clean_features(path, cutoff=4):
         outlier_arr = np.array(outlier_arr)
         #     print(outlier_arr.shape)
         outlier_arr = np.any(outlier_arr, axis=0)
-        print("removed users", list(feature_df[outlier_arr].index))
+        removed_outliers = list(feature_df[outlier_arr].index)
+        print("Removed users", len(removed_outliers), removed_outliers)
         feature_df = feature_df[~outlier_arr]
         print(len(feature_df))
 
@@ -65,7 +73,7 @@ def clean_features(path, cutoff=4):
             raw_features = raw_features[raw_features.index.isin(feature_df.index)]
             raw_features.to_csv(os.path.join(out_path, f).replace("graph", "raw"))
         elif "before" in f:
-            after_features = after_features[after_features.index.isin(feature_df.index)]
+            after_features = raw_features[raw_features.index.isin(feature_df.index)]
             after_features.to_csv(os.path.join(out_path, f).replace("before", "after"))
 
 
@@ -141,7 +149,13 @@ if __name__ == "__main__":
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
 
+    # write terminal output to file:
+    f = open(os.path.join(args.out_dir, "terminal.txt"), "w")
+    sys.stdout = f
+
     # Process graph and raw features for all studies, then add yumuv, then clean
     get_graph_and_raw(args.out_dir, args.nodes)
     get_yumuv(args.out_dir, args.nodes)
     clean_features(args.out_dir)
+
+    f.close()
