@@ -143,21 +143,12 @@ if __name__ == "__main__":
 
     add_groups = False
 
-    # FOR ACTUALLY FINDING THE GROUPS:
-    # add_groups = True
-    # cluster_wrapper = ClusterWrapper()
-    # labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
-
     # AFTER GROUPS ARE FOUND, ANALYZE ASSIGNMENT
     out_dir = args.out_dir
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     out_path = os.path.join(out_dir, f"{study}_{args.version}_")
-
-    # write terminal output to file:
-    f = open(out_path + "terminal.txt", "w")
-    sys.stdout = f
 
     n_clusters = 8
     algorithm = "kmeans"
@@ -166,6 +157,25 @@ if __name__ == "__main__":
     graph_features = pd.read_csv(
         os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
     )
+
+    # FOR ACTUALLY FINDING THE GROUPS:
+    # add_groups = True
+    # cluster_wrapper = ClusterWrapper()
+    # if "study" in graph_features.columns:
+    #     in_features = graph_features.drop(columns=["study"])
+    # for i in range(3):
+    #     for n_clusters in [6, 7, 8]:
+    #         labels = cluster_wrapper(in_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
+    #         characteristics = cluster_characteristics(in_features, labels, printout=False)
+    #         cluster_assignment = sort_clusters_into_groups(characteristics, add_groups=add_groups, printout=False)
+    # cluster_wrapper.cluster_assignment = cluster_assignment
+    # graph_features["cluster"] = cluster_wrapper.transform(in_features)
+    # graph_features.to_csv(os.path.join(path, f"{study}_clustering.csv"))
+    # exit()
+
+    # write terminal output to file:
+    f = open(out_path + "terminal.txt", "w")
+    sys.stdout = f
 
     # CLUSTER CONSISTENCY
     labels = group_consistency(graph_features, out_path=out_path + "consistency.csv", n_clusters=n_clusters)
