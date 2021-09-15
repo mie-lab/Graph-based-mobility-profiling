@@ -39,6 +39,56 @@ def plot_all_graphs(AG_dict, study):
         )
 
 
+def get_percentage(df, var1, var2):
+    return (
+        df.groupby([var1])[var2]
+        .value_counts(normalize=True)
+        .rename("percentage")
+        .mul(100)
+        .reset_index()
+        .sort_values(var2)
+    )
+
+
+def cluster_by_study(feats, out_path="results"):
+    """
+    Feats requires column study, column clustering,
+    """
+    filtered = feats[~feats["study"].isin(["yumuv_after_cg", "yumuv_after_tg", "yumuv_before_cg", "yumuv_before_tg"])]
+    df_perc = get_percentage(filtered, "study", "cluster")
+    plt.figure(figsize=(20, 10))
+    p = sns.barplot(x="study", y="percentage", hue="cluster", data=df_perc)
+    plt.savefig(os.path.join(out_path, "cluster_by_study.jpg"))
+
+
+def plot_cluster_characteristics(feats, out_path="results"):
+    feat_columns = [
+        "degree_beta",
+        "journey_length",
+        "mean_clustering_coeff",
+        "mean_trip_distance",
+        "median_trip_distance",
+        "transition_beta",
+    ]
+    rn_dict = {"cluster": "User group", "value": "Standard deviations from mean", "variable": "Feature"}
+    # filter out the ones that are double
+    filtered = feats[~feats["study"].isin(["yumuv_after_cg", "yumuv_after_tg", "yumuv_before_cg", "yumuv_before_tg"])]
+    feats_by_cluster = filtered.copy()
+    # NORMALIZE
+    for col in feat_columns:
+        feats_by_cluster[col] = (feats_by_cluster[col] - np.mean(feats_by_cluster[col].values)) / np.std(
+            feats_by_cluster[col].values
+        )
+    # MELT AND PLOT
+    feats_by_cluster = pd.melt(feats_by_cluster, id_vars=["cluster"], value_vars=feat_columns)
+    feats_by_cluster.rename(columns=rn_dict, inplace=True)
+    plt.figure(figsize=(20, 10))
+    p = sns.barplot(x=rn_dict["cluster"], y=rn_dict["value"], hue=rn_dict["variable"], data=feats_by_cluster)
+    plt.ylim(-1, 2.5)
+    plt.legend(ncol=3, framealpha=1)
+    plt.savefig(os.path.join(out_path, "relative_meaning_clusters.jpg"))
+
+
 def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None, save_path=None):
     """
     Scatterplot matrix for selected features
