@@ -382,3 +382,34 @@ class OldGraphFeatures(GraphFeatures):
             dist = get_point_dist(loc_u, loc_v, crs_is_projected=False)
             weighted_distance += dist * weight
         return weighted_distance / sum_of_weights
+
+    def unique_journeys(self, graph):
+        """Ratio of unique journeys of all journeys on random walk"""
+        nodes_on_rw, resets = self._random_walk(graph, return_resets=True)
+        unique_journeys = {}
+
+        nr_journeys = 0
+        home_node = nodes_on_rw[0]
+        at_home = np.where(np.array(nodes_on_rw) == home_node)[0]
+        for i in range(len(at_home) - 1):
+            # found journey
+            if at_home[i + 1] not in resets:
+                # count overall number of journeys
+                nr_journeys += 1
+                # add to unique journeys if it's new
+                len_of_cycle = at_home[i + 1] - at_home[i]
+                if len_of_cycle < 2:
+                    # print("Cycle of length 1 found")
+                    continue
+                start_ind = at_home[i]
+                end_ind = at_home[i + 1]
+                # put journey sequence as key into dictionary (for hashing)
+                journey_sequence = tuple(nodes_on_rw[start_ind + 1 : end_ind])
+                # put into dictionary to hash this sequence
+                # print(journey_sequence)
+                unique_journeys[journey_sequence] = 1
+
+        if nr_journeys == 0:
+            return 0
+        return len(unique_journeys.keys()) / np.sqrt(graph.number_of_nodes())
+        # self._random_walk_iters * len(unique_journeys.keys()) / (nr_journeys * graph.number_of_nodes())
