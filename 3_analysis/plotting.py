@@ -118,6 +118,16 @@ def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None
         plt.show()
 
 
+column_mapping = {
+    "degree_beta": "degree\nbeta",
+    "transition_beta": "transition\nbeta",
+    "journey_length": "journey\nlength",
+    "mean_trip_distance": "mean trip\ndistance",
+    "median_trip_distance": "median trip\ndistance",
+    "mean_clustering_coeff": "mean\nclustering\ncoefficient",
+}
+
+
 def plot_correlation_matrix(feat1, feat2, save_path=None):
     correlations = np.zeros((len(feat1.columns), len(feat1.columns)))
     for i, raw_feat in enumerate(feat1.columns):
@@ -127,8 +137,14 @@ def plot_correlation_matrix(feat1, feat2, save_path=None):
     plt.figure(figsize=(20, 10))
     for i in range(len(correlations)):
         correlations[i, i] = 0
-    df = pd.DataFrame(correlations, columns=feat1.columns, index=feat2.columns)
-    sns.heatmap(df, annot=True, cmap="PiYG")
+    # if the feature is in the mapping dictionary, map it to the new name
+    col_labs = [column_mapping.get(col, col) for col in feat1.columns]
+    ind_labs = [column_mapping.get(col, col) for col in feat2.columns]
+    df = pd.DataFrame(correlations, columns=col_labs, index=ind_labs)
+    sns.heatmap(df, annot=True, cmap="PiYG", annot_kws={"size": 25})
+    plt.xticks(np.arange(len(col_labs)) + 0.5, col_labs, fontsize=25)
+    plt.yticks(np.arange(len(col_labs)) + 0.5, ind_labs, fontsize=25)
+    plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
     else:
