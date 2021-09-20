@@ -10,7 +10,7 @@ import argparse
 import scipy
 
 from clustering import ClusterWrapper, decision_tree_cluster
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import adjusted_rand_score
 from plotting import plot_correlation_matrix
 from find_groups import cluster_characteristics
@@ -43,7 +43,7 @@ def get_important_features(features, labels, n_important=4, method="forest"):
 def predict_cluster_RF(graph_features, raw_features):
     assert all(raw_features.index == graph_features.index)
 
-    for n_clusters in range(2, 5):
+    for n_clusters in range(2, 9):
         # cluster with both separately
         cluster_wrapper = ClusterWrapper()
         labels_graph = cluster_wrapper(graph_features, n_clusters=n_clusters)
@@ -59,6 +59,17 @@ def predict_cluster_RF(graph_features, raw_features):
                     f"Ability to predict {cluster_name} clusters with {feat_name} features:",
                     round(forest.oob_score_, 2),
                 )
+
+
+def single_feature_rf(graph_features, raw_features):
+    raw_feat_arr = np.array(raw_features)
+    for feat in graph_features.columns:
+        forest = RandomForestRegressor(oob_score=True)
+        forest.fit(raw_feat_arr, graph_features[feat].values)
+        print(
+            f"Ability to predict feature {feat}",
+            round(forest.oob_score_, 2),
+        )
 
 
 def returner_explorers(path_to_returner, graph_features):
@@ -84,10 +95,32 @@ def returner_explorers(path_to_returner, graph_features):
     # print(np.array(graph_features.columns)[important_feature_inds], feature_importances[important_feature_inds])
 
 
+def graph_raw_all_datasets(version, node_importance, studies_raw=["gc1", "gc2", "geolife"]):
+    base_path = os.path.join("out_features", f"final_{version}_n{node_importance}_cleaned")
+    graph_feats = pd.read_csv(os.path.join(base_path, "all_datasets_clustering.csv"))
+    graph_feats["user_id"] = graph_feats["user_id"].astype(str) + ("_" + graph_feats["study"])
+    graph_feats = graph_feats.drop(columns=["study"]).set_index("user_id")
+
+    # collect all raw feats
+    raw_feats = []
+    for study in studies_raw:
+        feat = pd.read_csv(os.path.join(base_path, f"{study}_raw_features_0.csv"))
+        feat["user_id"] = feat["user_id"].astype(str) + ("_" + study)
+        raw_feats.append(feat)
+    raw_feats = pd.concat(raw_feats).set_index("user_id")
+
+    # filter for common
+    graph_feats_in_raw = graph_feats.loc[raw_feats.index]
+    # # save again
+    # graph_feats_in_raw.to_csv(os.path.join(base_path, "all_graph_clustering.csv"))
+    # raw_feats.to_csv(os.path.join(base_path, "all_raw.csv"))
+    return graph_feats_in_raw, raw_feats
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
-    parser.add_argument("-v", "--version", type=int, default=3, help="feature version")
+    parser.add_argument("-v", "--version", type=int, default=6, help="feature version")
     parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set -1 for all nodes")
     args = parser.parse_args()
 
@@ -98,28 +131,42 @@ if __name__ == "__main__":
     n_clusters = 5
     algorithm = "kmeans"
 
-    # load features
-    graph_features = pd.read_csv(
-        os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
-    )
-    if "yumuv" not in study:
+    if study == "all":
+        # load features ALL STUDIES
+        graph_features, raw_features = graph_raw_all_datasets(args.version, args.nodes)
+        # graph_features = pd.read_csv("out_features/final_6_n0_cleaned/all_graph_clustering.csv", index_col="user_id")
+        labels_graph_orig = graph_features["cluster"]
+        graph_features.drop("cluster", axis=1, inplace=True)
+        # raw_features = pd.read_csv("out_features/final_6_n0_cleaned/all_raw.csv", index_col="user_id")
+    else:
+        # load features SINGLE STUDY
+        graph_features = pd.read_csv(
+            os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
+        )
+        labels_graph_orig = None
         raw_features = pd.read_csv(
             os.path.join(path, f"{study}_raw_features_{node_importance}.csv"), index_col="user_id"
         )
         raw_features = raw_features.loc[graph_features.index]
-        assert all(raw_features.index == graph_features.index)
-        print("features shape:", graph_features.shape, raw_features.shape)
+    # rename because of clash with raw features
+    graph_features.rename(columns={"mean_trip_distance": "mean_trip_dist_graph"}, inplace=True)
+    assert all(raw_features.index == graph_features.index)
+    print("features shape:", graph_features.shape, raw_features.shape)
 
     # # CORRELATIONS
     # plot correlation matrix of all features to each other
     both = raw_features.join(graph_features)
-    plot_correlation_matrix(both, both)  # , save_path="out_features/correlations_3_n0.png")
+    plot_correlation_matrix(both, both, fontsize=12, save_path=os.path.join("figures", "correlations_w_raw.pdf"))
     # plot_correlation_matrix(graph_features, raw_features)
     # print_correlated_features(graph_features, raw_features)
 
     # Use random forest RF to predict graph clusters with raw features and the other way round:
-    print("Predict with random forest:")
+    print("Predict CLUSTER with random forest:")
     predict_cluster_RF(graph_features, raw_features)
+
+    print("\n ----------------------------------- \n")
+    print("Predict FEATURE with random forest (regressor):")
+    single_feature_rf(graph_features, raw_features)
 
     print("\n ----------------------------------- \n")
 
@@ -127,6 +174,8 @@ if __name__ == "__main__":
 
     # cluster both with their features, compute similarity:
     labels_graph = cluster_wrapper(graph_features, algorithm=algorithm)
+    if labels_graph_orig is not None:
+        labels_graph = labels_graph_orig
     labels_raw = cluster_wrapper(raw_features, algorithm=algorithm)
     print("rand score before", adjusted_rand_score(labels_raw, labels_graph))
 

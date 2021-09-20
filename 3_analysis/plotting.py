@@ -128,7 +128,7 @@ column_mapping = {
 }
 
 
-def plot_correlation_matrix(feat1, feat2, save_path=None):
+def plot_correlation_matrix(feat1, feat2, save_path=None, fontsize=25):
     correlations = np.zeros((len(feat1.columns), len(feat1.columns)))
     for i, raw_feat in enumerate(feat1.columns):
         for j, graph_feat in enumerate(feat2.columns):
@@ -141,9 +141,9 @@ def plot_correlation_matrix(feat1, feat2, save_path=None):
     col_labs = [column_mapping.get(col, col) for col in feat1.columns]
     ind_labs = [column_mapping.get(col, col) for col in feat2.columns]
     df = pd.DataFrame(correlations, columns=col_labs, index=ind_labs)
-    sns.heatmap(df, annot=True, cmap="PiYG", annot_kws={"size": 25})
-    plt.xticks(np.arange(len(col_labs)) + 0.5, col_labs, fontsize=25)
-    plt.yticks(np.arange(len(col_labs)) + 0.5, ind_labs, fontsize=25)
+    sns.heatmap(df, annot=True, cmap="PiYG", annot_kws={"size": fontsize})
+    plt.xticks(np.arange(len(col_labs)) + 0.5, col_labs, fontsize=fontsize)
+    plt.yticks(np.arange(len(col_labs)) + 0.5, ind_labs, fontsize=fontsize)
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)

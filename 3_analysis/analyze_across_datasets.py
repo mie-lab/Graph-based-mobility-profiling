@@ -39,7 +39,7 @@ def load_all(path, type="graph", node_importance=50):
 
 def mean_features_by_study(features, out_path=None):
     # leave away last column because it's the study label
-    agg = {feat: ["mean", "std"] for feat in features.columns[:-1]}
+    agg = {feat: ["mean"] for feat in features.columns[:-1]}
     # group and aggregate
     mean_features = features.groupby("study").agg(agg).round(2)
     if out_path:
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     # Plot correlation matrix
     feats_wostudy = features_all_datasets.drop(columns=["study"])
     plot_correlation_matrix(
-        feats_wostudy, feats_wostudy, save_path=os.path.join("out_features", f"correlation_{feat_id}_{nodes}.png")
+        feats_wostudy, feats_wostudy, save_path=os.path.join("figures", f"correlation_{feat_id}_{nodes}.pdf")
     )
 
     # cluster_wrapper = ClusterWrapper()
