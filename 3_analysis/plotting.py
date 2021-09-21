@@ -56,10 +56,20 @@ def cluster_by_study(feats, out_path="results", fontsize_dict={"font.size": 28, 
     """
     matplotlib.rcParams.update(fontsize_dict)
     filtered = feats[~feats["study"].isin(["yumuv_after_cg", "yumuv_after_tg", "yumuv_before_cg", "yumuv_before_tg"])]
+    study_mapping = {
+        "gc1": "Green Class 1",
+        "gc2": "Green Class 2",
+        "yumuv_graph_rep": "YUMUV",
+        "geolife": "Geolife",
+        "tist_toph100": "Foursquare",
+    }
+    filtered["study"] = filtered["study"].apply(lambda x: study_mapping[x])
     df_perc = get_percentage(filtered, "study", "cluster")
     plt.figure(figsize=(20, 10))
     p = sns.barplot(x="study", y="Percentage", hue="cluster", data=df_perc)
+    plt.xlabel("")
     plt.legend(ncol=3, framealpha=1)
+    plt.tight_layout()
     plt.savefig(out_path)
 
 

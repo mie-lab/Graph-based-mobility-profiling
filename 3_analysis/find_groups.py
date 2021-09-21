@@ -132,7 +132,7 @@ def group_consistency(graph_features, out_path=None, nr_iters=20, n_clusters=5):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
-    parser.add_argument("-v", "--version", type=int, default=3, help="feature version")
+    parser.add_argument("-v", "--version", type=int, default=6, help="feature version")
     parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set -1 for all nodes")
     parser.add_argument("-o", "--out_dir", type=str, default="results", help="Path where to output all results")
     args = parser.parse_args()
@@ -178,6 +178,7 @@ if __name__ == "__main__":
         # get most consistent labels
         labels = group_consistency(graph_features.drop("study", axis=1), n_clusters=n_clusters)
         graph_features["cluster"] = labels
+        graph_features.to_csv(os.path.join(path, f"{study}_clustering.csv"))
         plot_cluster_characteristics(graph_features, out_path=os.path.join("figures", "cluster_characteristics.pdf"))
         cluster_by_study(graph_features, out_path=os.path.join("figures", "dataset_clusters.pdf"))
         exit()

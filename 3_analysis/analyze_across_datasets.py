@@ -84,6 +84,10 @@ if __name__ == "__main__":
         feats_wostudy, feats_wostudy, save_path=os.path.join("figures", f"correlation_{feat_id}_{nodes}.pdf")
     )
 
+    # UNCOMMENT FOR ENTROPY CALCULATION
+    # STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+    # features_all_datasets = load_all(path, type=feature_type, node_importance=nodes)
+
     # cluster_wrapper = ClusterWrapper()
     # cluster_labels = cluster_wrapper(features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters)
 
