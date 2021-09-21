@@ -9,7 +9,7 @@ import shutil
 
 from clustering import ClusterWrapper
 from utils import sort_images_by_cluster
-from plotting import scatterplot_matrix
+from plotting import scatterplot_matrix, plot_cluster_characteristics, cluster_by_study
 
 
 def cluster_characteristics(in_features, cluster_labels=None, printout=True):
@@ -172,6 +172,17 @@ if __name__ == "__main__":
     # graph_features["cluster"] = cluster_wrapper.transform(in_features)
     # graph_features.to_csv(os.path.join(path, f"{study}_clustering.csv"))
     # exit()
+
+    # PLOTTING
+    if study == "all_datasets":
+        # get most consistent labels
+        labels = group_consistency(graph_features.drop("study", axis=1), n_clusters=n_clusters)
+        graph_features["cluster"] = labels
+        plot_cluster_characteristics(graph_features, out_path=os.path.join("figures", "cluster_characteristics.pdf"))
+        cluster_by_study(graph_features, out_path=os.path.join("figures", "dataset_clusters.pdf"))
+        exit()
+
+    # ANALYSE SINGLE STUDY WITH GIVEN GROUPS
 
     # write terminal output to file:
     f = open(out_path + "terminal.txt", "w")

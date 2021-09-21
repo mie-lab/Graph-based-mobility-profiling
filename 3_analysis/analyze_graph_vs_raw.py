@@ -12,7 +12,7 @@ import scipy
 from clustering import ClusterWrapper, decision_tree_cluster
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import adjusted_rand_score
-from plotting import plot_correlation_matrix
+from plotting import plot_correlation_matrix, plot_cluster_characteristics
 from find_groups import cluster_characteristics
 
 
@@ -150,6 +150,7 @@ if __name__ == "__main__":
         raw_features = raw_features.loc[graph_features.index]
     # rename because of clash with raw features
     graph_features.rename(columns={"mean_trip_distance": "mean_trip_dist_graph"}, inplace=True)
+    raw_features.drop("mean_waiting_time", axis=1, inplace=True)  # too much noise in waiting time
     assert all(raw_features.index == graph_features.index)
     print("features shape:", graph_features.shape, raw_features.shape)
 
@@ -194,3 +195,15 @@ if __name__ == "__main__":
     if os.path.exists(returner_path):
         print("\n ------------------ Returner explorer ----------------")
         returner_explorers(returner_path, graph_features)
+
+    # Plot which raw features are significantly higher or lower than the graph features
+    new_feats = raw_features.copy()
+    new_feats["study"] = "all_relevant"
+    new_feats["cluster"] = labels_graph_orig
+    feat_columns = raw_features.columns
+    plot_cluster_characteristics(
+        new_feats,
+        out_path=os.path.join("figures", "raw_cluster_characteristics.pdf"),
+        feat_columns=feat_columns,
+        fontsize_dict={"font.size": 26, "axes.labelsize": 30},
+    )

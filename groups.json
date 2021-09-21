@@ -14,7 +14,7 @@
         "median_trip_distance": "low",
         "transition_beta": "high"
     },
-    "Locally aktive": {
+    "Locally active": {
         "degree_beta": "low",
         "journey_length": "low",
         "mean_clustering_coeff": "low",

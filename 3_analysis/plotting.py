@@ -43,37 +43,50 @@ def get_percentage(df, var1, var2):
     return (
         df.groupby([var1])[var2]
         .value_counts(normalize=True)
-        .rename("percentage")
+        .rename("Percentage")
         .mul(100)
         .reset_index()
         .sort_values(var2)
     )
 
 
-def cluster_by_study(feats, out_path="results"):
+def cluster_by_study(feats, out_path="results", fontsize_dict={"font.size": 28, "axes.labelsize": 30}):
     """
     Feats requires column study, column clustering,
     """
+    matplotlib.rcParams.update(fontsize_dict)
     filtered = feats[~feats["study"].isin(["yumuv_after_cg", "yumuv_after_tg", "yumuv_before_cg", "yumuv_before_tg"])]
     df_perc = get_percentage(filtered, "study", "cluster")
     plt.figure(figsize=(20, 10))
-    p = sns.barplot(x="study", y="percentage", hue="cluster", data=df_perc)
-    plt.savefig(os.path.join(out_path, "cluster_by_study.jpg"))
+    p = sns.barplot(x="study", y="Percentage", hue="cluster", data=df_perc)
+    plt.legend(ncol=3, framealpha=1)
+    plt.savefig(out_path)
 
 
-def plot_cluster_characteristics(feats, out_path="results"):
-    feat_columns = [
+def plot_cluster_characteristics(
+    feats,
+    out_path="figures/cluster_characteristics.pdf",
+    feat_columns=[
         "degree_beta",
         "journey_length",
         "mean_clustering_coeff",
         "mean_trip_distance",
         "median_trip_distance",
         "transition_beta",
-    ]
+    ],
+    fontsize_dict={"font.size": 28, "axes.labelsize": 30},
+):
+    matplotlib.rcParams.update(fontsize_dict)
+    feat_rn_dict = {group: group.replace(" ", "\n") for group in np.unique(feats["cluster"])}
+    feats["cluster"] = feats["cluster"].apply(lambda x: feat_rn_dict[x])
     rn_dict = {"cluster": "User group", "value": "Standard deviations from mean", "variable": "Feature"}
     # filter out the ones that are double
-    filtered = feats[~feats["study"].isin(["yumuv_after_cg", "yumuv_after_tg", "yumuv_before_cg", "yumuv_before_tg"])]
-    feats_by_cluster = filtered.copy()
+    if "study" in feats.columns:
+        feats_by_cluster = feats[
+            ~feats["study"].isin(["yumuv_after_cg", "yumuv_after_tg", "yumuv_before_cg", "yumuv_before_tg"])
+        ]
+    else:
+        feats_by_cluster = feats.copy()
     # NORMALIZE
     for col in feat_columns:
         feats_by_cluster[col] = (feats_by_cluster[col] - np.mean(feats_by_cluster[col].values)) / np.std(
@@ -86,7 +99,8 @@ def plot_cluster_characteristics(feats, out_path="results"):
     p = sns.barplot(x=rn_dict["cluster"], y=rn_dict["value"], hue=rn_dict["variable"], data=feats_by_cluster)
     plt.ylim(-1, 2.5)
     plt.legend(ncol=3, framealpha=1)
-    plt.savefig(os.path.join(out_path, "relative_meaning_clusters.jpg"))
+    plt.tight_layout()
+    plt.savefig(out_path)
 
 
 def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None, save_path=None):
@@ -108,7 +122,6 @@ def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None
     if clustering is not None:
         feature_df["cluster"] = clustering
         col_dict = {cluster: sns.color_palette()[map_cluster_to_col[cluster]] for cluster in clustering}
-        print(col_dict)
         sns.pairplot(feature_df, hue="cluster", palette=col_dict)
     else:
         sns.pairplot(feature_df)
