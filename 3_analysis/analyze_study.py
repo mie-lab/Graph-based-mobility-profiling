@@ -134,8 +134,8 @@ if __name__ == "__main__":
     study = "gc1"
     feat_type = "graph"
     node_importance = 0
-    path = os.path.join("out_features", "final_1_cleaned")
-    n_clusters = 3
+    path = os.path.join("out_features", "final_6_cleaned")
+    n_clusters = 6
 
     # Load the question mapping
     if "yumuv" in study:
@@ -157,7 +157,6 @@ if __name__ == "__main__":
 
     # Interpret characteristics
     characteristics = cluster_characteristics(features, labels)
-    print()
     sort_clusters_into_groups(characteristics)
 
     # # print decision tree:

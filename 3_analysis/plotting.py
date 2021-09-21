@@ -245,9 +245,10 @@ def print_chisquare(occ1, occ2):
     contingency_table = contingency_table[:, np.any(contingency_table, axis=0)]
     stat, p, dof, expected = chi2_contingency(contingency_table)
     print(f"CHI SQUARE TEST: With p={round(p, 2)}, the groups are significantly different")
+    return p
 
 
-def barplot_clusters(labels1, labels2, name1="Group 1", name2="Group 2", out_path=None, title=""):
+def barplot_clusters(labels1, labels2, name1="Group 1", name2="Group 2", out_path=None, title="", rotate=True):
     occuring_labels = np.unique(list(labels1) + list(labels2))
     labels1 = np.array(labels1)
     labels2 = np.array(labels2)
@@ -256,21 +257,28 @@ def barplot_clusters(labels1, labels2, name1="Group 1", name2="Group 2", out_pat
     occ2 = [sum(labels2 == lab) / len(labels2) for lab in occuring_labels]
     occ1_unnormalized = [sum(labels1 == lab) for lab in occuring_labels]
     occ2_unnormalized = [sum(labels2 == lab) for lab in occuring_labels]
+
+    print("Do chi square test for ", name1, name2)
+    p_val = print_chisquare(occ1_unnormalized, occ2_unnormalized)
+
     x = np.arange(len(occuring_labels))
     plt.figure(figsize=(10, 8))
     plt.bar(x - 0.2, occ1, 0.4, label=name1)
     plt.bar(x + 0.2, occ2, 0.4, label=name2)
-    plt.xticks(x, occuring_labels, rotation=90)
+    rot = 90 if rotate else 0
+
+    labs_with_absatz = [lab.replace(" ", "\n") for lab in occuring_labels]
+    plt.xticks(x, labs_with_absatz, rotation=rot)
     plt.ylabel("Ratio of users")
     plt.legend()
     plt.title(title, fontsize=15)
     plt.tight_layout()
     if out_path is not None:
-        plt.savefig(os.path.join(out_path, name1 + " vs " + name2 + ".png"), dpi=600)
+        plt.savefig(
+            os.path.join(out_path, name1 + " vs " + name2 + "_chisquare" + str(round(p_val, 2)) + ".png"), dpi=600
+        )
     else:
         plt.show()
-    print("Do chi square test for ", name1, name2)
-    print_chisquare(occ1_unnormalized, occ2_unnormalized)
 
 
 if __name__ == "__main__":

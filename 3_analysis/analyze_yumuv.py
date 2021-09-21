@@ -85,7 +85,7 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     return df_unnormalized
 
 
-def longitudinal_labels(test_group, out_path=None):
+def questions_longitudinal(test_group, out_path=None):
     # ---------- Compare to user interviews ------------
     # get info when someone switched cluster over time
     test_group["switched"] = test_group["cluster_before"] != test_group["cluster_after"]
@@ -137,10 +137,19 @@ def print_cross_sectional(groups_cg_bef, groups_tg_bef):
     uni, counts = np.unique(groups_tg_bef, return_counts=True)
     print("TG aft:", {u: round(c / np.sum(counts), 2) for u, c in zip(uni, counts)})
 
+def load_yumuv_features():
+    data = defaultdict(dict)
+    for group in ["cg", "tg"]:
+        for before_after in ["before", "after"]:
+            data[group][before_after] = pd.read_csv(
+                os.path.join(path, f"yumuv_{before_after}_{group}_graph_features_{node_importance}.csv"),
+                index_col="user_id",
+            )
+    return data
 
 if __name__ == "__main__":
-    path = os.path.join("out_features", "final_5_n0_cleaned")
-    out_path = "results_yumuv_report"
+    path = os.path.join("out_features", "final_6_n0_cleaned")
+    out_path = "figures/results_yumuv"
     if not os.path.exists(out_path):
         os.makedirs(out_path)
     node_importance = 0
@@ -149,13 +158,7 @@ if __name__ == "__main__":
     if not os.path.exists(path):
         raise RuntimeError("First need to download out_features folder")
 
-    data = defaultdict(dict)
-    for group in ["cg", "tg"]:
-        for before_after in ["before", "after"]:
-            data[group][before_after] = pd.read_csv(
-                os.path.join(path, f"yumuv_{before_after}_{group}_graph_features_{node_importance}.csv"),
-                index_col="user_id",
-            )
+    data = load_yumuv_features()
 
     # fit control group before
     clustering = ClusterWrapper()
@@ -230,7 +233,7 @@ if __name__ == "__main__":
         print_chisquare(occ1, occ2)
 
     # ---------- Compare to user interviews ------------
-    longitudinal_labels(test_group, out_path=out_path)
+    questions_longitudinal(test_group, out_path=out_path)
 
     # ---------- Cross sectional ------------
     print("\nCROSS SECTIONAL\n")
