@@ -1,40 +1,43 @@
 {
-    "local routine (regular)": {
+    "Zentrierte": {
+        "degree_beta": "high",
+        "journey_length": "low",
+        "transition_beta": "high",
+        "mean_clustering_coeff": "low"
+    },
+    "Routiniert\nflexibel": {
         "degree_beta": "low",
         "journey_length": "low",
         "median_trip_distance": "low",
         "transition_beta": "high"
     },
-    "commuter": {
+    "Pendler": {
         "mean_clustering_coeff": "high",
         "median_trip_distance": "high",
         "transition_beta": "high"
     },
-    "local routine (centered)": {
+    "Routiniert\nzentriert": {
         "degree_beta": "high",
         "journey_length": "low",
         "median_trip_distance": "low",
         "transition_beta": "high"
     },
-    "commuter (inactive)": {
+    "Lokal\naktiv": {
+        "degree_beta": "low",
+        "journey_length": "low",
         "mean_clustering_coeff": "low",
-        "median_trip_distance": "high"
+        "median_trip_distance": "low",
+        "transition_beta": "low"
     },
-    "explorative": {
+    "Entdecker": {
+        "degree_beta": "low",
+        "journey_length": "high",
+        "transition_beta": "low"
+    },
+    "Entdecker\nvernetzt": {
         "degree_beta": "low",
         "journey_length": "high",
         "transition_beta": "low",
         "mean_clustering_coeff": "high"
-    },
-    "centered (star graph)": {
-        "degree_beta": "high",
-        "journey_length": "low",
-        "transition_beta": "low",
-        "mean_clustering_coeff": "low"
-    },
-    "travelling salemen": {
-        "degree_beta": "low",
-        "journey_length": "high",
-        "transition_beta": "low"
     }
 }

@@ -85,11 +85,16 @@ def plot_cluster_characteristics(
         "transition_beta",
     ],
     fontsize_dict={"font.size": 28, "axes.labelsize": 30},
+    plot_mode="english",
 ):
     matplotlib.rcParams.update(fontsize_dict)
     feat_rn_dict = {group: group.replace(" ", "\n") for group in np.unique(feats["cluster"])}
     feats["cluster"] = feats["cluster"].apply(lambda x: feat_rn_dict[x])
-    rn_dict = {"cluster": "User group", "value": "Standard deviations from mean", "variable": "Feature"}
+    if plot_mode == "german":
+        rn_dict = {"cluster": "User group", "value": "Standardabweichungen vom Durchschnitt", "variable": "Feature"}
+    else:
+        rn_dict = {"cluster": "User group", "value": "Standard deviations from mean", "variable": "Feature"}
+
     # filter out the ones that are double
     if "study" in feats.columns:
         feats_by_cluster = feats[
@@ -107,8 +112,13 @@ def plot_cluster_characteristics(
     feats_by_cluster.rename(columns=rn_dict, inplace=True)
     plt.figure(figsize=(20, 10))
     p = sns.barplot(x=rn_dict["cluster"], y=rn_dict["value"], hue=rn_dict["variable"], data=feats_by_cluster)
-    plt.ylim(-1, 2.5)
-    plt.legend(ncol=3, framealpha=1)
+    plt.xlabel("")
+    if plot_mode == "german":
+        plt.ylim(-1.5, 3)
+        plt.legend(ncol=2, framealpha=1)
+    else:
+        plt.ylim(-1, 2.5)
+        plt.legend(ncol=3, framealpha=1)
     plt.tight_layout()
     plt.savefig(out_path)
 

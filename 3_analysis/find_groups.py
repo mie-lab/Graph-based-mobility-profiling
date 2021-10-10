@@ -95,10 +95,11 @@ def sort_clusters_into_groups(characteristics, min_equal=1, add_groups=False, pr
     return cluster_assignment
 
 
-def group_consistency(graph_features, out_path=None, nr_iters=20, n_clusters=5):
+def group_consistency(graph_features, out_path=None, nr_iters=20, n_clusters=5, algorithm="kmeans"):
     res = np.empty((len(graph_features), nr_iters), dtype="<U30")
     for i in range(nr_iters):
-        cluster_wrapper = ClusterWrapper()
+        n_clusters = np.random.choice([6, 7, 8])
+        cluster_wrapper = ClusterWrapper(random_state=None)
         labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
 
         # try to characterize clusters

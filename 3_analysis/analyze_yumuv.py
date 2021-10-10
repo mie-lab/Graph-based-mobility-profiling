@@ -1,4 +1,5 @@
 import networkx as nx
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -9,13 +10,16 @@ from collections import defaultdict
 from matplotlib.lines import Line2D
 
 from utils import sort_images_by_cluster
-from plotting import barplot_clusters, print_chisquare
+from plotting import barplot_clusters, print_chisquare, plot_cluster_characteristics
 from clustering import ClusterWrapper
 from utils import load_question_mapping, load_user_info
-from find_groups import cluster_characteristics, sort_clusters_into_groups
+from find_groups import cluster_characteristics, sort_clusters_into_groups, group_consistency
 
 
 def plot_longitudinal(before_after_cluster, out_path=None):
+    fontsize_dict = {"font.size": 15, "axes.labelsize": 15}
+    matplotlib.rcParams.update(fontsize_dict)
+
     assert "cluster_before" in before_after_cluster.columns and "cluster_after" in before_after_cluster.columns
     cluster_names = np.unique(before_after_cluster["cluster_before"])
     n_clusters = len(cluster_names)
@@ -33,17 +37,23 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     print("Transitions between clusters:")
     print(transition_matrix)
 
-    # plot confusion matrix
+    # plot normalized confusion matrix
     plt.figure(figsize=(15, 10))
-    print(np.sum(transition_matrix, axis=1))
-    print(transition_matrix / np.sum(transition_matrix, axis=0))
     normalized = np.swapaxes(np.swapaxes(transition_matrix, 1, 0) / np.sum(transition_matrix, axis=1), 1, 0)
     df = pd.DataFrame(normalized, columns=cluster_names, index=cluster_names)
-    df_unnormalized = pd.DataFrame(transition_matrix, columns=cluster_names, index=cluster_names)
-    sns.heatmap(df, annot=True, cmap="Blues")
-    # plt.xticks(rotation=20)
+    sns.heatmap(df, annot=True, cmap="Blues", vmin=0, vmax=0.8)
+    plt.xticks(rotation=0)
     if out_path:
-        plt.savefig(out_path.replace("longitudinal", "longitudinal_matrix"), dpi=600)
+        plt.savefig(out_path.replace("longitudinal", "longitudinal_matrix_rel"), dpi=600)
+    else:
+        plt.show
+
+    # plot absolute values confusion matrix
+    plt.figure(figsize=(15, 10))
+    df_unnormalized = pd.DataFrame(transition_matrix, columns=cluster_names, index=cluster_names)
+    sns.heatmap(df_unnormalized, annot=True, cmap="Blues")
+    if out_path:
+        plt.savefig(out_path.replace("longitudinal", "longitudinal_matrix_abs"), dpi=600)
     else:
         plt.show
 
@@ -53,16 +63,12 @@ def plot_longitudinal(before_after_cluster, out_path=None):
 
     weights = [d[2]["weight"] for d in G.edges(data=True)]
 
-    dist_spring_layout = 10
-    norm_width = np.log(weights) * 2
-
-    # deg = nx.degree(G)
-    # node_sizes = [10 * deg[iata] for iata in G.nodes]
+    norm_width = np.array(weights) / np.max(weights) * 10
 
     color_map = ["green", "red", "blue", "purple", "black", "yellow", "orange"]
     # draw spring layout
     plt.figure()
-    pos = nx.circular_layout(G)  # , k=dist_spring_layout / np.sqrt(len(G)))
+    pos = nx.circular_layout(G)
     nx.draw(
         G,
         pos=pos,
@@ -76,7 +82,7 @@ def plot_longitudinal(before_after_cluster, out_path=None):
         Line2D([0], [0], marker="o", color="w", label=lab, markerfacecolor=col, markersize=10)
         for col, lab in zip(color_map, list(G.nodes))
     ]
-    plt.legend(handles=legend_elements, loc="lower right", fontsize=10)
+    plt.legend(handles=legend_elements, loc="upper left", ncol=7, fontsize=7)
     plt.tight_layout()
     if out_path is not None:
         plt.savefig(out_path, dpi=600)
@@ -137,6 +143,7 @@ def print_cross_sectional(groups_cg_bef, groups_tg_bef):
     uni, counts = np.unique(groups_tg_bef, return_counts=True)
     print("TG aft:", {u: round(c / np.sum(counts), 2) for u, c in zip(uni, counts)})
 
+
 def load_yumuv_features():
     data = defaultdict(dict)
     for group in ["cg", "tg"]:
@@ -147,9 +154,10 @@ def load_yumuv_features():
             )
     return data
 
+
 if __name__ == "__main__":
-    path = os.path.join("out_features", "final_6_n0_cleaned")
-    out_path = "figures/results_yumuv"
+    path = os.path.join("out_features", "final_6_n0_cleaned")  # use 5 for yumuv report!
+    out_path = "figures/results_yumuv_english"
     if not os.path.exists(out_path):
         os.makedirs(out_path)
     node_importance = 0
@@ -161,8 +169,9 @@ if __name__ == "__main__":
     data = load_yumuv_features()
 
     # fit control group before
-    clustering = ClusterWrapper()
-    cg_both = pd.concat((data["cg"]["before"].reset_index(), data["cg"]["after"].reset_index())).drop("user_id", axis=1)
+    clustering = ClusterWrapper(random_state=3)
+    cg_both = data["cg"]["before"].copy()  # used for yumuv report!
+    # cg_both = pd.concat((data["cg"]["before"].reset_index(), data["cg"]["after"].reset_index())).drop("user_id", axis=1)
     # print(cg_both, len(cg_both), len(data["cg"]["before"]))
     int_labels_cg_both = clustering(cg_both, n_clusters=n_clusters)
     # sort clusters into groups
@@ -170,6 +179,7 @@ if __name__ == "__main__":
     cluster_assignment = sort_clusters_into_groups(characteristics, add_groups=False, printout=False)
     clustering.cluster_assignment = cluster_assignment
     labels_cg_both = [cluster_assignment[ind] for ind in int_labels_cg_both]
+    print(np.unique(labels_cg_both, return_counts=True))
 
     # # SORT IMAGES INTO FOLDERS
     # print(np.unique(labels_cg_both))
@@ -187,6 +197,33 @@ if __name__ == "__main__":
     # # write terminal output to file:
     f = open(os.path.join(out_path, "terminal.txt"), "w")
     sys.stdout = f
+
+    # Plot cluster characteristics for yumuv report
+    feats_plot = data["cg"]["before"].copy()
+    feats_plot["cluster"] = labels_cg_both
+    # for yumuv report: german
+    # rn_dict = {
+    #     "degree_beta": "Grad Faktor",
+    #     "transition_beta": "Kantennutzungs Faktor",
+    #     "journey_length": "Touren Länge",
+    #     "median_trip_distance": "Distanz (Median)",
+    #     "mean_clustering_coeff": "Clustering Koeffizient",
+    # }
+    # feats_plot.rename(columns=rn_dict, inplace=True)
+    plot_cluster_characteristics(
+        feats_plot,
+        out_path=os.path.join(out_path, "barplot_clusters.jpg"),
+        feat_columns=feats_plot.columns,
+        fontsize_dict={"font.size": 25, "axes.labelsize": 25},
+        plot_mode="german",
+    )
+
+    # CLUSTER CONSISTENCY
+    feats_bef = data["cg"]["before"].copy()
+    # pd.concat((data["cg"]["before"].reset_index(), data["tg"]["before"].reset_index())).drop(
+    #     "user_id", axis=1
+    # )
+    labels = group_consistency(feats_bef, out_path=os.path.join(out_path, "consistency.csv"), n_clusters=n_clusters)
 
     print("\nLONGITUDINAL\n")
 
