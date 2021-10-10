@@ -3,6 +3,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import json
 import os
 import sys
 import seaborn as sns
@@ -17,6 +18,15 @@ from find_groups import cluster_characteristics, sort_clusters_into_groups, grou
 
 
 def plot_longitudinal(before_after_cluster, out_path=None):
+    # get groups for color coding:
+    with open("groups.json", "r") as infile:
+        groups = json.load(infile)
+    group_names = sorted(groups.keys())
+    colors_avail = ["green", "red", "blue", "purple", "black", "yellow", "orange", "brown"]
+    color_map = {g: colors_avail[i] for i, g in enumerate(group_names)}
+    color_map["other"] = "grey"
+    print(color_map)
+
     fontsize_dict = {"font.size": 15, "axes.labelsize": 15}
     matplotlib.rcParams.update(fontsize_dict)
 
@@ -64,8 +74,6 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     weights = [d[2]["weight"] for d in G.edges(data=True)]
 
     norm_width = np.array(weights) / np.max(weights) * 10
-
-    color_map = ["green", "red", "blue", "purple", "black", "yellow", "orange"]
     # draw spring layout
     plt.figure()
     pos = nx.circular_layout(G)
@@ -75,12 +83,12 @@ def plot_longitudinal(before_after_cluster, out_path=None):
         with_labels=False,
         width=norm_width / 2,
         node_size=500,
-        node_color=color_map[: G.number_of_nodes()],
+        node_color=[color_map[node] for node in G.nodes],
         connectionstyle="arc3, rad = 0.2",
     )
     legend_elements = [
-        Line2D([0], [0], marker="o", color="w", label=lab, markerfacecolor=col, markersize=10)
-        for col, lab in zip(color_map, list(G.nodes))
+        Line2D([0], [0], marker="o", color="w", label=lab, markerfacecolor=color_map[lab], markersize=10)
+        for lab in list(G.nodes)
     ]
     plt.legend(handles=legend_elements, loc="upper left", ncol=7, fontsize=7)
     plt.tight_layout()
@@ -213,9 +221,9 @@ if __name__ == "__main__":
     plot_cluster_characteristics(
         feats_plot,
         out_path=os.path.join(out_path, "barplot_clusters.jpg"),
-        feat_columns=feats_plot.columns,
+        feat_columns=[col for col in feats_plot.columns if col != "cluster"],
         fontsize_dict={"font.size": 25, "axes.labelsize": 25},
-        plot_mode="german",
+        plot_mode="english",
     )
 
     # CLUSTER CONSISTENCY

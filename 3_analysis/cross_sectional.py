@@ -79,7 +79,7 @@ if __name__ == "__main__":
         os.makedirs(out_path)
 
     # Fit all datasets
-    n_clusters = 7
+    n_clusters = 8
     graph_features = pd.read_csv(os.path.join(path, f"all_datasets_graph_features_0.csv"), index_col="user_id")
     graph_features_numerical = graph_features.drop("study", axis=1)
     cluster_wrapper = ClusterWrapper()
