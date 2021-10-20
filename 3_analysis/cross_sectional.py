@@ -26,6 +26,7 @@ def cross_sectional_yumuv(cluster_wrapper, out_path):
         yumuv_data["tg"]["before"]["cluster"],
         "Kontrollgruppe (vorher)",
         "Testgruppe (vorher)",
+        save_name="crosssectional_yumuv",
         out_path=out_path,
         rotate=False,
     )
@@ -34,6 +35,7 @@ def cross_sectional_yumuv(cluster_wrapper, out_path):
         yumuv_data["tg"]["after"]["cluster"],
         "Test Gruppe vorher",
         "Test Gruppe nachher",
+        save_name="longitudinal_yumuv",
         out_path=out_path,
         rotate=False,
     )
@@ -48,6 +50,7 @@ def cross_sectional_gc(graph_features, out_path, gc_num):
         feats_others["cluster"],
         f"Green Class {gc_num}",
         "Other studies",
+        save_name="crosssectional_gc_" + str(gc_num),
         out_path=out_path,
         rotate=False,
     )

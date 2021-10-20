@@ -258,18 +258,36 @@ def print_chisquare(occ1, occ2):
     return p
 
 
-def barplot_clusters(labels1, labels2, name1="Group 1", name2="Group 2", out_path=None, title="", rotate=True):
+def barplot_clusters(
+    labels1,
+    labels2,
+    name1="Group 1",
+    name2="Group 2",
+    save_name="test",
+    title="",
+    out_path=None,
+    rotate=True,
+    yesno=False,
+):
     occuring_labels = np.unique(list(labels1) + list(labels2))
     labels1 = np.array(labels1)
     labels2 = np.array(labels2)
 
-    occ1 = [sum(labels1 == lab) / len(labels1) for lab in occuring_labels]
-    occ2 = [sum(labels2 == lab) / len(labels2) for lab in occuring_labels]
-    occ1_unnormalized = [sum(labels1 == lab) for lab in occuring_labels]
-    occ2_unnormalized = [sum(labels2 == lab) for lab in occuring_labels]
+    if yesno:
+        occ1 = [sum(labels1 == lab) for lab in occuring_labels]
+        occ2 = [sum(labels2 == lab) for lab in occuring_labels]
+        chisquare_text = ""
+        ylabel = "Anzahl an Nutzern mit Antwort Ja / Nein"
+    else:
+        occ1 = [sum(labels1 == lab) / len(labels1) for lab in occuring_labels]
+        occ2 = [sum(labels2 == lab) / len(labels2) for lab in occuring_labels]
+        occ1_unnormalized = [sum(labels1 == lab) for lab in occuring_labels]
+        occ2_unnormalized = [sum(labels2 == lab) for lab in occuring_labels]
 
-    print("Do chi square test for ", name1, name2)
-    p_val = print_chisquare(occ1_unnormalized, occ2_unnormalized)
+        print("Do chi square test for ", name1, name2)
+        p_val = print_chisquare(occ1_unnormalized, occ2_unnormalized)
+        chisquare_text = "_chisquare" + str(round(p_val, 2))
+        ylabel = "Ratio of users"
 
     x = np.arange(len(occuring_labels))
     plt.figure(figsize=(10, 8))
@@ -279,14 +297,12 @@ def barplot_clusters(labels1, labels2, name1="Group 1", name2="Group 2", out_pat
 
     labs_with_absatz = [lab.replace(" ", "\n") for lab in occuring_labels]
     plt.xticks(x, labs_with_absatz, rotation=rot)
-    plt.ylabel("Ratio of users")
+    plt.ylabel(ylabel)
     plt.legend()
     plt.title(title, fontsize=15)
     plt.tight_layout()
     if out_path is not None:
-        plt.savefig(
-            os.path.join(out_path, name1 + " vs " + name2 + "_chisquare" + str(round(p_val, 2)) + ".png"), dpi=600
-        )
+        plt.savefig(os.path.join(out_path, save_name + chisquare_text + ".png"), dpi=600)
     else:
         plt.show()
 

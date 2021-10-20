@@ -11,7 +11,7 @@ from collections import defaultdict
 from matplotlib.lines import Line2D
 
 from utils import sort_images_by_cluster
-from plotting import barplot_clusters, print_chisquare, plot_cluster_characteristics
+from plotting import barplot_clusters, print_chisquare, plot_cluster_characteristics, barplot_clusters_other_way
 from clustering import ClusterWrapper
 from utils import load_question_mapping, load_user_info
 from find_groups import cluster_characteristics, sort_clusters_into_groups, group_consistency
@@ -127,6 +127,12 @@ def questions_longitudinal(test_group, out_path=None):
             for value in np.unique(question_col.values):
                 print("Reply:", value)
                 users_reply = tg_user_info[question_col == value].index
+
+                # print how many replied this
+                groups_this_reply = test_group[test_group.index.isin(users_reply)]["cluster_before"]
+                print("ratio of users with this reply:", len(users_reply), "out of", len(tg_user_info))
+                print("unique groups this reply", np.unique(groups_this_reply, return_counts=True))
+
                 # filter the ones that did this reply
                 filtered_switched = test_group[test_group.index.isin(users_reply)]
                 nr_switched = sum(filtered_switched["switched"] == True) / len(filtered_switched)
@@ -138,10 +144,12 @@ def questions_longitudinal(test_group, out_path=None):
             barplot_clusters(
                 answer_groups[0],
                 answer_groups[1],
-                q_id + " " + answers[0],
-                q_id + " " + answers[1],
+                answers[0],
+                answers[1],
+                save_name=q_id,
                 out_path=out_path,
                 title=q,
+                yesno=True,
             )
 
 
@@ -288,6 +296,7 @@ if __name__ == "__main__":
         data["tg"]["before"]["cluster"],
         "Kontrollgruppe (vorher)",
         "Testgruppe (vorher)",
+        save_name="crosssectional",
         out_path=out_path,
     )
     barplot_clusters(
@@ -295,6 +304,7 @@ if __name__ == "__main__":
         data["tg"]["after"]["cluster"],
         "Test Gruppe vorher",
         "Test Gruppe nachher",
+        save_name="longitudinal",
         out_path=out_path,
     )
     f.close()
