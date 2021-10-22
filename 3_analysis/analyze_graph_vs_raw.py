@@ -8,6 +8,7 @@ import pandas as pd
 import os
 import argparse
 import scipy
+import sys
 
 from clustering import ClusterWrapper, decision_tree_cluster
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -95,9 +96,8 @@ def returner_explorers(path_to_returner, graph_features):
     # print(np.array(graph_features.columns)[important_feature_inds], feature_importances[important_feature_inds])
 
 
-def graph_raw_all_datasets(version, node_importance, studies_raw=["gc1", "gc2", "geolife"]):
-    base_path = os.path.join("out_features", f"final_{version}_n{node_importance}_cleaned")
-    graph_feats = pd.read_csv(os.path.join(base_path, "all_datasets_clustering.csv"))
+def graph_raw_all_datasets(base_path, graph_feat_path, studies_raw=["gc1", "gc2", "geolife"]):
+    graph_feats = pd.read_csv(os.path.join(graph_feat_path, "all_datasets_clustering.csv"))
     graph_feats["user_id"] = graph_feats["user_id"].astype(str) + ("_" + graph_feats["study"])
     graph_feats = graph_feats.drop(columns=["study"]).set_index("user_id")
 
@@ -119,21 +119,30 @@ def graph_raw_all_datasets(version, node_importance, studies_raw=["gc1", "gc2", 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
-    parser.add_argument("-v", "--version", type=int, default=6, help="feature version")
+    parser.add_argument(
+        "-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife or all_datasets"
+    )
+    parser.add_argument(
+        "-i", "--inp_dir", type=str, default=os.path.join("out_features", "test"), help="Output directory"
+    )
     parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set -1 for all nodes")
+    parser.add_argument("-o", "--out_dir", type=str, default="results", help="Output directory")
     args = parser.parse_args()
 
-    path = os.path.join("out_features", f"final_{args.version}_n{args.nodes}_cleaned")
+    path = args.inp_dir
     study = args.study
     node_importance = args.nodes
+    out_dir = args.out_dir
 
     n_clusters = 5
     algorithm = "kmeans"
 
-    if study == "all":
+    f = open(os.path.join(out_dir, "graph_vs_raw.txt"), "w")
+    sys.stdout = f
+
+    if study == "all_datasets":
         # load features ALL STUDIES
-        graph_features, raw_features = graph_raw_all_datasets(args.version, args.nodes)
+        graph_features, raw_features = graph_raw_all_datasets(args.inp_dir, args.out_dir)
         # graph_features = pd.read_csv("out_features/final_6_n0_cleaned/all_graph_clustering.csv", index_col="user_id")
         labels_graph_orig = graph_features["cluster"]
         graph_features.drop("cluster", axis=1, inplace=True)
@@ -157,7 +166,7 @@ if __name__ == "__main__":
     # # CORRELATIONS
     # plot correlation matrix of all features to each other
     both = raw_features.join(graph_features)
-    plot_correlation_matrix(both, both, fontsize=12, save_path=os.path.join("figures", "correlations_w_raw.pdf"))
+    plot_correlation_matrix(both, both, fontsize=12, save_path=os.path.join(out_dir, "correlations_w_raw.pdf"))
     # plot_correlation_matrix(graph_features, raw_features)
     # print_correlated_features(graph_features, raw_features)
 
@@ -199,11 +208,13 @@ if __name__ == "__main__":
     # Plot which raw features are significantly higher or lower than the graph features
     new_feats = raw_features.copy()
     new_feats["study"] = "all_relevant"
-    new_feats["cluster"] = labels_graph_orig
+    new_feats["cluster"] = labels_graph
     feat_columns = raw_features.columns
     plot_cluster_characteristics(
         new_feats,
-        out_path=os.path.join("figures", "raw_cluster_characteristics.pdf"),
+        out_path=os.path.join(out_dir, "raw_cluster_characteristics.pdf"),
         feat_columns=feat_columns,
         fontsize_dict={"font.size": 26, "axes.labelsize": 30},
     )
+
+    f.close()

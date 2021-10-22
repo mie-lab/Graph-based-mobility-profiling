@@ -76,5 +76,11 @@ For the cross secional study, we use the assigned groups from above (`results/al
 python 3_analysis/cross_sectional.py -i results
 ```
 
+**6) Validation: comparison to raw features**
+
+Run
+```
+python 3_analysis/analyze_graph_vs_raw.py -o results_quantile -i out_features/final_7_n0_quantile_cleaned -s all_datasets
+```
 
 
