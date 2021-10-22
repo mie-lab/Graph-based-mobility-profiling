@@ -43,12 +43,30 @@ Note: The studies can also be processed individually, for this use `python 3_ana
 
 Adjust the parameters that are hard-coded in the beginning of the file (input directory, studies to merge, etc), and run 
 ```
-python 3_analysis/analyze_across_datasets.py --inp_dir='out_features/final_1_n0' --out_dir='results'
+python 3_analysis/analyze_across_datasets.py --inp_dir='out_features/final_1_n0_cleaned' --out_dir='results'
 ```
 This will save a csv file with all graph features combined for all datasets (saved to the same folder as the input graph feature csvs), secondly a csv file with the averages per feature, and third a plot for the correlation matrix.
 The latter two will be saved to the output directory called `results`.
 
+**3) Identify user groups**
 
+The user groups are identified by clustering multiple times with k for K-Means clustering. 
+```
+python 3_analysis/find_groups.py -i out_features/final_1_n0_cleaned -o results
+```
+The resulting user groups are saved in the file `3_analysis/groups.json` and copied to `results/groups.json` to keep everything together in the results folder.
+
+NOTE: At this point, the groups are only named other_1, other_2 etc. They need to be renamed in the file [3_analysis/groups.json](3_analysis/groups.json) for further processing.
+
+**4) Analyse the identified user groups wrt the features**
+
+Run
+```
+python 3_analysis/analyze_study.py -i out_features/final_1_n0_cleaned -o results -s all_datasets
+```
+This will run the clustering multiple times again with the identified user groups, and compute the consistency. The user group appearing most often for each user will be saved in the output file `results/all_datasets_clustering.csv`.
+
+Note: It is also possible to analyse a single study with the user groups. To do this, specify for example `-s gc1` in the command above.
 
 
 

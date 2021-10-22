@@ -132,26 +132,22 @@ def group_consistency(graph_features, out_path=None, nr_iters=20, n_clusters=5, 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
-    parser.add_argument("-v", "--version", type=int, default=6, help="feature version")
-    parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set -1 for all nodes")
+    parser.add_argument(
+        "-s", "--study", type=str, default="all_datasets", help="study - one of gc1, gc2, geolife or all_datasets"
+    )
+    parser.add_argument(
+        "-i", "--inp_dir", type=str, default=os.path.join("out_features", "test"), help="feature inputs"
+    )
     parser.add_argument("-o", "--out_dir", type=str, default="results", help="Path where to output all results")
     args = parser.parse_args()
 
-    path = os.path.join("out_features", f"final_{args.version}_n{args.nodes}_cleaned")
+    path = args.inp_dir
     study = args.study
-    node_importance = args.nodes
-
-    add_groups = False
-
-    # AFTER GROUPS ARE FOUND, ANALYZE ASSIGNMENT
+    node_importance = 0
     out_dir = args.out_dir
-
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    out_path = os.path.join(out_dir, f"{study}_{args.version}_")
 
-    n_clusters = 8
     algorithm = "kmeans"
 
     # load features
@@ -159,76 +155,19 @@ if __name__ == "__main__":
         os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
     )
 
-    # FOR ACTUALLY FINDING THE GROUPS:
-    # add_groups = True
-    # cluster_wrapper = ClusterWrapper()
-    # if "study" in graph_features.columns:
-    #     in_features = graph_features.drop(columns=["study"])
-    # for i in range(3):
-    #     for n_clusters in [6, 7, 8]:
-    #         labels = cluster_wrapper(in_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
-    #         characteristics = cluster_characteristics(in_features, labels, printout=False)
-    #         cluster_assignment = sort_clusters_into_groups(characteristics, add_groups=add_groups, printout=False)
-    # cluster_wrapper.cluster_assignment = cluster_assignment
-    # graph_features["cluster"] = cluster_wrapper.transform(in_features)
-    # graph_features.to_csv(os.path.join(path, f"{study}_clustering.csv"))
-    # exit()
+    # delete previous content of groups.json
+    with open("groups.json", "w") as outfile:
+        json.dump({}, outfile)
 
-    # PLOTTING
-    if study == "all_datasets":
-        # get most consistent labels
-        labels = group_consistency(graph_features.drop("study", axis=1), n_clusters=n_clusters)
-        graph_features["cluster"] = labels
-        graph_features.to_csv(os.path.join(path, f"{study}_clustering.csv"))
-        plot_cluster_characteristics(graph_features, out_path=os.path.join("figures", "cluster_characteristics.pdf"))
-        cluster_by_study(graph_features, out_path=os.path.join("figures", "dataset_clusters.pdf"))
-        exit()
-
-    # ANALYSE SINGLE STUDY WITH GIVEN GROUPS
-
-    # write terminal output to file:
-    f = open(out_path + "terminal.txt", "w")
-    sys.stdout = f
-
-    # CLUSTER CONSISTENCY
-    labels = group_consistency(graph_features, out_path=out_path + "consistency.csv", n_clusters=n_clusters)
-
-    # copy the groups into the output folder
-    shutil.copy("groups.json", out_dir)
-
-    # try to characterize clusters --> Only for terminal output!! already done in consistency function
-    print()
-    characteristics = cluster_characteristics(graph_features, labels)
-    print("\n--------- Sorting cluster into predefined groups ------------")
-    cluster_assignment = sort_clusters_into_groups(characteristics, add_groups=add_groups)
-    print("\n ----------------------------------- \n")
-
-    # SCATTERPLOT
-    scatterplot_matrix(
-        graph_features,
-        graph_features.columns,
-        clustering=labels,
-        save_path=os.path.join(out_path + "scatterplot.pdf"),
-    )
-
-    # MAKE IMAGES
-    for type in ["coords", "spring"]:
-        sort_images_by_cluster(
-            list(graph_features.index),
-            labels,
-            name_mapping={lab: lab for lab in np.unique(labels)},
-            in_img_path=os.path.join("graph_images", study, type),
-            out_img_path=os.path.join(out_dir, f"{study}_{type}_" + algorithm),
-        )
-
-    # CHARACTERIZE WITH RAW FEATURES
-    if "yumuv" not in study:
-        raw_features = pd.read_csv(
-            os.path.join(path, f"{study}_raw_features_{node_importance}.csv"), index_col="user_id"
-        )
-        assert all(raw_features.index == graph_features.index)
-        print("features shape:", graph_features.shape, raw_features.shape)
-        print()
-        print("Cluster characteristics by raw feature")
-        _ = cluster_characteristics(raw_features, labels)
-    f.close()
+    # fit multiple times and save to groups.json file
+    cluster_wrapper = ClusterWrapper()
+    if "study" in graph_features.columns:
+        in_features = graph_features.drop(columns=["study"])
+    # Run clustering multiple times, and add the identified groups to the file 3_analysis/groups.json
+    for i in range(3):
+        for n_clusters in [6, 7, 8]:
+            labels = cluster_wrapper(in_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
+            characteristics = cluster_characteristics(in_features, labels, printout=False)
+            cluster_assignment = sort_clusters_into_groups(characteristics, add_groups=True, printout=False)
+    # copy the resulting groups to the results folder
+    shutil.copy(os.path.join("3_analysis", "groups.json"), os.path.join(out_dir, "groups.json"))
