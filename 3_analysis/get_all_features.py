@@ -29,6 +29,8 @@ def clean_features(path, cutoff=4):
         raw_path = os.path.join(path, f).replace("graph", "raw")
 
         graph_features = pd.read_csv(graph_path, index_col="user_id")
+        # drop certain columns
+        # graph_features.drop(columns=["mean_trip_distance", "quantile9_trip_distance"], inplace=True)
 
         if "yumuv" not in f:
             raw_features = pd.read_csv(raw_path, index_col="user_id")
@@ -145,6 +147,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set 0 for all nodes")
     args = parser.parse_args()
+
+    if not os.path.exists("out_features"):
+        os.makedirs("out_features")
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)

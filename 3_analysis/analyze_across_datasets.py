@@ -2,6 +2,8 @@ import os
 import numpy as np
 import pandas as pd
 import scipy
+import argparse
+import sys
 
 from clustering import ClusterWrapper
 from compare_clustering import compute_all_scores
@@ -39,7 +41,7 @@ def load_all(path, type="graph", node_importance=50):
 
 def mean_features_by_study(features, out_path=None):
     # leave away last column because it's the study label
-    agg = {feat: ["mean"] for feat in features.columns[:-1]}
+    agg = {feat: ["mean", "std"] for feat in features.columns[:-1]}
     # group and aggregate
     mean_features = features.groupby("study").agg(agg).round(2)
     if out_path:
@@ -49,6 +51,13 @@ def mean_features_by_study(features, out_path=None):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-i", "--inp_dir", type=str, default=os.path.join("out_features", "test"), help="input directory"
+    )
+    parser.add_argument("-o", "--out_dir", type=str, default=os.path.join("results"), help="output directory")
+    args = parser.parse_args()
+
     STUDIES = [
         "gc1",
         "gc2",
@@ -62,10 +71,12 @@ if __name__ == "__main__":
     ]
     # parameters
     nodes = 0
-    feat_id = 6
-    path = os.path.join("out_features", f"final_{feat_id}_n{nodes}_cleaned")
+    path = args.inp_dir  # os.path.join("out_features", f"final_{feat_id}_n{nodes}_cleaned")
     n_clusters = len(STUDIES)
     feature_type = "graph"
+
+    if not os.path.exists(args.out_dir):
+        os.makedirs(args.out_dir)
 
     # tist does not have trip data
     if feature_type == "raw" and "tist_toph100" in STUDIES:
@@ -74,26 +85,31 @@ if __name__ == "__main__":
     features_all_datasets = load_all(path, type=feature_type, node_importance=nodes)
     features_all_datasets.to_csv(os.path.join(path, f"all_datasets_{feature_type}_features_{nodes}.csv"))
 
-    mean_features_by_study(
-        features_all_datasets, out_path=os.path.join("out_features", f"dataset_{feat_id}_{nodes}.csv")
-    )
+    mean_features_by_study(features_all_datasets, out_path=os.path.join(args.out_dir, f"dataset_{nodes}.csv"))
 
     # Plot correlation matrix
     feats_wostudy = features_all_datasets.drop(columns=["study"])
     plot_correlation_matrix(
-        feats_wostudy, feats_wostudy, save_path=os.path.join("figures", f"correlation_{feat_id}_{nodes}.pdf")
+        feats_wostudy, feats_wostudy, save_path=os.path.join(args.out_dir, f"correlation_{nodes}.pdf")
     )
 
-    # UNCOMMENT FOR ENTROPY CALCULATION
-    # STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
-    # features_all_datasets = load_all(path, type=feature_type, node_importance=nodes)
+    # Entropy calculation:
+    f = open(os.path.join(args.out_dir, "entropy_over_studies.txt"), "w")
+    sys.stdout = f
+    STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+    features_all_datasets = pd.read_csv(
+        os.path.join(path, f"all_datasets_{feature_type}_features_{nodes}.csv"), index_col="user_id"
+    )
 
-    # cluster_wrapper = ClusterWrapper()
-    # cluster_labels = cluster_wrapper(features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters)
+    cluster_wrapper = ClusterWrapper()
+    cluster_labels = cluster_wrapper(features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters)
 
-    # features_all_datasets["cluster"] = cluster_labels
-    # print("Entropy", entropy(features_all_datasets, "study", "cluster", print_parts=True))
+    features_all_datasets["cluster"] = cluster_labels
+    print("Computing entropy...")
+    study_entropy = entropy(features_all_datasets, "study", "cluster", print_parts=True)
+    print("\n OVERALL ENTROPY", study_entropy)
 
-    # print(np.unique(cluster_labels, return_counts=True))
-    # # compare relation between cluster and study labels
-    # compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
+    print(np.unique(cluster_labels, return_counts=True))
+    # compare relation between cluster and study labels
+    compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
+    f.close()

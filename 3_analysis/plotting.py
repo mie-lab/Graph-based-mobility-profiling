@@ -158,6 +158,8 @@ column_mapping = {
     "mean_trip_distance": "mean trip\ndistance",
     "median_trip_distance": "median trip\ndistance",
     "mean_clustering_coeff": "mean\nclustering\ncoefficient",
+    "distance_ht_index": "ht index",
+    "quantile9_trip_distance": "9th quantile\n distance",
 }
 
 
