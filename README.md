@@ -69,5 +69,12 @@ This will run the clustering multiple times again with the identified user group
 Note: It is also possible to analyse a single study with the user groups. To do this, specify for example `-s gc1` in the command above.
 
 
+**5) Cross sectional study with GC and YUMUV**
+
+For the cross secional study, we use the assigned groups from above (`results/all_datasets_clustering.csv`). In this script we simply compare the assigned groups between control group and test group. Run
+```
+python 3_analysis/cross_sectional.py -i results
+```
+
 
 
