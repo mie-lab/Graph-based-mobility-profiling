@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     # load data with clusters already assigned
     try:
-        graph_features = pd.read_csv(os.path.join(path, "all_datasets_clustering.csv"))
+        graph_features = pd.read_csv(os.path.join(path, "all_datasets_clustering.csv"), index_col="user_id")
     except FileNotFoundError:
         print("ERROR: all_dataset_clustering.csv file does not exist yet. Run script analyze_study.py first")
         exit()
