@@ -233,6 +233,26 @@ def normalize_features(feature_matrix):
     return (feature_matrix - means_cols) / std_cols
 
 
+def htb(data):
+    results = []  # array of break points
+
+    def htb_inner(data):
+        """
+        Inner ht breaks function for recursively computing the break points.
+        """
+        # Add mean to results
+        data_length = float(len(data))
+        data_mean = sum(data) / data_length
+        results.append(data_mean)
+        head = [datum for datum in data if datum > data_mean]
+        while len(head) > 1 and len(head) / data_length < 0.40:
+            return htb_inner(head)
+
+    htb_inner(data)
+
+    return results
+
+
 def graph_dict_to_list(graph_dict, node_importance=50):
     users = []
     nx_graphs = []

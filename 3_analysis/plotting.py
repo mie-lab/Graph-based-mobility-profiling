@@ -80,7 +80,7 @@ def plot_cluster_characteristics(
         "degree_beta",
         "journey_length",
         "mean_clustering_coeff",
-        "mean_trip_distance",
+        "highest_decile_distance",
         "median_trip_distance",
         "transition_beta",
     ],
@@ -159,7 +159,7 @@ column_mapping = {
     "median_trip_distance": "median trip\ndistance",
     "mean_clustering_coeff": "mean\nclustering\ncoefficient",
     "distance_ht_index": "ht index",
-    "quantile9_trip_distance": "9th quantile\n distance",
+    "highest_decile_distance": "highest\ndecile\ndistance",
 }
 
 
@@ -178,7 +178,7 @@ def plot_correlation_matrix(feat1, feat2, save_path=None, fontsize=25):
     df = pd.DataFrame(correlations, columns=col_labs, index=ind_labs)
     sns.heatmap(df, annot=True, cmap="PiYG", annot_kws={"size": fontsize})
     plt.xticks(np.arange(len(col_labs)) + 0.5, col_labs, fontsize=fontsize)
-    plt.yticks(np.arange(len(col_labs)) + 0.5, ind_labs, fontsize=fontsize)
+    plt.yticks(np.arange(len(col_labs)) + 0.5, ind_labs, fontsize=fontsize, rotation=0)
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)

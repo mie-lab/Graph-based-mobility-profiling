@@ -7,7 +7,7 @@ import sys
 
 from clustering import ClusterWrapper
 from compare_clustering import compute_all_scores
-from analyze_study import entropy
+from label_analysis import entropy
 from plotting import plot_correlation_matrix
 
 

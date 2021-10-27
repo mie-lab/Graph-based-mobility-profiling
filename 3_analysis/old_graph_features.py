@@ -413,3 +413,26 @@ class OldGraphFeatures(GraphFeatures):
             return 0
         return len(unique_journeys.keys()) / np.sqrt(graph.number_of_nodes())
         # self._random_walk_iters * len(unique_journeys.keys()) / (nr_journeys * graph.number_of_nodes())
+
+    def mean_trip_distance(self, graph):
+        sum_of_weights = 0
+        weighted_distance = 0
+        for (u, v, data) in graph.edges(data=True):
+            loc_u = graph.nodes[u]["center"]
+            loc_v = graph.nodes[v]["center"]
+            weight = data["weight"]
+            sum_of_weights += weight
+            dist = get_point_dist(loc_u, loc_v, crs_is_projected=False)
+            weighted_distance += dist * weight
+        return weighted_distance / sum_of_weights
+
+    def distance_ht_index(self, graph):
+        dist_list = []
+        for (u, v, data) in graph.edges(data=True):
+            loc_u = graph.nodes[u]["center"]
+            loc_v = graph.nodes[v]["center"]
+            weight = data["weight"]
+            dist = get_point_dist(loc_u, loc_v, crs_is_projected=False)
+            dist_list.extend([dist for _ in range(int(weight))])
+        bp = htb(dist_list)
+        return len(bp)

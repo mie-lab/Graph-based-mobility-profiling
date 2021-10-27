@@ -196,7 +196,7 @@ class GraphFeatures:
         transition_counts = [edge[2]["weight"] for edge in graph.edges(data=True)]
         return transition_counts
 
-    def median_trip_distance(self, graph):
+    def _weighted_dists(self, graph):
         dist_list = []
         for (u, v, data) in graph.edges(data=True):
             loc_u = graph.nodes[u]["center"]
@@ -204,19 +204,15 @@ class GraphFeatures:
             weight = data["weight"]
             dist = get_point_dist(loc_u, loc_v, crs_is_projected=False)
             dist_list.extend([dist for _ in range(int(weight))])
+        return dist_list
+
+    def median_trip_distance(self, graph):
+        dist_list = self._weighted_dists(graph)
         return np.median(dist_list)
 
-    def mean_trip_distance(self, graph):
-        sum_of_weights = 0
-        weighted_distance = 0
-        for (u, v, data) in graph.edges(data=True):
-            loc_u = graph.nodes[u]["center"]
-            loc_v = graph.nodes[v]["center"]
-            weight = data["weight"]
-            sum_of_weights += weight
-            dist = get_point_dist(loc_u, loc_v, crs_is_projected=False)
-            weighted_distance += dist * weight
-        return weighted_distance / sum_of_weights
+    def highest_decile_distance(self, graph):
+        dist_list = self._weighted_dists(graph)
+        return np.quantile(dist_list, 0.9)
 
     def _degree(self, graph, mode="out"):
         """
@@ -254,7 +250,7 @@ class GraphFeatures:
         return self._fit_powerlaw(transitions)
 
     def mean_clustering_coeff(self, graph):
-        clusterings = nx.algorithms.cluster.clustering(nx.DiGraph(graph))
+        clusterings = nx.algorithms.cluster.clustering(nx.DiGraph(graph), weight="weight")
         return np.mean(list(dict(clusterings).values()))
 
 
@@ -271,7 +267,7 @@ if __name__ == "__main__":
 
     study = args.study
     node_importance = args.nodes
-    out_dir = "out_features/test"
+    out_dir = os.path.join("out_features", "test")
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
