@@ -12,6 +12,27 @@ from graph_features import GraphFeatures
 from raw_features import RawFeatures
 
 
+def remove_outliers(feature_df, cutoff=4):
+    feature_df = feature_df.dropna()
+    features = np.array(feature_df)
+    outlier_arr = []
+    for i in range(features.shape[1]):
+        col_vals = features[:, i].copy()
+        mean, std = (np.mean(col_vals), np.std(col_vals))
+        # outliers are above or below cutoff times the std
+        outlier_thresh = (mean - cutoff * std, mean + cutoff * std)
+        outlier = (col_vals < outlier_thresh[0]) | (col_vals > outlier_thresh[1])
+        outlier_arr.append(outlier)
+
+    outlier_arr = np.array(outlier_arr)
+    outlier_arr = np.any(outlier_arr, axis=0)
+    removed_outliers = list(feature_df[outlier_arr].index)
+    print("Removed users", len(removed_outliers), removed_outliers)
+    feature_df = feature_df[~outlier_arr]
+    print(len(feature_df))
+    return feature_df
+
+
 def clean_features(path, cutoff=4):
     """Delete users with nans or with outliers (cutoff * std from mean)"""
 
@@ -21,8 +42,14 @@ def clean_features(path, cutoff=4):
         os.makedirs(out_path)
 
     for f in os.listdir(path):
+        # quarters: only remove outliers:
+        if "quarter" in f:
+            feature_df = pd.read_csv(os.path.join(path, f), index_col="user_id")
+            feature_df = remove_outliers(feature_df)
+            feature_df.to_csv(os.path.join(out_path, f))
+
         # skip raw features or after features becuase they must be matched
-        if f[-3:] != "csv" or "raw" in f or "after" in f:
+        if f[-3:] != "csv" or "raw" in f or "after" in f or "quarter" in f:
             continue
         print("---------", f)
         graph_path = os.path.join(path, f)
@@ -50,24 +77,7 @@ def clean_features(path, cutoff=4):
         u_o2 = [u_id for u_id in raw_features.index if u_id not in feature_df.index]
         print("Users in raw features but not in graph (bzw for yumuv, in after but not in before):", len(u_o2), u_o2)
 
-        feature_df = feature_df.dropna()
-        features = np.array(feature_df)
-        outlier_arr = []
-        for i in range(features.shape[1]):
-            col_vals = features[:, i].copy()
-            mean, std = (np.mean(col_vals), np.std(col_vals))
-            # outliers are above or below cutoff times the std
-            outlier_thresh = (mean - cutoff * std, mean + cutoff * std)
-            outlier = (col_vals < outlier_thresh[0]) | (col_vals > outlier_thresh[1])
-            outlier_arr.append(outlier)
-
-        outlier_arr = np.array(outlier_arr)
-        #     print(outlier_arr.shape)
-        outlier_arr = np.any(outlier_arr, axis=0)
-        removed_outliers = list(feature_df[outlier_arr].index)
-        print("Removed users", len(removed_outliers), removed_outliers)
-        feature_df = feature_df[~outlier_arr]
-        print(len(feature_df))
+        feature_df = remove_outliers(feature_df)
 
         graph_features = graph_features[graph_features.index.isin(feature_df.index)]
         graph_features.to_csv(os.path.join(out_path, f))
@@ -140,6 +150,14 @@ def get_yumuv(out_dir, node_importance):
     cg_all.to_csv(os.path.join(out_dir, f"yumuv_cg_graph_features_{node_importance}.csv"))
 
 
+def get_gc_quarters(out_dir, node_importance):
+    for quarter_ind in [4]:  # range(1, 5):
+        quarter = "gc1_quarter" + str(quarter_ind)
+        runner_all_feat = GraphFeatures(quarter, node_importance=node_importance)
+        full_features = runner_all_feat(features="default")
+        full_features.to_csv(os.path.join(out_dir, quarter + f"_graph_features_{node_importance}.csv"))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -159,6 +177,7 @@ if __name__ == "__main__":
     sys.stdout = f
 
     # Process graph and raw features for all studies, then add yumuv, then clean
+    get_gc_quarters(args.out_dir, args.nodes)
     get_graph_and_raw(args.out_dir, args.nodes)
     get_yumuv(args.out_dir, args.nodes)
     clean_features(args.out_dir)

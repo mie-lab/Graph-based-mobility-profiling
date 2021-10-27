@@ -154,6 +154,12 @@ if __name__ == "__main__":
     graph_features = pd.read_csv(
         os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
     )
+    if args.study == "all_datasets":
+        STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+        print("current studies:", np.unique(graph_features["study"].values))
+        print("Warning: To find the groups, we only use the data from the following studies")
+        graph_features = graph_features[graph_features["study"].isin(STUDIES)]
+        print(np.unique(graph_features["study"].values))
 
     # delete previous content of groups.json
     with open("groups.json", "w") as outfile:
@@ -170,4 +176,4 @@ if __name__ == "__main__":
             characteristics = cluster_characteristics(in_features, labels, printout=False)
             cluster_assignment = sort_clusters_into_groups(characteristics, add_groups=True, printout=False)
     # copy the resulting groups to the results folder
-    shutil.copy(os.path.join("3_analysis", "groups.json"), os.path.join(out_dir, "groups.json"))
+    shutil.copy(os.path.join("groups.json"), os.path.join(out_dir, "groups.json"))

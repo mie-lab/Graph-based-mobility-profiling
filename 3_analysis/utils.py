@@ -305,34 +305,6 @@ def get_con():
     return con
 
 
-def load_graphs_cross_sectional(before_or_after="before", node_importance=0):
-    con = get_con()
-    graph_table_name = "before_after" if before_or_after != "full" else "full_graph"
-    graph_dict = read_graphs_from_postgresql(
-        graph_table_name=graph_table_name,
-        psycopg_con=con,
-        graph_schema_name="yumuv_graph_rep",
-        file_name=before_or_after,
-        decompress=True,
-    )
-    nx_graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
-    return nx_graphs, users
-
-
-def load_graphs_postgis(study, node_importance=0, decompress=True):
-    # load login data
-    con = get_con()
-    graph_dict = read_graphs_from_postgresql(
-        graph_table_name="full_graph",
-        psycopg_con=con,
-        graph_schema_name=study,
-        file_name="graph_data",
-        decompress=decompress,
-    )
-    nx_graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
-    return nx_graphs, users
-
-
 def load_user_info(study, index_col="user_id"):
     con = get_con()
     user_info = pd.read_sql_query(sql=f"SELECT * FROM {study}.user_info".format(study), con=con, index_col=index_col)

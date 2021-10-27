@@ -25,13 +25,7 @@ class GraphFeatures:
         #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
         # )
         self._debug = False
-        if "yumuv" in study and study != "yumuv_graph_rep":
-            # for yumuv: get before or after
-            assert study[:6] == "yumuv_", "must be named yumuv_before, yumuv_after or yumuv_full"
-            before_or_after = study.split("_")[1]
-            self._graphs, self._users = load_graphs_cross_sectional(before_or_after, node_importance)
-        else:
-            self._graphs, self._users = self._load_graphs(study, node_importance)
+        self._graphs, self._users = self._load_graphs(study, node_importance)
         print("Loaded data", len(self._graphs))
 
         # specify necessary parameters for the feature extraction
@@ -39,8 +33,28 @@ class GraphFeatures:
 
         self.all_features = [f for f in dir(self) if not f.startswith("_")]
 
+    def _get_db_params(self, study):
+        # default: full graph
+        table_name, file_name = ("full_graph", "graph_data")
+        # yumuv before and after
+        if "before" in study or "after" in study:
+            table_name, study, file_name = ("before_after", "yumuv_graph_rep", study.split("_")[1])
+        # gc quarters
+        elif "quarter" in study:
+            table_name, study, file_name = ("quarters", "gc1", study.split("_")[1])
+        return table_name, study, file_name
+
     def _load_graphs(self, study, node_importance):
-        graphs, users = load_graphs_postgis(study, node_importance=node_importance, decompress=True)
+        con = get_con()
+        table_name, study_for_db, file_name = self._get_db_params(study)
+        graph_dict = graph_dict = read_graphs_from_postgresql(
+            graph_table_name=table_name,
+            psycopg_con=con,
+            graph_schema_name=study_for_db,
+            file_name=file_name,
+            decompress=True,
+        )
+        graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
         print("loaded graphs", len(graphs))
         return graphs, users
 
