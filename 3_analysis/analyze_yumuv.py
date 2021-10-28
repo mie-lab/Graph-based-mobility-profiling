@@ -11,7 +11,7 @@ from collections import defaultdict
 from matplotlib.lines import Line2D
 
 from utils import sort_images_by_cluster
-from plotting import barplot_clusters, print_chisquare, plot_cluster_characteristics, barplot_clusters_other_way
+from plotting import barplot_clusters, print_chisquare, plot_cluster_characteristics
 from clustering import ClusterWrapper
 from utils import load_question_mapping, load_user_info
 from find_groups import cluster_characteristics, sort_clusters_into_groups, group_consistency

@@ -118,7 +118,7 @@ def group_consistency(graph_features, out_path=None, nr_iters=20, n_clusters=5, 
         assigned_most_often.append(uni_wo_other[np.argmax(counts_wo_other)])
         consistency.append(np.max(counts_wo_other) / np.sum(counts_wo_other))
     df["most often"] = assigned_most_often
-    df["consistency"] = np.mean(consistency)
+    df["consistency_" + str(round(np.mean(consistency), 2))] = consistency
 
     if out_path:
         df.to_csv(out_path)

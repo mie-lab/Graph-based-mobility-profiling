@@ -55,7 +55,6 @@ def cluster_by_study(feats, out_path="results", fontsize_dict={"font.size": 28, 
     Feats requires column study, column clustering,
     """
     matplotlib.rcParams.update(fontsize_dict)
-    filtered = feats[~feats["study"].isin(["yumuv_after_cg", "yumuv_after_tg", "yumuv_before_cg", "yumuv_before_tg"])]
     study_mapping = {
         "gc1": "Green Class 1",
         "gc2": "Green Class 2",
@@ -63,6 +62,7 @@ def cluster_by_study(feats, out_path="results", fontsize_dict={"font.size": 28, 
         "geolife": "Geolife",
         "tist_toph100": "Foursquare",
     }
+    filtered = feats[feats["study"].isin(study_mapping.keys())]
     filtered["study"] = filtered["study"].apply(lambda x: study_mapping[x])
     df_perc = get_percentage(filtered, "study", "cluster")
     plt.figure(figsize=(20, 10))

@@ -17,7 +17,7 @@ def merge_two(graph_features, before, after):
 
 
 def run_longitudinal(graph_features, name, before, after, out_path):
-    merged_groups = merge_two(before, after)
+    merged_groups = merge_two(graph_features, before, after)
     print(
         f"Ratio of {name} group that switched cluster:",
         np.sum(merged_groups["cluster_before"] != merged_groups["cluster_after"]) / len(merged_groups),
@@ -41,10 +41,10 @@ if __name__ == "__main__":
         exit()
 
     # YUMUV CG
-    run_longitudinal(graph_features, "yumuv_control_group", "yumuv_cg_before", "yumuv_cg_after")
+    run_longitudinal(graph_features, "yumuv_control_group", "yumuv_before_cg", "yumuv_after_cg", path)
 
     # YUMUV TG:
-    run_longitudinal(graph_features, "yumuv_test_group", "yumuv_tg_before", "yumuv_tg_after")
+    run_longitudinal(graph_features, "yumuv_test_group", "yumuv_before_tg", "yumuv_after_tg", path)
 
     # GC1 first and second quarter
     # run_longitudinal(graph_features, "gc1_1st_2nd", "gc1_quarter1", "gc1_quarter2")
