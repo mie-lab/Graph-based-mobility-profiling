@@ -2,6 +2,7 @@ import argparse
 import os
 import pandas as pd
 import numpy as np
+import sys
 
 from analyze_yumuv import plot_longitudinal
 
@@ -40,6 +41,9 @@ if __name__ == "__main__":
         print("ERROR: all_dataset_clustering.csv file does not exist yet. Run script analyze_study.py first")
         exit()
 
+    f = open(os.path.join(path, "log_longitudinal.txt"), "w")
+    sys.stdout = f
+
     # YUMUV CG
     run_longitudinal(graph_features, "yumuv_control_group", "yumuv_before_cg", "yumuv_after_cg", path)
 
@@ -49,3 +53,5 @@ if __name__ == "__main__":
     # GC1 first and second quarter
     # run_longitudinal(graph_features, "gc1_1st_2nd", "gc1_quarter1", "gc1_quarter2")
     # ... other quarters
+
+    f.close()

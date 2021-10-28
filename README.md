@@ -76,11 +76,28 @@ For the cross secional study, we use the assigned groups from above (`results/al
 python 3_analysis/cross_sectional.py -i results
 ```
 
-**6) Validation: comparison to raw features**
+**6) Longitudinal study with GC1 and YUMUV**
+
+Run the following to save all longitudinal plots into the results folder:
+```
+python 3_analysis/longitudinal.py -i results
+```
+
+**7) Label analysis**
+
+For GC and YUMUV, the results of a user survey are also available, with questions about demographics and mobility behavior. We compare the replies of each user group vs the other user groups and save the results in a csv file (and plot significant ones). This is done by running
+```
+python 3_analysis/label_analysis.py -i results -s yumuv
+```
+or 
+```
+python 3_analysis/label_analysis.py -i results -s gc1
+```
+
+**8) Validation: comparison to raw features**
 
 Run
 ```
 python 3_analysis/analyze_graph_vs_raw.py -o results_quantile -i out_features/final_7_n0_quantile_cleaned -s all_datasets
 ```
-
 
