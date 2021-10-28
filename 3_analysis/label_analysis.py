@@ -5,7 +5,9 @@ import pandas as pd
 import argparse
 import matplotlib.pyplot as plt
 import matplotlib
+from scipy.stats.stats import chisquare
 import seaborn as sns
+from scipy.stats import chi2_contingency, contingency, ttest_ind
 
 fontsize_dict = {"font.size": 15, "axes.labelsize": 15}
 matplotlib.rcParams.update(fontsize_dict)
@@ -72,6 +74,8 @@ def entropy(df_in, label, cluster, treat_nans="remove", print_parts=False, nr_bi
     # factor out the label entropy that is expected:
     uni, counts = np.unique(df[label].values, return_counts=True)
     label_entropy = -1 * sum([(c / n) * np.log2(c / n) for (u, c) in zip(uni, counts)])
+    if label_entropy == 0:
+        return 1
 
     return entropy / label_entropy
 
@@ -124,52 +128,112 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
     os.makedirs(out_figures, exist_ok=True)
     # make labels readable
     joined["cluster_to_plot"] = joined["cluster"].apply(lambda x: "\n".join(x.split(" ")))
-    for col in user_info.columns:
+    labels_to_check = user_info.columns
+    user_groups = np.unique(joined["cluster"].values)
+
+    res_arr = np.zeros((len(labels_to_check), len(user_groups) + 4))
+    res_arr[:, 4:] = 1  # set all p values to non significant by default
+    test_type, question_full = [], []
+
+    for i, col in enumerate(labels_to_check):
         if "id" in col:
+            test_type.append("None")
+            question_full.append("ID column")
             continue
         not_nan = pd.isna(joined[col]).sum()
-        if not_nan / len(joined) > 0.5:
-            # print("Skipping because too many missing values:", col)
-            continue
+        # if not_nan / len(joined) > 0.5:
+        #     # print("Skipping because too many missing values:", col)
+        #     continue
+        nan_ratio = not_nan / len(joined)
+        # res_arr[i, 0] = nan_ratio  # NAN RATIO COL
 
         corresponding_q = col
         if questions is not None:
             corresponding_q = get_q_for_col(col, questions)
+        question_full.append(corresponding_q)
 
-        # if entropy_1 < 0.95:
-        print("\n------", corresponding_q, "------")
-        entropy1 = entropy(joined, col, "cluster", print_parts=True)
+        # print("\n------", corresponding_q, "------")
+        entropy1 = entropy(joined, col, "cluster", print_parts=False)
         rounded_entropy = round(entropy1, 2)
-        print("\nEntropy:", round(entropy1, 2), "\n")
+        # print("\nEntropy:", round(entropy1, 2), "\n")
+        res_arr[i, 1] = entropy1  # ENTROPY COL
 
-        # PLOTTING
+        # Add to table and plot
         col_vals = joined[col]
         col_vals = col_vals[~pd.isna(col_vals)]
         # skip the ones where plotting does not make sense
         if (
             len(np.unique(col_vals)) < 2
             or pd.isna(entropy1)
-            or entropy1 > 0.99
+            # or entropy1 > 0.99
             or "click" in col
             or "page_submit" in col
+            or "page submit" in col
         ):
+            test_type.append("no test")
             continue
-        if len(np.unique(col_vals)) < 4:
-            plt.figure(figsize=(10, 5))
-            sns.countplot(x="cluster_to_plot", hue=col, data=joined)
-            plt.title(corresponding_q, fontsize=12)
-            plt.savefig(os.path.join(out_figures, f"{col}_{rounded_entropy}.png"))
-        elif not isinstance(col_vals.values[0], str):
-            plt.figure(figsize=(10, 5))
-            sns.boxplot(x="cluster_to_plot", y=col, data=joined)
-            plt.title(corresponding_q, fontsize=12)
-            plt.savefig(os.path.join(out_figures, col + ".png"))
+
+        part_df = joined[["cluster", col]].dropna()
+        res_arr[i, 0] = len(part_df)  # NAN RATIO COL
+        occuring_labels = np.unique(col_vals)
+        col_test_type = "chisquare" if len(occuring_labels) < 5 else "ttest"
+        test_type.append(col_test_type)
+        # iterate over groups, one group against all others
+        for j, group in enumerate(user_groups):
+            df_group = part_df[part_df["cluster"] == group]
+            df_not_group = part_df[part_df["cluster"] != group]
+
+            if col_test_type == "chisquare":
+                # chi square test
+                dist_in_group = [sum(df_group[col] == lab) for lab in occuring_labels]
+                dist_not_group = [sum(df_not_group[col] == lab) for lab in occuring_labels]
+
+                contingency_table = np.array([dist_in_group, dist_not_group])
+                contingency_table = contingency_table[:, np.any(contingency_table, axis=0)]
+                try:
+                    stat, p, dof, expected = chi2_contingency(contingency_table)
+                except:
+                    res_arr[i, 2] = 1  # IS_ERROR COLUMN
+            else:
+                try:
+                    stat, p = ttest_ind(df_group[col], df_not_group[col])
+                except TypeError:
+                    res_arr[i, 2] = 1  # IS_ERROR COLUMN
+            res_arr[i, j + 4] = round(p, 3)
+            if p < 0.05:  # if significant, set significant value
+                res_arr[i, 3] = 1  # SIGNIFICANCY COLUMN
+
+        if res_arr[i, 3] == 1 and res_arr[i, 2] != 1:
+            part_df_plot = joined[["cluster_to_plot", col]].dropna()
+            # one of them was significant
+            if col_test_type == "chisquare":
+                plt.figure(figsize=(10, 5))
+                sns.countplot(x="cluster_to_plot", hue=col, data=part_df_plot)
+                plt.title(corresponding_q, fontsize=12)
+                plt.savefig(os.path.join(out_figures, f"{col}_{rounded_entropy}.png"))
+            elif col_test_type == "ttest":
+                plt.figure(figsize=(10, 5))
+                sns.boxplot(x="cluster_to_plot", y=col, data=part_df_plot)
+                plt.title(corresponding_q, fontsize=12)
+                plt.savefig(os.path.join(out_figures, col + ".png"))
+    df = pd.DataFrame(
+        res_arr, columns=["number_included", "entropy", "any_error", "any_significant"] + list(user_groups)
+    )
+    df["test"] = test_type
+    df["q_id"] = labels_to_check
+    df["question"] = question_full
+    df = df.set_index("q_id")
+    df.to_csv(os.path.join(out_figures, "question_results.csv"))
+    df = df[df["test"] != "no test"]
+    df.to_csv(os.path.join(out_figures, "question_results_worked.csv"))
+    df = df[df["any_significant"] == 1]
+    df.to_csv(os.path.join(out_figures, "significant_question_results.csv"))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--inp_dir", type=str, default="results", help="input and output directory")
-    parser.add_argument("-s", "--study", type=str, default="yumuv", help="which study to analyze")
+    parser.add_argument("-s", "--study", type=str, default="yumuv_graph_rep", help="which study to analyze")
     args = parser.parse_args()
 
     path = args.inp_dir
