@@ -131,7 +131,7 @@ class GraphFeatures:
 
         # check if we can walk somewhere at all
         if np.max(all_degrees[:, 1]) == 0:
-            return 0  # TODO
+            return 0
 
         encountered_locations = [current_node]
         number_of_walks = 0
@@ -270,7 +270,6 @@ class GraphFeatures:
 
 if __name__ == "__main__":
     """Test on example data"""
-    # todo: move to separate process script?
     from plotting import scatterplot_matrix
     from utils import normalize_features, clean_equal_cols, load_graphs_pkl
 

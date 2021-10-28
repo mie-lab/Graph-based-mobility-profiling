@@ -13,6 +13,7 @@ from raw_features import RawFeatures
 
 
 def remove_outliers(feature_df, cutoff=4):
+    print("length before", len(feature_df))
     feature_df = feature_df.dropna()
     features = np.array(feature_df)
     outlier_arr = []
@@ -29,7 +30,7 @@ def remove_outliers(feature_df, cutoff=4):
     removed_outliers = list(feature_df[outlier_arr].index)
     print("Removed users", len(removed_outliers), removed_outliers)
     feature_df = feature_df[~outlier_arr]
-    print(len(feature_df))
+    print("length after", len(feature_df))
     return feature_df
 
 
@@ -43,10 +44,14 @@ def clean_features(path, cutoff=4):
 
     for f in os.listdir(path):
         # quarters: only remove outliers:
-        if "quarter" in f:
+        if "quarter" in f:  # TODO: remove the ones that are not in raw features or not?
+            # if f[-3:] == "csv" and "raw" not in f:  #
+            #     print()
+            #     print(f)
             feature_df = pd.read_csv(os.path.join(path, f), index_col="user_id")
             feature_df = remove_outliers(feature_df)
             feature_df.to_csv(os.path.join(out_path, f))
+            # continue
 
         # skip raw features or after features becuase they must be matched
         if f[-3:] != "csv" or "raw" in f or "after" in f or "quarter" in f:

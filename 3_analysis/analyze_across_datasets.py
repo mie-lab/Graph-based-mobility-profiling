@@ -17,11 +17,10 @@ def load_all(path, type="graph", node_importance=50):
     """
     all_together = []
     study_labels = []
-    for study in STUDIES:  # , "yumuv_graph_rep"]: # _{node_importance}
+    for study in STUDIES:
         graph_features = pd.read_csv(
             os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
         )
-        # TODO: need to filter raw features?
         if type == "graph":
             all_together.append(graph_features)
         elif type == "raw":
@@ -68,11 +67,14 @@ if __name__ == "__main__":
         "yumuv_after_cg",
         "yumuv_before_tg",
         "yumuv_after_tg",
+        # "gc1_quarter1", # TODO
+        # "gc1_quarter2",
+        # "gc1_quarter3",
+        "gc1_quarter4",
     ]
     # parameters
     nodes = 0
     path = args.inp_dir  # os.path.join("out_features", f"final_{feat_id}_n{nodes}_cleaned")
-    n_clusters = len(STUDIES)
     feature_type = "graph"
 
     if not os.path.exists(args.out_dir):
@@ -87,18 +89,20 @@ if __name__ == "__main__":
 
     mean_features_by_study(features_all_datasets, out_path=os.path.join(args.out_dir, f"dataset_{nodes}.csv"))
 
-    # Plot correlation matrix
-    feats_wostudy = features_all_datasets.drop(columns=["study"])
-    plot_correlation_matrix(
-        feats_wostudy, feats_wostudy, save_path=os.path.join(args.out_dir, f"correlation_{nodes}.pdf")
-    )
-
     # Entropy calculation:
     f = open(os.path.join(args.out_dir, "entropy_over_studies.txt"), "w")
     sys.stdout = f
     STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+    n_clusters = len(STUDIES)
     features_all_datasets = pd.read_csv(
         os.path.join(path, f"all_datasets_{feature_type}_features_{nodes}.csv"), index_col="user_id"
+    )
+    features_all_datasets = features_all_datasets[features_all_datasets["study"].isin(STUDIES)]
+
+    # Plot correlation matrix
+    feats_wostudy = features_all_datasets.drop(columns=["study"])
+    plot_correlation_matrix(
+        feats_wostudy, feats_wostudy, save_path=os.path.join(args.out_dir, f"correlation_{nodes}.pdf")
     )
 
     cluster_wrapper = ClusterWrapper()

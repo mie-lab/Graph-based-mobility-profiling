@@ -36,7 +36,7 @@ class ClusterWrapper:
         if algorithm == "dbscan":
             kmeans = algorithm_dict[algorithm](min_samples=3, eps=1)
         else:
-            kmeans = algorithm_dict[algorithm](n_clusters=n_clusters, random_state=self.random_state)  # TODO
+            kmeans = algorithm_dict[algorithm](n_clusters=n_clusters, random_state=self.random_state)
         kmeans = kmeans.fit(normed_feature_matrix)
         # save cluster centers
         try:
