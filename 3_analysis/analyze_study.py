@@ -10,6 +10,8 @@ from utils import sort_images_by_cluster
 from clustering import ClusterWrapper
 from find_groups import cluster_characteristics, sort_clusters_into_groups, group_consistency
 from plotting import plot_cluster_characteristics, cluster_by_study, scatterplot_matrix
+from label_analysis import entropy
+from compare_clustering import compute_all_scores
 
 
 def find_k(features):
@@ -66,6 +68,31 @@ if __name__ == "__main__":
         graph_features.to_csv(os.path.join(out_path + "clustering.csv"))
         plot_cluster_characteristics(graph_features, out_path=os.path.join(out_dir, "cluster_characteristics.pdf"))
         cluster_by_study(graph_features, out_path=os.path.join(out_dir, "dataset_clusters.pdf"))
+
+        # Entropy calculation:
+        f = open(os.path.join(args.out_dir, "entropy_over_studies.txt"), "w")
+        sys.stdout = f
+        STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+        features_all_datasets = graph_features.copy()
+        features_all_datasets = features_all_datasets[features_all_datasets["study"].isin(STUDIES)]
+
+        print("Computing entropy...")
+        study_entropy = entropy(features_all_datasets, "study", "cluster", print_parts=True)
+        print("\n OVERALL ENTROPY", study_entropy)
+
+        print("\n computing entropy without tist...")
+        study_entropy = entropy(
+            features_all_datasets[features_all_datasets["study"] != "tist_toph100"],
+            "study",
+            "cluster",
+            print_parts=True,
+        )
+        print("\n ENTROPY wo tist", study_entropy, "\n")
+
+        # compare relation between cluster and study labels
+        compute_all_scores(features_all_datasets["cluster"].values, features_all_datasets["study"].values)
+        f.close()
+
         exit()
 
     # ------------------ ANALYSE SINGLE STUDY WITH GIVEN GROUPS -------------------------------

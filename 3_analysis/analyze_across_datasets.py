@@ -67,9 +67,9 @@ if __name__ == "__main__":
         "yumuv_after_cg",
         "yumuv_before_tg",
         "yumuv_after_tg",
-        # "gc1_quarter1", # TODO
-        # "gc1_quarter2",
-        # "gc1_quarter3",
+        "gc1_quarter1",
+        "gc1_quarter2",
+        "gc1_quarter3",
         "gc1_quarter4",
     ]
     # parameters
@@ -89,31 +89,9 @@ if __name__ == "__main__":
 
     mean_features_by_study(features_all_datasets, out_path=os.path.join(args.out_dir, f"dataset_{nodes}.csv"))
 
-    # Entropy calculation:
-    f = open(os.path.join(args.out_dir, "entropy_over_studies.txt"), "w")
-    sys.stdout = f
-    STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
-    n_clusters = len(STUDIES)
-    features_all_datasets = pd.read_csv(
-        os.path.join(path, f"all_datasets_{feature_type}_features_{nodes}.csv"), index_col="user_id"
-    )
+    # Plot correlation matrix with subset of studies:
     features_all_datasets = features_all_datasets[features_all_datasets["study"].isin(STUDIES)]
-
-    # Plot correlation matrix
     feats_wostudy = features_all_datasets.drop(columns=["study"])
     plot_correlation_matrix(
         feats_wostudy, feats_wostudy, save_path=os.path.join(args.out_dir, f"correlation_{nodes}.pdf")
     )
-
-    cluster_wrapper = ClusterWrapper()
-    cluster_labels = cluster_wrapper(features_all_datasets.drop(columns=["study"]), n_clusters=n_clusters)
-
-    features_all_datasets["cluster"] = cluster_labels
-    print("Computing entropy...")
-    study_entropy = entropy(features_all_datasets, "study", "cluster", print_parts=True)
-    print("\n OVERALL ENTROPY", study_entropy)
-
-    print(np.unique(cluster_labels, return_counts=True))
-    # compare relation between cluster and study labels
-    compute_all_scores(cluster_labels, np.array(features_all_datasets["study"]))
-    f.close()

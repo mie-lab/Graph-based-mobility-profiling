@@ -193,11 +193,17 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
                 try:
                     stat, p, dof, expected = chi2_contingency(contingency_table)
                 except:
+                    print("\n chisquare error", contingency_table)
+                    print(col)
                     res_arr[i, 2] = 1  # IS_ERROR COLUMN
             else:
                 try:
                     stat, p = ttest_ind(df_group[col], df_not_group[col])
                 except TypeError:
+                    print("\n ttest error")
+                    print(col)
+                    print(df_group[col])
+                    print(df_not_group[col])
                     res_arr[i, 2] = 1  # IS_ERROR COLUMN
             res_arr[i, j + 4] = round(p, 3)
             if p < 0.05:  # if significant, set significant value
