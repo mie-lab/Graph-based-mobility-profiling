@@ -1,19 +1,25 @@
 {
-    "Central_connected": {
+    "Centralised": {
         "degree_beta": "high",
         "journey_length": "low",
         "mean_clustering_coeff": "high",
         "median_trip_distance": "low",
         "transition_beta": "low"
     },
-    "Locally_flexible": {
+    "Connected_flexible": {
         "degree_beta": "low",
+        "mean_clustering_coeff": "high",
+        "median_trip_distance": "high",
+        "transition_beta": "low"
+    },
+    "Locally flexible": {
+        "degree_beta": "low",
+        "highest_decile_distance": "low",
         "journey_length": "high",
         "mean_clustering_coeff": "low",
         "median_trip_distance": "low"
     },
-    "Local_routine": {
-        "degree_beta": "low",
+    "Local routine": {
         "highest_decile_distance": "low",
         "journey_length": "low",
         "mean_clustering_coeff": "low",

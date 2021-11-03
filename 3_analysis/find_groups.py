@@ -44,7 +44,7 @@ def cluster_characteristics(in_features, cluster_labels=None, printout=True):
     return characteristics
 
 
-def sort_clusters_into_groups(characteristics, min_equal=1, add_groups=False, printout=True):
+def sort_clusters_into_groups(characteristics, min_equal=1, allow_tie=True, add_groups=False, printout=True):
     with open("groups.json", "r") as infile:
         groups = json.load(infile)
     other_groups = [int(k.split("_")[-1]) for k in groups.keys() if "other" in k]
@@ -74,7 +74,7 @@ def sort_clusters_into_groups(characteristics, min_equal=1, add_groups=False, pr
             print(f"Cluster {cluster} could be part of", sorted_possible_groups)
         no_tie = len(sorted_possible_groups) < 2 or sorted_possible_groups[0][1] != sorted_possible_groups[1][1]
         # Conditions: at least one group, where at least min_equal elems are the same, and there is no tie
-        if len(possible_groups) > 0 and sorted_possible_groups[0][1] >= min_equal:  # and no_tie: # TODO: allow tie?
+        if len(possible_groups) > 0 and sorted_possible_groups[0][1] >= min_equal and (allow_tie or no_tie):
             most_fitting_group = sorted_possible_groups[0][0]
             if printout:
                 print(f"Cluster {cluster} is part of", most_fitting_group)
@@ -154,6 +154,7 @@ if __name__ == "__main__":
     graph_features = pd.read_csv(
         os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
     )
+    # Use only the five studies for identifying the user groups
     if args.study == "all_datasets":
         STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
         print("current studies:", np.unique(graph_features["study"].values))
@@ -169,11 +170,15 @@ if __name__ == "__main__":
     cluster_wrapper = ClusterWrapper()
     if "study" in graph_features.columns:
         in_features = graph_features.drop(columns=["study"])
+    else:
+        in_features = graph_features.copy()
     # Run clustering multiple times, and add the identified groups to the file 3_analysis/groups.json
     for i in range(3):
         for n_clusters in [6, 7, 8]:
             labels = cluster_wrapper(in_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
             characteristics = cluster_characteristics(in_features, labels, printout=False)
-            cluster_assignment = sort_clusters_into_groups(characteristics, add_groups=True, printout=False)
+            cluster_assignment = sort_clusters_into_groups(
+                characteristics, add_groups=True, printout=False, min_equal=2, allow_tie=False
+            )
     # copy the resulting groups to the results folder
     shutil.copy(os.path.join("groups.json"), os.path.join(out_dir, "groups.json"))

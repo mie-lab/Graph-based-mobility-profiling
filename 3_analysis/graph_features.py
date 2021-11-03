@@ -42,6 +42,9 @@ class GraphFeatures:
         # gc quarters
         elif "quarter" in study:
             table_name, study, file_name = ("quarters", "gc1", study.split("_")[1])
+        elif "dur" in study:
+            # schema: dur_4w_2017-01-02_gc1 --> timebin_size, filename, studyname
+            table_name, study, file_name = ("_".join(study.split("_")[:2]), study.split("_")[3], study.split("_")[2])
         return table_name, study, file_name
 
     def _load_graphs(self, study, node_importance):

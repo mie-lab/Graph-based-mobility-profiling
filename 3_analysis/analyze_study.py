@@ -4,6 +4,7 @@ import pandas as pd
 import argparse
 import sys
 import shutil
+import pickle
 from sklearn.metrics import silhouette_score
 
 from utils import sort_images_by_cluster
@@ -58,6 +59,10 @@ if __name__ == "__main__":
 
     # ------------------ ANALYSE MERGED STUDIES WITH GIVEN GROUPS -------------------------------
     if study == "all_datasets":
+        # Use only the main studies!! otherwise biased
+        STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+        graph_features = graph_features[graph_features["study"].isin(STUDIES)]
+
         # get most consistent labels
         labels = group_consistency(
             graph_features.drop("study", axis=1),
@@ -66,13 +71,40 @@ if __name__ == "__main__":
         )
         graph_features["cluster"] = labels
         graph_features.to_csv(os.path.join(out_path + "clustering.csv"))
+
+        # scatterplot matrix
+        scatter_features = graph_features.drop(columns=["cluster"]).reset_index().set_index(["user_id", "study"])
+        scatterplot_matrix(
+            scatter_features,
+            scatter_features.columns,
+            clustering=labels,
+            save_path=os.path.join(out_dir, "scatterplot.pdf"),
+        )
+
+        # Save cluster wrapper
+        n_clusters_final = 7
+        cluster_wrapper = ClusterWrapper(random_state=1)
+        labels_new = cluster_wrapper(
+            scatter_features, impute_outliers=False, n_clusters=n_clusters_final, algorithm="kmeans"
+        )
+        characteristics = cluster_characteristics(scatter_features, labels_new, printout=False)
+        cluster_assignment = sort_clusters_into_groups(characteristics, add_groups=False, printout=False)
+        cluster_wrapper.cluster_assignment = cluster_assignment
+        group_labels_new = [cluster_assignment[label] for label in labels_new]
+        print(
+            "Saved cluster wrapper labels == consistent labels?",
+            sum(graph_features["cluster"].values == np.array(group_labels_new)) / len(graph_features),
+        )
+        with open(os.path.join(out_dir, "clustering.pkl"), "wb") as outfile:
+            pickle.dump(cluster_wrapper, outfile)
+
+        # PLOTTING
         plot_cluster_characteristics(graph_features, out_path=os.path.join(out_dir, "cluster_characteristics.pdf"))
         cluster_by_study(graph_features, out_path=os.path.join(out_dir, "dataset_clusters.pdf"))
 
         # Entropy calculation:
         f = open(os.path.join(args.out_dir, "entropy_over_studies.txt"), "w")
         sys.stdout = f
-        STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
         features_all_datasets = graph_features.copy()
         features_all_datasets = features_all_datasets[features_all_datasets["study"].isin(STUDIES)]
 

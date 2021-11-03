@@ -67,10 +67,6 @@ if __name__ == "__main__":
         "yumuv_after_cg",
         "yumuv_before_tg",
         "yumuv_after_tg",
-        "gc1_quarter1",
-        "gc1_quarter2",
-        "gc1_quarter3",
-        "gc1_quarter4",
     ]
     # parameters
     nodes = 0
