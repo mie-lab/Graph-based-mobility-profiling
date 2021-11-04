@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import sys
 
-from utils import split_yumuv_control_group
+from utils import split_yumuv_control_group, get_con
 from clustering import ClusterWrapper
 from plotting import scatterplot_matrix
 from graph_features import GraphFeatures
@@ -99,7 +99,7 @@ def get_graph_and_raw(out_dir, node_importance):
     for study in ["gc1", "gc2", "geolife", "tist_toph100"]:
         for feat_type in ["graph"]:
 
-            print(" -------------- PROCESS", study, feat_type, " ---------------")
+            print("\n -------------- PROCESS", study, feat_type, " ---------------")
 
             # Generate feature matrix
             tic = time.time()
@@ -131,36 +131,65 @@ def get_graph_and_raw(out_dir, node_importance):
 
 def get_yumuv(out_dir, node_importance):
 
-    print("Run full yumuv")
+    print("\n----------------- PROCESS YUMUV --------------------")
     runner_all_feat = GraphFeatures("yumuv_graph_rep", node_importance=node_importance)
     full_features = runner_all_feat(features="default")
     full_features.to_csv(os.path.join(out_dir, f"yumuv_graph_rep_graph_features_{node_importance}.csv"))
+
+    print("\n----------------- GET YUMUV BEF AND AFT --------------------")
 
     print("Run yumuv before")
     runner_before_feat = GraphFeatures("yumuv_before", node_importance=node_importance)
     before_features = runner_before_feat(features="default")
 
-    print("Run yumuv after")
+    print("\nRun yumuv after")
     runner_after_feat = GraphFeatures("yumuv_after", node_importance=node_importance)
     after_features = runner_after_feat(features="default")
+
+    yumuv_dir = out_dir + "_long_yumuv"
+    os.makedirs(yumuv_dir, exist_ok=True)
 
     # split in cg and tg
     for features, name in zip([before_features, after_features], ["before", "after"]):
         tg, cg = split_yumuv_control_group(features)
-        cg.to_csv(os.path.join(out_dir, f"yumuv_{name}_cg_graph_features_{node_importance}.csv"))
-        tg.to_csv(os.path.join(out_dir, f"yumuv_{name}_tg_graph_features_{node_importance}.csv"))
+        cg.to_csv(os.path.join(yumuv_dir, f"yumuv_{name}_cg_graph_features_{node_importance}.csv"))
+        tg.to_csv(os.path.join(yumuv_dir, f"yumuv_{name}_tg_graph_features_{node_importance}.csv"))
 
     # save cg for yumuv with whole time period
-    tg, cg_all = split_yumuv_control_group(full_features)
-    cg_all.to_csv(os.path.join(out_dir, f"yumuv_cg_graph_features_{node_importance}.csv"))
+    # tg, cg_all = split_yumuv_control_group(full_features)
+    # cg_all.to_csv(os.path.join(out_dir, f"yumuv_cg_graph_features_{node_importance}.csv"))
 
 
 def get_gc_quarters(out_dir, node_importance):
-    for quarter_ind in [4]:  # range(1, 5):
+    quarter_dir = out_dir + "_quarter"
+    os.makedirs(quarter_dir, exist_ok=True)
+    for quarter_ind in range(1, 5):
         quarter = "gc1_quarter" + str(quarter_ind)
         runner_all_feat = GraphFeatures(quarter, node_importance=node_importance)
         full_features = runner_all_feat(features="default")
-        full_features.to_csv(os.path.join(out_dir, quarter + f"_graph_features_{node_importance}.csv"))
+        full_features.to_csv(os.path.join(quarter_dir, quarter + f"_graph_features_{node_importance}.csv"))
+
+
+def get_timebins(out_dir, node_importance=0):
+    print("----------------- GET TIME BINS FOR GC 1 and 2 --------------------")
+    con = get_con()
+
+    for study in ["gc1", "gc2"]:
+        # Make new directory for this duration data
+        timebin_dir = out_dir + "_long_" + study
+        os.makedirs(timebin_dir, exist_ok=True)
+        # Run
+        for weeks in [1] + [4 * (i + 1) for i in range(7)]:
+            print("processing weeks:", weeks, "STUDY", study)
+            cur = con.cursor()
+            # get the timebin names
+            cur.execute(f"SELECT name FROM {study}.dur_{weeks}w")
+            all_names = [f"dur_{weeks}w_{name[0]}_{study}" for name in cur.fetchall()]
+            for name in all_names:
+                print("processing graphs from", name)
+                runner_all_feat = GraphFeatures(name, node_importance=node_importance)
+                full_features = runner_all_feat(features="default")
+                full_features.to_csv(os.path.join(timebin_dir, name + f"_graph_features_{node_importance}.csv"))
 
 
 if __name__ == "__main__":
@@ -182,9 +211,9 @@ if __name__ == "__main__":
     sys.stdout = f
 
     # Process graph and raw features for all studies, then add yumuv, then clean
-    get_gc_quarters(args.out_dir, args.nodes)
     get_graph_and_raw(args.out_dir, args.nodes)
     get_yumuv(args.out_dir, args.nodes)
-    clean_features(args.out_dir)
+    get_timebins(args.out_dir)
+    # clean_features(args.out_dir)
 
     f.close()

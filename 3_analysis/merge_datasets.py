@@ -11,24 +11,31 @@ from label_analysis import entropy
 from plotting import plot_correlation_matrix
 
 
-def load_all(path, type="graph", node_importance=50):
+def load_all(path, feature_type="graph", node_importance=0):
     """
     type: one of graph, raw
     """
     all_together = []
     study_labels = []
-    for study in STUDIES:
-        graph_features = pd.read_csv(
-            os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
-        )
-        if type == "graph":
-            all_together.append(graph_features)
-        elif type == "raw":
-            raw_features = pd.read_csv(
-                os.path.join(path, f"{study}_raw_features_{node_importance}.csv"), index_col="user_id"
-            )
-            raw_features = raw_features[raw_features.index.isin(graph_features.index)]
-            all_together.append(raw_features)
+    for f in os.listdir(path):
+        if feature_type not in f or f[-3:] != "csv":
+            continue
+        study = f.split(f"_{feature_type}_features")[0]
+        # print("loading", f, "study:", study)
+        graph_features = pd.read_csv(os.path.join(path, f), index_col="user_id")
+        all_together.append(graph_features)
+        # for study in STUDIES (old version)
+        # graph_features = pd.read_csv(
+        #     os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
+        # )
+        # if feature_type == "graph":
+        #     all_together.append(graph_features)
+        # elif feature_type == "raw":
+        #     raw_features = pd.read_csv(
+        #         os.path.join(path, f"{study}_raw_features_{node_importance}.csv"), index_col="user_id"
+        #     )
+        #     raw_features = raw_features[raw_features.index.isin(graph_features.index)]
+        #     all_together.append(raw_features)
 
         study_labels.extend([study for _ in range(len(graph_features))])
     # concatenate
@@ -49,45 +56,62 @@ def mean_features_by_study(features, out_path=None):
         print(mean_features)
 
 
+def remove_outliers(path, outlier_thresh, out_dir, name="", feature_type="graph", node_importance=0):
+    feature_df = load_all(path + name, feature_type=feature_type, node_importance=node_importance)
+
+    # add study to index
+    feature_df = feature_df.reset_index().set_index(["user_id", "study"])
+
+    out_below, out_above = outlier_thresh
+
+    filtered_above = feature_df[feature_df < out_above]
+    filtered_below = filtered_above[filtered_above > out_below]
+
+    name = "_datasets" if name == "" else name
+
+    # save outliers for reporting in the paper
+    nan_rows = filtered_below[filtered_below.isna().any(axis=1)]
+    nan_rows.to_csv(os.path.join(out_dir, f"outliers{name}.csv"))
+
+    features_cleaned = filtered_below.dropna().reset_index().set_index("user_id")
+    # save in cleaned folder
+    features_cleaned.to_csv(os.path.join(out_dir, f"all{name}_{feature_type}_features_{node_importance}.csv"))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i", "--inp_dir", type=str, default=os.path.join("out_features", "test"), help="input directory"
     )
-    parser.add_argument("-o", "--out_dir", type=str, default=os.path.join("results"), help="output directory")
     args = parser.parse_args()
 
-    STUDIES = [
-        "gc1",
-        "gc2",
-        "tist_toph100",
-        "geolife",
-        "yumuv_graph_rep",
-        "yumuv_before_cg",
-        "yumuv_after_cg",
-        "yumuv_before_tg",
-        "yumuv_after_tg",
-    ]
     # parameters
     nodes = 0
-    path = args.inp_dir  # os.path.join("out_features", f"final_{feat_id}_n{nodes}_cleaned")
+    path = args.inp_dir
     feature_type = "graph"
+    cutoff = 4
 
-    if not os.path.exists(args.out_dir):
-        os.makedirs(args.out_dir)
+    out_dir = path + "_cleaned"
+    os.makedirs(out_dir, exist_ok=True)
 
-    # tist does not have trip data
-    if feature_type == "raw" and "tist_toph100" in STUDIES:
-        STUDIES.remove("tist_toph100")
+    features_main_datasets = load_all(path, feature_type=feature_type, node_importance=nodes)
 
-    features_all_datasets = load_all(path, type=feature_type, node_importance=nodes)
-    features_all_datasets.to_csv(os.path.join(path, f"all_datasets_{feature_type}_features_{nodes}.csv"))
+    # Remove outliers
+    main_arr = np.array(features_main_datasets.drop("study", axis=1))
+    mean, std = (np.mean(main_arr, axis=0), np.std(main_arr, axis=0))
+    print("mean and std:", mean, std)
+    # outliers are above or below cutoff times the std
+    outlier_thresh = (mean - cutoff * std, mean + cutoff * std)
+    # all others use the same outlier threshold!
+    for name in ["", "_long_yumuv", "_long_gc1", "_long_gc2"]:
+        remove_outliers(path, outlier_thresh, out_dir, name=name)
 
-    mean_features_by_study(features_all_datasets, out_path=os.path.join(args.out_dir, f"dataset_{nodes}.csv"))
+    # print mean and std: needs to be adopted to new code structure
+    # mean_features_by_study(features_all_datasets, out_path=os.path.join(out_dir, f"dataset_{nodes}.csv"))
 
     # Plot correlation matrix with subset of studies:
-    features_all_datasets = features_all_datasets[features_all_datasets["study"].isin(STUDIES)]
-    feats_wostudy = features_all_datasets.drop(columns=["study"])
-    plot_correlation_matrix(
-        feats_wostudy, feats_wostudy, save_path=os.path.join(args.out_dir, f"correlation_{nodes}.pdf")
+    features_all_datasets = pd.read_csv(
+        os.path.join(out_dir, f"all_datasets_{feature_type}_features_{nodes}.csv"), index_col="user_id"
     )
+    feats_wostudy = features_all_datasets.drop(columns=["study"])
+    plot_correlation_matrix(feats_wostudy, feats_wostudy, save_path=os.path.join(out_dir, f"correlation_{nodes}.pdf"))
