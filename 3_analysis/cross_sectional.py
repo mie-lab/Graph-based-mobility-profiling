@@ -10,7 +10,9 @@ from find_groups import cluster_characteristics, sort_clusters_into_groups
 from plotting import barplot_clusters
 
 
-def cross_sectional_yumuv(graph_features, out_path):
+def cross_sectional_yumuv(out_path):
+    graph_features = pd.read_csv(os.path.join(out_path, "long_yumuv_clustering.csv"), index_col="user_id")
+
     yumuv_cg_before = graph_features[graph_features["study"] == "yumuv_before_cg"]["cluster"]
     yumuv_tg_before = graph_features[graph_features["study"] == "yumuv_before_tg"]["cluster"]
     yumuv_tg_after = graph_features[graph_features["study"] == "yumuv_after_tg"]["cluster"]
@@ -34,8 +36,11 @@ def cross_sectional_yumuv(graph_features, out_path):
     )
 
 
-def cross_sectional_gc(graph_features, out_path, gc_num):
+def cross_sectional_gc(out_path, gc_num):
     study_name = "gc" + str(gc_num)
+
+    graph_features = pd.read_csv(os.path.join(out_path, f"all_datasets_clustering.csv"), index_col="user_id")
+
     feats_gc1 = graph_features[graph_features["study"] == study_name]
     feats_others = graph_features[graph_features["study"] != study_name]
     barplot_clusters(
@@ -56,19 +61,12 @@ if __name__ == "__main__":
 
     path = args.inp_dir
 
-    # load data with clusters already assigned
-    try:
-        graph_features = pd.read_csv(os.path.join(path, "all_datasets_clustering.csv"), index_col="user_id")
-    except FileNotFoundError:
-        print("ERROR: all_dataset_clustering.csv file does not exist yet. Run script analyze_study.py first")
-        exit()
-
     # YUMUV
-    cross_sectional_yumuv(graph_features, path)
+    cross_sectional_yumuv(path)
     # NOTE: For yumuv, it might be better to fit the clusters again on just the yumuv data. Then the differences between
     # test and control group might be larger. The code for this can however be found in the script analyze_yumuv.py
 
     # GC1:
-    cross_sectional_gc(graph_features, path, 1)
+    cross_sectional_gc(path, 1)
     # GC2:
-    cross_sectional_gc(graph_features, path, 2)
+    cross_sectional_gc(path, 2)

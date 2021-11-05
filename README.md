@@ -68,22 +68,31 @@ This will run the clustering multiple times again with the identified user group
 
 Note: It is also possible to analyse a single study with the user groups. To do this, specify for example `-s gc1` in the command above.
 
+**5) Transform other features to the identified user groups**
 
-**5) Cross sectional study with GC and YUMUV**
+After step 4, all users in the five main datasets have their (most consistent) group assigned. In step 4, we also saved one specific clustering C with the k that had the highest correspondence with the consistent user groups. Now, for the MAAS applictations, we need to transform the features of control group / test group to the clustering C.
+
+Run
+```
+python 3_analysis/transform_new_features.py -i out_features/final_1_n0_cleaned -o results
+```
+This will output files `long_yumuv_clustering.csv` and the same for gc1 and gc2 into the `results` folder. 
+
+**6) Cross sectional study with GC and YUMUV**
 
 For the cross secional study, we use the assigned groups from above (`results/all_datasets_clustering.csv`). In this script we simply compare the assigned groups between control group and test group. Run
 ```
 python 3_analysis/cross_sectional.py -i results
 ```
 
-**6) Longitudinal study with GC1 and YUMUV**
+**7) Longitudinal study with GC1 and YUMUV**
 
 Run the following to save all longitudinal plots into the results folder:
 ```
 python 3_analysis/longitudinal.py -i results
 ```
 
-**7) Label analysis**
+**8) Label analysis**
 
 For GC and YUMUV, the results of a user survey are also available, with questions about demographics and mobility behavior. We compare the replies of each user group vs the other user groups and save the results in a csv file (and plot significant ones). This is done by running
 ```
@@ -94,7 +103,7 @@ or
 python 3_analysis/label_analysis.py -i results -s gc1
 ```
 
-**8) Validation: comparison to raw features**
+**9) Validation: comparison to raw features**
 
 Run
 ```
