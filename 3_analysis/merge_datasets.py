@@ -102,6 +102,16 @@ if __name__ == "__main__":
     print("mean and std:", mean, std)
     # outliers are above or below cutoff times the std
     outlier_thresh = (mean - cutoff * std, mean + cutoff * std)
+    # Quantile Methode:
+    # quan_75 = np.quantile(main_arr, 0.75, axis=0)
+    # quan_25 = np.quantile(main_arr, 0.25, axis=0)
+    # box_length = quan_75 - quan_25
+    # print(np.around(quan_25, 2))
+    # print(np.around(quan_75, 2))
+    # print(np.around(quan_25 - 1.5 * box_length, 2))
+    # outlier_thresh = (quan_25 - 1.5 * box_length, quan_75 + 1.5 * box_length)
+    print("outlier thresh", outlier_thresh)
+
     # all others use the same outlier threshold!
     for name in ["", "_long_yumuv", "_long_gc1", "_long_gc2"]:
         remove_outliers(path, outlier_thresh, out_dir, name=name)

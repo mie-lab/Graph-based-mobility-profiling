@@ -107,6 +107,13 @@ class GraphFeatures:
         feature_df = pd.DataFrame(feature_matrix, index=self._users, columns=features)
         feature_df.index.set_names("user_id", inplace=True)
 
+        # remove NaNs
+        print("DROPPING NANs!")
+        print("number of rows before:", len(feature_df))
+        feature_df.dropna(inplace=True)
+        print("number of rows after:", len(feature_df))
+        print()
+
         return feature_df
 
     def _test_feature(self, feature, nr_do="all"):
@@ -205,7 +212,7 @@ class GraphFeatures:
         if self._debug:
             print(cycle_lengths)
         if len(cycle_lengths) == 0:
-            return 0
+            return np.nan
         return np.mean(cycle_lengths)
 
     def _transitions(self, graph):

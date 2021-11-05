@@ -1,35 +1,20 @@
 {
-    "Centralised": {
-        "degree_beta": "high",
-        "journey_length": "low",
-        "mean_clustering_coeff": "high",
-        "median_trip_distance": "low",
-        "transition_beta": "low"
-    },
-    "Connected_flexible": {
-        "degree_beta": "low",
-        "mean_clustering_coeff": "high",
-        "median_trip_distance": "high",
-        "transition_beta": "low"
-    },
-    "Locally flexible": {
-        "degree_beta": "low",
-        "highest_decile_distance": "low",
-        "journey_length": "high",
-        "mean_clustering_coeff": "low",
-        "median_trip_distance": "low"
-    },
-    "Local routine": {
+    "Local_routine": {
         "highest_decile_distance": "low",
         "journey_length": "low",
         "mean_clustering_coeff": "low",
         "median_trip_distance": "low",
         "transition_beta": "high"
     },
-    "Traveller": {
-        "highest_decile_distance": "high",
-        "journey_length": "high",
-        "mean_clustering_coeff": "low",
+    "Centralised": {
+        "highest_decile_distance": "low",
+        "journey_length": "low",
+        "median_trip_distance": "low",
+        "transition_beta": "low"
+    },
+    "Connected": {
+        "degree_beta": "low",
+        "mean_clustering_coeff": "high",
         "median_trip_distance": "high",
         "transition_beta": "low"
     },
@@ -39,5 +24,20 @@
         "mean_clustering_coeff": "low",
         "median_trip_distance": "high",
         "transition_beta": "high"
+    },
+    "Locally_flexible": {
+        "degree_beta": "low",
+        "highest_decile_distance": "low",
+        "journey_length": "high",
+        "mean_clustering_coeff": "low",
+        "median_trip_distance": "low"
+    },
+    "Traveller": {
+        "degree_beta": "high",
+        "highest_decile_distance": "high",
+        "journey_length": "high",
+        "mean_clustering_coeff": "low",
+        "median_trip_distance": "high",
+        "transition_beta": "low"
     }
 }

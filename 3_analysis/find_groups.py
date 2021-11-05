@@ -95,10 +95,9 @@ def sort_clusters_into_groups(characteristics, min_equal=1, allow_tie=True, add_
     return cluster_assignment
 
 
-def group_consistency(graph_features, out_path=None, nr_iters=20, n_clusters=5, algorithm="kmeans"):
-    res = np.empty((len(graph_features), nr_iters), dtype="<U30")
-    for i in range(nr_iters):
-        n_clusters = np.random.choice([6, 7, 8])
+def group_consistency(graph_features, out_path=None, k_choices=[6, 7, 8, 9], algorithm="kmeans"):
+    res = np.empty((len(graph_features), len(k_choices)), dtype="<U30")
+    for i, n_clusters in enumerate(k_choices):
         cluster_wrapper = ClusterWrapper(random_state=None)
         labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
 
@@ -107,7 +106,7 @@ def group_consistency(graph_features, out_path=None, nr_iters=20, n_clusters=5, 
         cluster_assigment = sort_clusters_into_groups(characteristics, printout=False)
         groups = [cluster_assigment[lab] for lab in labels]
         res[:, i] = groups
-    df = pd.DataFrame(res, columns=[i for i in range(nr_iters)], index=graph_features.index)
+    df = pd.DataFrame(res, columns=k_choices, index=graph_features.index)
 
     assigned_most_often = []
     consistency = []
@@ -127,6 +126,8 @@ def group_consistency(graph_features, out_path=None, nr_iters=20, n_clusters=5, 
     print(
         "Explanation: This means, the group that is assigned to a user is assigned to this user on avg in x% of the clusterings"
     )
+    # compute counts
+    print("consistency counts:", np.unique(consistency, return_counts=True))
     return assigned_most_often
 
 
@@ -178,7 +179,7 @@ if __name__ == "__main__":
             labels = cluster_wrapper(in_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
             characteristics = cluster_characteristics(in_features, labels, printout=False)
             cluster_assignment = sort_clusters_into_groups(
-                characteristics, add_groups=True, printout=False, min_equal=2, allow_tie=False
+                characteristics, add_groups=True, printout=False, min_equal=2, allow_tie=True
             )
     # copy the resulting groups to the results folder
     shutil.copy(os.path.join("groups.json"), os.path.join(out_dir, "groups.json"))
