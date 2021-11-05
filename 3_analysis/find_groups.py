@@ -95,18 +95,22 @@ def sort_clusters_into_groups(characteristics, min_equal=1, allow_tie=True, add_
     return cluster_assignment
 
 
-def group_consistency(graph_features, out_path=None, k_choices=[6, 7, 8, 9], algorithm="kmeans"):
-    res = np.empty((len(graph_features), len(k_choices)), dtype="<U30")
-    for i, n_clusters in enumerate(k_choices):
-        cluster_wrapper = ClusterWrapper(random_state=None)
-        labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
+def group_consistency(graph_features, out_path=None, k_choices=[6, 7, 8, 9], nr_iters=1, algorithm="kmeans"):
+    res = np.empty((len(graph_features), len(k_choices) * nr_iters), dtype="<U30")
+    i = 0
+    for j in range(nr_iters):
+        for n_clusters in k_choices:
+            cluster_wrapper = ClusterWrapper(random_state=None)
+            labels = cluster_wrapper(graph_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
 
-        # try to characterize clusters
-        characteristics = cluster_characteristics(graph_features, labels, printout=False)
-        cluster_assigment = sort_clusters_into_groups(characteristics, printout=False)
-        groups = [cluster_assigment[lab] for lab in labels]
-        res[:, i] = groups
-    df = pd.DataFrame(res, columns=k_choices, index=graph_features.index)
+            # try to characterize clusters
+            characteristics = cluster_characteristics(graph_features, labels, printout=False)
+            cluster_assigment = sort_clusters_into_groups(characteristics, printout=False)
+            groups = [cluster_assigment[lab] for lab in labels]
+            res[:, i] = groups
+            i += 1
+    res_column = [f"{i//len(k_choices)}_{k_choices[i%len(k_choices)]}" for i in range(len(k_choices) * nr_iters)]
+    df = pd.DataFrame(res, columns=res_column, index=graph_features.index)
 
     assigned_most_often = []
     consistency = []
@@ -128,6 +132,7 @@ def group_consistency(graph_features, out_path=None, k_choices=[6, 7, 8, 9], alg
     )
     # compute counts
     print("consistency counts:", np.unique(consistency, return_counts=True))
+    print("labels counts", np.unique(assigned_most_often, return_counts=True))
     return assigned_most_often
 
 

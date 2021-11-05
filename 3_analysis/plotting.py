@@ -68,7 +68,7 @@ def cluster_by_study(feats, out_path="results", fontsize_dict={"font.size": 28, 
     plt.figure(figsize=(20, 10))
     p = sns.barplot(x="study", y="Percentage", hue="cluster", data=df_perc)
     plt.xlabel("")
-    plt.legend(ncol=3, framealpha=1)
+    plt.legend(ncol=3, framealpha=1, loc="upper center")
     plt.tight_layout()
     plt.savefig(out_path)
 
@@ -117,13 +117,13 @@ def plot_cluster_characteristics(
         plt.ylim(-1.5, 3)
         plt.legend(ncol=2, framealpha=1)
     else:
-        plt.ylim(-1, 2.5)
+        plt.ylim(-1, 3)
         plt.legend(ncol=3, framealpha=1)
     plt.tight_layout()
     plt.savefig(out_path)
 
 
-def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None, save_path=None):
+def scatterplot_matrix(feature_df_in, use_features, clustering=None, save_path=None):
     """
     Scatterplot matrix for selected features
 
@@ -134,15 +134,16 @@ def scatterplot_matrix(feature_df, use_features, col_names=None, clustering=None
     if len(use_features) > 6:
         warnings.warn("More than 6 features does not make sense in scatterplot matrix, only using first 6")
         use_features = use_features[:6]
-    # define col names
-    if col_names is None:
-        col_names = use_features
+
+    feature_df = feature_df_in.rename(columns=column_mapping)
+    use_features = [column_mapping[feat] for feat in use_features]
+
     # transform to df
     feature_df = feature_df.loc[:, use_features]
     if clustering is not None:
-        feature_df["cluster"] = clustering
+        feature_df["Group"] = clustering
         col_dict = {cluster: sns.color_palette()[map_cluster_to_col[cluster]] for cluster in clustering}
-        sns.pairplot(feature_df, hue="cluster", palette=col_dict)
+        sns.pairplot(feature_df, hue="Group", palette=col_dict)
     else:
         sns.pairplot(feature_df)
     if save_path:
@@ -159,7 +160,7 @@ column_mapping = {
     "median_trip_distance": "median trip\ndistance",
     "mean_clustering_coeff": "mean\nclustering\ncoefficient",
     "distance_ht_index": "ht index",
-    "highest_decile_distance": "highest\ndecile\ndistance",
+    "highest_decile_distance": "highest decile\ndistance",
 }
 
 

@@ -94,9 +94,11 @@ if __name__ == "__main__":
             save_path=os.path.join(out_dir, "scatterplot.pdf"),
         )
 
-        # PLOTTING
-        plot_cluster_characteristics(graph_features, out_path=os.path.join(out_dir, "cluster_characteristics.pdf"))
-        cluster_by_study(graph_features, out_path=os.path.join(out_dir, "dataset_clusters.pdf"))
+        # # PLOTTING
+        plot_cluster_characteristics(
+            graph_features.copy(), out_path=os.path.join(out_dir, "cluster_characteristics.pdf")
+        )
+        cluster_by_study(graph_features.copy(), out_path=os.path.join(out_dir, "dataset_clusters.pdf"))
 
         # Save cluster wrapper with the best k!
         best_overlap = 0
