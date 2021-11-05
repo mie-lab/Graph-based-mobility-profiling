@@ -25,7 +25,6 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     colors_avail = ["green", "red", "blue", "purple", "black", "yellow", "orange", "brown"]
     color_map = {g: colors_avail[i] for i, g in enumerate(group_names)}
     color_map["other"] = "grey"
-    print(color_map)
 
     fontsize_dict = {"font.size": 15, "axes.labelsize": 15}
     matplotlib.rcParams.update(fontsize_dict)
