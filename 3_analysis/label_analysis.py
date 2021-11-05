@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 from scipy.stats.stats import chisquare
 import seaborn as sns
-from scipy.stats import chi2_contingency, contingency, ttest_ind
+from scipy.stats import chi2_contingency, contingency, ttest_ind, mannwhitneyu
 
 fontsize_dict = {"font.size": 15, "axes.labelsize": 15}
 matplotlib.rcParams.update(fontsize_dict)
@@ -176,12 +176,17 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
         part_df = joined[["cluster", col]].dropna()
         res_arr[i, 0] = len(part_df)  # NAN RATIO COL
         occuring_labels = np.unique(col_vals)
-        col_test_type = "chisquare" if len(occuring_labels) < 5 else "ttest"
+        col_test_type = "chisquare" if len(occuring_labels) < 5 or type(occuring_labels[0]) == str else "mannwhitneyu"
         test_type.append(col_test_type)
         # iterate over groups, one group against all others
         for j, group in enumerate(user_groups):
             df_group = part_df[part_df["cluster"] == group]
             df_not_group = part_df[part_df["cluster"] != group]
+
+            if len(df_group) == 0:
+                res_arr[i, 2] = 1  # error: no group with this label
+                res_arr[i, j + 4] = 1
+                continue
 
             if col_test_type == "chisquare":
                 # chi square test
@@ -190,21 +195,9 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
 
                 contingency_table = np.array([dist_in_group, dist_not_group])
                 contingency_table = contingency_table[:, np.any(contingency_table, axis=0)]
-                try:
-                    stat, p, dof, expected = chi2_contingency(contingency_table)
-                except:
-                    print("\n chisquare error", contingency_table)
-                    print(col)
-                    res_arr[i, 2] = 1  # IS_ERROR COLUMN
-            else:
-                try:
-                    stat, p = ttest_ind(df_group[col], df_not_group[col])
-                except TypeError:
-                    print("\n ttest error")
-                    print(col)
-                    print(df_group[col])
-                    print(df_not_group[col])
-                    res_arr[i, 2] = 1  # IS_ERROR COLUMN
+                stat, p, dof, expected = chi2_contingency(contingency_table)
+            elif col_test_type == "mannwhitneyu":
+                stat, p = mannwhitneyu(df_group[col], df_not_group[col])
             res_arr[i, j + 4] = round(p, 3)
             if p < 0.05:  # if significant, set significant value
                 res_arr[i, 3] = 1  # SIGNIFICANCY COLUMN
@@ -217,13 +210,13 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
                 sns.countplot(x="cluster_to_plot", hue=col, data=part_df_plot)
                 plt.title(corresponding_q, fontsize=12)
                 plt.savefig(os.path.join(out_figures, f"{col}_{rounded_entropy}.png"))
-            elif col_test_type == "ttest":
+            elif col_test_type == "mannwhitneyu":
                 plt.figure(figsize=(10, 5))
                 sns.boxplot(x="cluster_to_plot", y=col, data=part_df_plot)
                 plt.title(corresponding_q, fontsize=12)
                 plt.savefig(os.path.join(out_figures, col + ".png"))
     df = pd.DataFrame(
-        res_arr, columns=["number_included", "entropy", "any_error", "any_significant"] + list(user_groups)
+        res_arr, columns=["number_included", "entropy", "zero_length_group", "any_significant"] + list(user_groups)
     )
     df["test"] = test_type
     df["q_id"] = labels_to_check
