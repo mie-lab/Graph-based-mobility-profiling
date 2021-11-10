@@ -1,9 +1,9 @@
 {
-    "Local routine": {
-        "highest_decile_distance": "low",
-        "journey_length": "low",
+    "Commuter": {
+        "highest_decile_distance": "high",
+        "journey_length": "high",
         "mean_clustering_coeff": "low",
-        "median_trip_distance": "low",
+        "median_trip_distance": "high",
         "transition_beta": "high"
     },
     "Centralised": {
@@ -12,18 +12,18 @@
         "median_trip_distance": "low",
         "transition_beta": "low"
     },
+    "Local routine": {
+        "highest_decile_distance": "low",
+        "journey_length": "low",
+        "mean_clustering_coeff": "low",
+        "median_trip_distance": "low",
+        "transition_beta": "high"
+    },
     "Connected": {
         "degree_beta": "low",
         "mean_clustering_coeff": "high",
         "median_trip_distance": "high",
         "transition_beta": "low"
-    },
-    "Commuter": {
-        "highest_decile_distance": "high",
-        "journey_length": "high",
-        "mean_clustering_coeff": "low",
-        "median_trip_distance": "high",
-        "transition_beta": "high"
     },
     "Locally flexible": {
         "degree_beta": "low",
@@ -33,11 +33,17 @@
         "median_trip_distance": "low"
     },
     "Traveller": {
-        "degree_beta": "high",
         "highest_decile_distance": "high",
         "journey_length": "high",
         "mean_clustering_coeff": "low",
         "median_trip_distance": "high",
         "transition_beta": "low"
+    },
+    "unnamed_7": {
+        "degree_beta": "low",
+        "highest_decile_distance": "high",
+        "journey_length": "high",
+        "mean_clustering_coeff": "low",
+        "median_trip_distance": "low"
     }
 }

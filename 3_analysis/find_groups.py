@@ -156,7 +156,7 @@ if __name__ == "__main__":
 
     algorithm = "kmeans"
 
-    np.random.seed(10)
+    np.random.seed(20)
 
     # load features
     graph_features = pd.read_csv(

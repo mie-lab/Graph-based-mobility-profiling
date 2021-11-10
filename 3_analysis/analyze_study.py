@@ -76,10 +76,13 @@ if __name__ == "__main__":
         f = open(os.path.join(args.out_dir, "analyze_study.txt"), "w")
         sys.stdout = f
 
+        np.random.seed(100)
+
         # get most consistent labels
         labels = group_consistency(
             graph_features.drop("study", axis=1),
             k_choices=[6, 7, 8, 9],
+            nr_iters=3,
             out_path=os.path.join(out_dir, "consistency.csv"),
         )
         graph_features["cluster"] = labels
@@ -99,8 +102,6 @@ if __name__ == "__main__":
             graph_features.copy(), out_path=os.path.join(out_dir, "cluster_characteristics.pdf")
         )
         cluster_by_study(graph_features.copy(), out_path=os.path.join(out_dir, "dataset_clusters.pdf"))
-
-        np.random.seed(100)
 
         # Save cluster wrapper with the best k!
         best_overlap = 0

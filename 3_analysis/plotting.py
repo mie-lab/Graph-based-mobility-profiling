@@ -50,7 +50,7 @@ def get_percentage(df, var1, var2):
     )
 
 
-def cluster_by_study(feats, out_path="results", fontsize_dict={"font.size": 28, "axes.labelsize": 30}):
+def cluster_by_study(feats, out_path=None, fontsize_dict={"font.size": 28, "axes.labelsize": 30}):
     """
     Feats requires column study, column clustering,
     """
@@ -70,12 +70,15 @@ def cluster_by_study(feats, out_path="results", fontsize_dict={"font.size": 28, 
     plt.xlabel("")
     plt.legend(ncol=3, framealpha=1, loc="upper center")
     plt.tight_layout()
-    plt.savefig(out_path)
+    if out_path is not None:
+        plt.savefig(out_path)
+    else:
+        plt.show()
 
 
 def plot_cluster_characteristics(
     feats,
-    out_path="figures/cluster_characteristics.pdf",
+    out_path=None,
     feat_columns=[
         "degree_beta",
         "journey_length",
@@ -120,7 +123,10 @@ def plot_cluster_characteristics(
         plt.ylim(-1, 3)
         plt.legend(ncol=3, framealpha=1)
     plt.tight_layout()
-    plt.savefig(out_path)
+    if out_path is not None:
+        plt.savefig(out_path)
+    else:
+        plt.show()
 
 
 def scatterplot_matrix(feature_df_in, use_features, clustering=None, save_path=None):
