@@ -156,6 +156,8 @@ if __name__ == "__main__":
 
     algorithm = "kmeans"
 
+    np.random.seed(10)
+
     # load features
     graph_features = pd.read_csv(
         os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
@@ -180,7 +182,7 @@ if __name__ == "__main__":
         in_features = graph_features.copy()
     # Run clustering multiple times, and add the identified groups to the file 3_analysis/groups.json
     for i in range(3):
-        for n_clusters in [6, 7, 8]:
+        for n_clusters in [6, 7, 8, 9]:
             labels = cluster_wrapper(in_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
             characteristics = cluster_characteristics(in_features, labels, printout=False)
             cluster_assignment = sort_clusters_into_groups(

@@ -100,10 +100,12 @@ if __name__ == "__main__":
         )
         cluster_by_study(graph_features.copy(), out_path=os.path.join(out_dir, "dataset_clusters.pdf"))
 
+        np.random.seed(100)
+
         # Save cluster wrapper with the best k!
         best_overlap = 0
         for n_clusters_final in [6, 7, 8, 9]:
-            cluster_wrapper = ClusterWrapper(random_state=1)
+            cluster_wrapper = ClusterWrapper()
             labels_new = cluster_wrapper(
                 scatter_features, impute_outliers=False, n_clusters=n_clusters_final, algorithm="kmeans"
             )
