@@ -96,7 +96,7 @@ python 3_analysis/longitudinal.py -i results
 
 For GC and YUMUV, the results of a user survey are also available, with questions about demographics and mobility behavior. We compare the replies of each user group vs the other user groups and save the results in a csv file (and plot significant ones). This is done by running
 ```
-python 3_analysis/label_analysis.py -i results -s yumuv
+python 3_analysis/label_analysis.py -i results -s yumuv_graph_rep
 ```
 or 
 ```

@@ -95,7 +95,9 @@ def sort_clusters_into_groups(characteristics, min_equal=1, allow_tie=True, add_
     return cluster_assignment
 
 
-def group_consistency(graph_features, out_path=None, k_choices=[6, 7, 8, 9], nr_iters=1, algorithm="kmeans"):
+def group_consistency(
+    graph_features, out_path=None, k_choices=[6, 7, 8, 9], printout=True, nr_iters=1, algorithm="kmeans"
+):
     res = np.empty((len(graph_features), len(k_choices) * nr_iters), dtype="<U30")
     i = 0
     for j in range(nr_iters):
@@ -126,12 +128,13 @@ def group_consistency(graph_features, out_path=None, k_choices=[6, 7, 8, 9], nr_
     if out_path:
         df.to_csv(out_path)
 
-    print("Average consistency:", np.mean(consistency))
-    print(
-        "Explanation: This means, the group that is assigned to a user is assigned to this user on avg in x% of the clusterings"
-    )
-    # compute counts
-    print("consistency counts:", np.unique(consistency, return_counts=True))
+    if printout:
+        print("Average consistency:", np.mean(consistency))
+        print(
+            "Explanation: This means, the group that is assigned to a user is assigned to this user on avg in x% of the clusterings"
+        )
+        # compute counts
+        print("consistency counts:", np.unique(consistency, return_counts=True))
     print("labels counts", np.unique(assigned_most_often, return_counts=True))
     return assigned_most_often
 
