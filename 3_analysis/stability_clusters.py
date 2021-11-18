@@ -49,7 +49,7 @@ if __name__ == "__main__":
         graph_features.drop("study", axis=1),
         k_choices=[6, 7, 8, 9],
         nr_iters=3,
-        out_path=os.path.join(out_dir, "consistency.csv"),
+        out_path=None,
     )
     labels_BL = labels.copy()
 

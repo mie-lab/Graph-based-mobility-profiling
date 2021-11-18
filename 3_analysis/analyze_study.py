@@ -71,16 +71,17 @@ if __name__ == "__main__":
         #     clustering=list(graph_features["study"]),
         #     save_path=os.path.join(out_dir, "scatterplot_study.pdf"),
         # )
+        # exit()
 
         # log to file
         f = open(os.path.join(args.out_dir, "analyze_study.txt"), "w")
         sys.stdout = f
 
-        np.random.seed(100)
+        np.random.seed(20)
 
         # get most consistent labels
         labels = group_consistency(
-            graph_features.drop("study", axis=1),
+            graph_features.reset_index().set_index(["user_id", "study"]),
             k_choices=[6, 7, 8, 9],
             nr_iters=3,
             out_path=os.path.join(out_dir, "consistency.csv"),
@@ -134,7 +135,7 @@ if __name__ == "__main__":
 
         print("\n computing entropy without tist...")
         study_entropy = entropy(
-            features_all_datasets[features_all_datasets["study"] != "tist_toph100"],
+            features_all_datasets[~features_all_datasets["study"].str.contains("tist")],
             "study",
             "cluster",
             print_parts=True,
@@ -143,6 +144,11 @@ if __name__ == "__main__":
 
         # compare relation between cluster and study labels
         compute_all_scores(features_all_datasets["cluster"].values, features_all_datasets["study"].values)
+
+        print("\nSIGNIFICANT FEATURES (for plot labeling)")
+        features_w_labels = pd.read_csv(os.path.join(out_path + "clustering.csv"), index_col=("user_id", "study"))
+        cluster_characteristics(features_w_labels, printout=True)
+
         f.close()
 
         exit()

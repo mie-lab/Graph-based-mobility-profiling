@@ -18,11 +18,15 @@ def cluster_characteristics(in_features, cluster_labels=None, printout=True):
         features["cluster"] = cluster_labels
     labels = features["cluster"]
     characteristics = {}
+    feat_cols = features.columns
+    if printout:
+        print("Iterating over feat columns in the following order:")
+        print(list(feat_cols))
     for cluster in np.unique(labels):
         if printout:
             print(f"------- Cluster {cluster} of {np.sum(labels==cluster)} samples -------------")
         characteristics[cluster] = {}
-        for column in features.columns:
+        for column in feat_cols:
             # skip cluster column
             if column == "cluster":
                 continue
@@ -35,10 +39,12 @@ def cluster_characteristics(in_features, cluster_labels=None, printout=True):
             direction = "low" if np.mean(this_cluster) < np.mean(other_clusters) else "high"
             if p_value < 0.05:
                 if printout:
-                    print(f"{direction} {column} (p-value:{round(p_value, 3)})")
+                    print(f"{direction} (p = {round(p_value, 3)})")
                 # print(interpret_dict[column][direction])
                 characteristics[cluster][column] = direction
             else:
+                if printout:
+                    print(f"Not significant (p = {round(p_value, 3)})")
                 # TODO: middle features? compare to each cluster?
                 pass
     return characteristics
@@ -159,7 +165,7 @@ if __name__ == "__main__":
 
     algorithm = "kmeans"
 
-    np.random.seed(20)
+    np.random.seed(6)
 
     # load features
     graph_features = pd.read_csv(
