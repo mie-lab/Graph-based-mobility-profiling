@@ -61,6 +61,7 @@ def cluster_by_study(feats, out_path=None, fontsize_dict={"font.size": 28, "axes
         "yumuv_graph_rep": "YUMUV",
         "geolife": "Geolife",
         "tist_toph100": "Foursquare",
+        "tist_random100": "Foursquare",
     }
     filtered = feats[feats["study"].isin(study_mapping.keys())]
     filtered["study"] = filtered["study"].apply(lambda x: study_mapping[x])
@@ -82,7 +83,7 @@ def plot_cluster_characteristics(
     feat_columns=[
         "degree_beta",
         "journey_length",
-        "mean_clustering_coeff",
+        "hub_size",
         "highest_decile_distance",
         "median_trip_distance",
         "transition_beta",
@@ -167,6 +168,7 @@ column_mapping = {
     "mean_clustering_coeff": "mean\nclustering\ncoefficient",
     "distance_ht_index": "ht index",
     "highest_decile_distance": "highest decile\ndistance",
+    "hub_size": "hub\nsize",
 }
 
 

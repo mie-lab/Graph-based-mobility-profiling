@@ -179,13 +179,16 @@ def get_timebins(out_dir, node_importance=0):
         timebin_dir = out_dir + "_long_" + study
         os.makedirs(timebin_dir, exist_ok=True)
         # Run
-        for weeks in [1] + [4 * (i + 1) for i in range(7)]:
+        for weeks in [4 * (i + 1) for i in range(7)]:
             print("processing weeks:", weeks, "STUDY", study)
             cur = con.cursor()
             # get the timebin names
             cur.execute(f"SELECT name FROM {study}.dur_{weeks}w")
             all_names = [f"dur_{weeks}w_{name[0]}_{study}" for name in cur.fetchall()]
             for name in all_names:
+                if os.path.exists(os.path.join(timebin_dir, name + f"_graph_features_{node_importance}.csv")):
+                    print("already done", name)
+                    continue
                 print("processing graphs from", name)
                 runner_all_feat = GraphFeatures(name, node_importance=node_importance)
                 full_features = runner_all_feat(features="default")

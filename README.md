@@ -43,7 +43,7 @@ Note: The studies can also be processed individually, for this use `python 3_ana
 
 Adjust the parameters that are hard-coded in the beginning of the file (input directory, studies to merge, etc), and run 
 ```
-python 3_analysis/merge_datasets.py --inp_dir='out_features/final_1_n0_cleaned' --out_dir='results'
+python 3_analysis/merge_datasets.py --inp_dir='out_features/final_1_n0'
 ```
 This will save a csv file with all graph features combined for all datasets (saved to the same folder as the input graph feature csvs), secondly a csv file with the averages per feature, and third a plot for the correlation matrix.
 The latter two will be saved to the output directory called `results`.

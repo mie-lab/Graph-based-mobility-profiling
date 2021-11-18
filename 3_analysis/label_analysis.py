@@ -208,6 +208,15 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
             if col_test_type == "chisquare":
                 plt.figure(figsize=(10, 5))
                 sns.countplot(x="cluster_to_plot", hue=col, data=part_df_plot)
+                # # For normalisation:
+                # converted = (
+                #     part_df_plot.groupby("cluster_to_plot")[col]
+                #     .value_counts(normalize=True)
+                #     .mul(100)
+                #     .rename("Percent")
+                #     .reset_index()
+                # )
+                # sns.catplot(x="cluster_to_plot", y="Percent", hue=col, kind="bar", data=converted, legend=False, ax=ax)
                 plt.legend(labels=sorted(np.unique(part_df_plot[col].values)))
                 plt.title(corresponding_q, fontsize=12)
                 plt.savefig(os.path.join(out_figures, f"{col}_{rounded_entropy}.png"))

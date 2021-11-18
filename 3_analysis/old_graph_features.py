@@ -6,7 +6,8 @@ import argparse
 from scipy.optimize import curve_fit
 
 from joblib import Parallel, delayed
-
+import skmob
+from skmob.measures import individual
 
 from utils import *
 from graph_features import GraphFeatures
@@ -294,8 +295,14 @@ class OldGraphFeatures(GraphFeatures):
         """
         if isinstance(graph, nx.classes.multidigraph.MultiDiGraph):
             graph = nx.DiGraph(graph)
-        centrality = nx.eigenvector_centrality_numpy(graph)
-        return list(centrality.values())
+        try:
+            centrality = nx.eigenvector_centrality_numpy(graph)
+            return list(centrality.values())
+        except:
+            return [0]
+
+    def mean_eigenvector_centrality(self, graph):
+        return np.mean(self._eigenvector_centrality(graph))
 
     @get_distribution
     def dist_eigenvector_centrality(self, graph):
@@ -436,3 +443,52 @@ class OldGraphFeatures(GraphFeatures):
             dist_list.extend([dist for _ in range(int(weight))])
         bp = htb(dist_list)
         return len(bp)
+
+    # ----------------- FOR TIME ANALYSIS PLOT ---------------------------
+
+    def old_mean_clustering_coeff(self, graph):
+        clusterings = nx.algorithms.cluster.clustering(nx.DiGraph(graph))
+        return np.mean(list(dict(clusterings).values()))
+
+    def mean_clustering_coeff(self, graph):
+        clusterings = nx.algorithms.cluster.clustering(nx.DiGraph(graph), weight="weight")
+        return np.mean(list(dict(clusterings).values()))
+
+    def _to_skmob(self, graph):
+        long, lats, ids = [], [], []
+        loc_id = 0
+        for node in graph.nodes():
+            neighbor_edges = graph.in_edges(node, data=True)
+            nr_transitions = int(np.sum(np.array([n[2]["weight"] for n in neighbor_edges])))
+            for trans in range(nr_transitions):
+                long.append(graph.nodes[node]["center"].x)
+                lats.append(graph.nodes[node]["center"].y)
+                ids.append(loc_id)
+            loc_id += 1
+
+        df = pd.DataFrame()
+        df["latitude"] = lats
+        df["longitude"] = long
+        df["location_id"] = ids
+        df["user_id"] = 0
+        df["datetime"] = pd.to_datetime("20190101", format="%Y%m%d", errors="ignore")
+
+        tdf = skmob.TrajDataFrame(
+            df, latitude="latitude", longitude="longitude", datetime="datetime", user_id="user_id"
+        )
+        return tdf
+
+    def num_nodes(self, graph):
+        return graph.number_of_nodes()
+
+    def radius_of_gyration(self, graph):
+        tdf = self._to_skmob(graph)
+        return individual.radius_of_gyration(tdf, show_progress=False)["radius_of_gyration"].values[0]
+
+    def random_entropy(self, graph):
+        tdf = self._to_skmob(graph)
+        return individual.random_entropy(tdf, show_progress=False)["random_entropy"].values[0]
+
+    def uncorrelated_entropy(self, graph):
+        tdf = self._to_skmob(graph)
+        return individual.uncorrelated_entropy(tdf, show_progress=False)["uncorrelated_entropy"].values[0]

@@ -5,6 +5,8 @@ import time
 from numpy.core.fromnumeric import sort
 import pandas as pd
 import argparse
+import skmob
+from skmob.measures import individual
 
 from scipy.optimize import curve_fit
 
@@ -271,11 +273,19 @@ class GraphFeatures:
 
     def transition_beta(self, graph):
         transitions = np.array([edge[2]["weight"] for edge in graph.edges(data=True)])
-        return self._fit_powerlaw(transitions)
+        beta = self._fit_powerlaw(transitions)
+        if beta < 0.05:
+            return np.nan
+        return beta
 
-    def mean_clustering_coeff(self, graph):
-        clusterings = nx.algorithms.cluster.clustering(nx.DiGraph(graph), weight="weight")
-        return np.mean(list(dict(clusterings).values()))
+    def hub_size(self, graph, thresh=0.8):
+        nodes_on_rw = self._random_walk(graph)
+        _, counts = np.unique(nodes_on_rw, return_counts=True)
+        sorted_counts = np.sort(counts)[::-1]
+        cumulative_counts = np.cumsum(sorted_counts)
+        # number of nodes needed to cover thresh times the traffic
+        nodes_in_core = np.where(cumulative_counts > thresh * np.sum(counts))[0][0] + 1
+        return nodes_in_core / np.sqrt(graph.number_of_nodes())
 
 
 if __name__ == "__main__":
