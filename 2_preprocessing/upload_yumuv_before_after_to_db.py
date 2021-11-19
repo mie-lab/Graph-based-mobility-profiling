@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 import os
 import pickle
 import json
-from future_trackintel.utils import write_graphs_to_postgresql, read_graphs_from_postgresql
+from utils import write_graphs_to_postgresql, read_graphs_from_postgresql
 import psycopg2
 
 CRS_WGS84 = "epsg:4326"
@@ -35,8 +35,8 @@ study = "yumuv_graph_rep"
 
 GRAPH_OUTPUT = os.path.join(".", "data_out", "graph_data", study)
 
-pkl_name_before = open(os.path.join(GRAPH_OUTPUT, "counts_full_before.pkl"), "rb")
-pkl_name_after = open(os.path.join(GRAPH_OUTPUT, "counts_full_after.pkl"), "rb")
+pkl_name_before = open(os.path.join(GRAPH_OUTPUT, "counts_full_before_210910.pkl"), "rb")
+pkl_name_after = open(os.path.join(GRAPH_OUTPUT, "counts_full_after_210910.pkl"), "rb")
 
 AG_dict_before = pickle.load(pkl_name_before)
 AG_dict_after = pickle.load(pkl_name_after)
