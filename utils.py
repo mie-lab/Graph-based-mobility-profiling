@@ -9,6 +9,75 @@ import psycopg2
 import pickle
 import zlib
 from psycopg2 import sql
+from trackintel.analysis.tracking_quality import _split_overlaps
+
+def filter_user_by_number_of_days(sp, tpls, coverage=0.7, min_nb_good_days=28, filter_sp=True):
+    """
+
+    Parameters
+    ----------
+    sp
+    tpls
+    coverage
+    min_nb_good_days
+    filter_sp
+
+    Returns
+    -------
+
+    """
+    # could be replaced by https://github.com/mie-lab/trackintel/issues/258 once implemented
+    nb_users = len(sp.user_id.unique())
+
+    sp_tpls = sp.append(tpls).sort_values(["user_id", "started_at"])
+
+    coverage_df = ti.analysis.tracking_quality.temporal_tracking_quality(sp_tpls, granularity="day", max_iter=1000)
+
+    good_days_count = coverage_df[coverage_df["quality"] >= coverage].groupby(by="user_id")["quality"].count()
+    good_users = good_days_count[good_days_count >= min_nb_good_days].index
+    if filter_sp:
+        sp = sp[sp.user_id.isin(good_users)]
+        print("\t\t nb users now: ", len(sp.user_id.unique()), "before: ", nb_users)
+    return sp, good_users
+
+
+def filter_days_with_bad_tracking_coverage(sp, tpls, coverage=0.99):
+    """
+
+    Parameters
+    ----------
+    sp
+    tpls
+    coverage
+
+    Returns
+    -------
+
+    """
+    # could be replaced by https://github.com/mie-lab/trackintel/issues/258 once implemented
+
+    # filter by tracking quality
+    sp = _split_overlaps(sp, granularity="day")
+    sp_tpls = sp.append(tpls)
+    sp_tpls = _split_overlaps(sp_tpls.reset_index(), granularity="day")
+    # get the tracked day relative to the first day
+    sp_tpls["duration"] = sp_tpls["finished_at"] - sp_tpls["started_at"]
+    sp_tpls.set_index("started_at", inplace=True)
+    sp_tpls.index.name = "started_at_day"
+
+    # calculate daily tracking quality
+    sp_tpls_grouper = sp_tpls.groupby(["user_id", pd.Grouper(freq="D")])
+    tracking_quality = sp_tpls_grouper["duration"].sum() / datetime.timedelta(days=1)
+
+    # delete days with low tracking quality
+    sp["started_at_day"] = pd.to_datetime(sp["started_at"].dt.date, utc=True)
+    sp = sp.set_index(["user_id", "started_at_day"], drop=False)
+    to_del_ix = tracking_quality[tracking_quality < coverage].index
+    nb_sp_old = sp.shape[0]
+    sp.drop(sp.index.intersection(to_del_ix), axis=0, inplace=True)
+    sp.set_index("id", drop=True, inplace=True)
+    print("\t nb dropped: ", nb_sp_old - sp.shape[0], "nb kept: ", sp.shape[0])
+    return sp
 
 def get_engine(study, return_con=False):
     """Crete a engine object for database connection
