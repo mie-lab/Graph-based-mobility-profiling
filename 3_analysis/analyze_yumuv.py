@@ -87,7 +87,7 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     )
     legend_elements = [
         Line2D([0], [0], marker="o", color="w", label=lab, markerfacecolor=color_map[lab], markersize=10)
-        for lab in list(G.nodes)
+        for lab in list(group_names)
     ]
     plt.legend(handles=legend_elements, loc="upper left", ncol=7, fontsize=7)
     plt.tight_layout()

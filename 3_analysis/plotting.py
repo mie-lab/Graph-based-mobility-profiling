@@ -69,7 +69,7 @@ def cluster_by_study(feats, out_path=None, fontsize_dict={"font.size": 28, "axes
     plt.figure(figsize=(20, 10))
     p = sns.barplot(x="study", y="Percentage", hue="cluster", data=df_perc)
     plt.xlabel("")
-    plt.legend(ncol=3, framealpha=1, loc="upper center")
+    plt.legend(ncol=3, framealpha=0.8, loc="upper center")
     plt.tight_layout()
     if out_path is not None:
         plt.savefig(out_path)

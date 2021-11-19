@@ -2,8 +2,8 @@ import os
 from matplotlib.pyplot import plot
 import numpy as np
 import pandas as pd
-import scipy
 import json
+import sys
 import shutil
 import argparse
 from scipy.sparse.construct import rand
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
     graph_features = graph_features[graph_features["study"].isin(STUDIES)]
 
-    np.random.seed(100)  # TODO: use the seed from analyze study (from our results) here
+    np.random.seed(20)  # use the seed from analyze study (from our results) here
     # BASELINE labels: current clustering
     labels = group_consistency(
         graph_features.drop("study", axis=1),
@@ -52,6 +52,9 @@ if __name__ == "__main__":
         out_path=None,
     )
     labels_BL = labels.copy()
+
+    f = open(os.path.join(args.out_dir, "stability_groups.txt"), "w")
+    sys.stdout = f
 
     rand_scores = []
     for iter in range(20):
@@ -86,7 +89,7 @@ if __name__ == "__main__":
             graph_features.drop("study", axis=1),
             k_choices=[6, 7, 8, 9],
             nr_iters=3,
-            out_path=os.path.join(out_dir, "consistency.csv"),
+            out_path=None,
             printout=False,
         )
 
@@ -101,3 +104,4 @@ if __name__ == "__main__":
 
     # Reset groups file
     shutil.copy("bl_groups.json", "groups.json")
+    f.close()
