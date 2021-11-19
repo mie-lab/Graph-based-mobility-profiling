@@ -17,9 +17,10 @@ from pathlib import Path
 
 
 class activity_graph:
-    def __init__(self, staypoints, locations, node_feature_names=[], trips=None):
+    def __init__(self, staypoints, locations, node_feature_names=[], trips=None, gap_threshold=None):
         self.validate_user(staypoints, locations)
         self.node_feature_names = node_feature_names
+        self.gap_threshold = gap_threshold
         self.user_id = staypoints["user_id"].iloc[0]
         self.init_activity_dict()
         self.all_loc_ids = locations.index.unique().values
@@ -27,7 +28,7 @@ class activity_graph:
             self.validate_user(trips, locations)
             self.weights_transition_count_trips(trips=trips, staypoints=staypoints)
         else:
-            self.weights_transition_count(staypoints)
+            self.weights_transition_count(staypoints, gap_threshold=self.gap_threshold)
         self.G = self.generate_activity_graphs(locations)
 
     def init_activity_dict(self):
@@ -67,7 +68,9 @@ class activity_graph:
 
         for node_id, node_data in self.G.nodes(data=True):
             location_id = node_data["location_id"]
-            self.G.nodes[node_id].update(sp_grp_by_loc.loc[location_id].to_dict())
+            # check if location id is in sp_grp_by_loc
+            if location_id in sp_grp_by_loc.index:
+                self.G.nodes[node_id].update(sp_grp_by_loc.loc[location_id].to_dict())
 
     def weights_transition_count_trips(self, trips, staypoints, adjacency_dict=None):
         """
@@ -107,30 +110,17 @@ class activity_graph:
         # delete trips with unknown start/end location
         trips_a.dropna(subset=["location_id", "location_id_end"], inplace=True)
 
+        # make sure that all nodes are present when creating the edges
+        # append a dataframe of self loops for all locations with weight 0
+
         try:
             counts = trips_a.groupby(by=["user_id", "location_id", "location_id_end"]).size().reset_index(name="counts")
-            temp_df = pd.DataFrame(
-                data=[
-                    pd.NA * np.ones(self.all_loc_ids.shape[0]),
-                    self.all_loc_ids,
-                    self.all_loc_ids,
-                    np.zeros(self.all_loc_ids.shape),
-                ],
-                index=["user_id", "location_id", "location_id_end", "counts"],
-            ).transpose()
-            temp_df["user_id"] = trips.iloc[0]["user_id"]
-
-            counts = counts.append(temp_df, ignore_index=True)
-
-
+            counts = self._add_all_loc_ids_to_counts(counts)
         except ValueError:
             # If there are only rows with nans, groupby throws an error but should
             # return an empty dataframe
             counts = pd.DataFrame(columns=["user_id", "location_id", "location_id_end", "counts"])
             print("empty user?", staypoints.iloc[0]["user_id"])
-        # make sure that all nodes are present when creating the edges
-        # append a dataframe of self loops for all locations with weight 0
-
 
         # create Adjacency matrix
         A, location_id_order, name = _create_adjacency_matrix_from_transition_counts(counts)
@@ -141,7 +131,26 @@ class activity_graph:
 
         return adjacency_dict
 
-    def weights_transition_count(self, staypoints, adjacency_dict=None):
+    def _add_all_loc_ids_to_counts(self, counts):
+        """Add self loops with weight zero for all locations. This is important to include all locations in the
+        adjacency matrix also if there are unconnected locations."""
+
+        temp_df = pd.DataFrame(
+            data=[
+                pd.NA * np.ones(self.all_loc_ids.shape[0]),
+                self.all_loc_ids,
+                self.all_loc_ids,
+                np.zeros(self.all_loc_ids.shape),
+            ],
+            index=["user_id", "location_id", "location_id_end", "counts"],
+        ).transpose()
+        temp_df["user_id"] = self.user_id
+
+        counts = counts.append(temp_df, ignore_index=True)
+
+        return counts
+
+    def weights_transition_count(self, staypoints, adjacency_dict=None, gap_threshold=None):
         """
         Calculate the number of transition between locations as graph weights.
         Graphs based on the activity locations (trackintel locations) can have several
@@ -158,8 +167,11 @@ class activity_graph:
         -------
         adjacency_dict : dictionary
                 A dictionary of adjacency matrices of type scipy.sparse.coo_matrix
-        """
+        gap_threshold: float
+                Maximum time between the start of two staypoints so that they are still considered consecutive
 
+        """
+        gap_threshold = pd.to_timedelta("{}h".format(gap_threshold))
         staypoints_a = staypoints.sort_values(["user_id", "started_at"])
         # Deleting staypoints without cluster means that we count non-direct
         # transitions between two clusters e.g., 1 -> -1 -> 2 as direct transitions
@@ -168,6 +180,14 @@ class activity_graph:
 
         staypoints_a.dropna(subset=["location_id"], inplace=True)
         staypoints_a = staypoints_a.loc[staypoints_a["location_id"] != -1]
+
+        if gap_threshold is not None:
+            if "finished_at" not in staypoints_a.columns or sum(staypoints_a["finished_at"].isna()) > 0:
+                staypoints_a["finished_at"] = staypoints_a.groupby("user_id")["started_at"].shift(-1)
+
+            duration = staypoints_a["finished_at"] - staypoints_a["started_at"]
+            gap_flag = duration < gap_threshold
+            staypoints_a = staypoints_a[gap_flag]
 
         # count transitions between cluster
         staypoints_a["location_id_end"] = staypoints_a.groupby("user_id")["location_id"].shift(-1)
@@ -180,6 +200,7 @@ class activity_graph:
             counts = (
                 staypoints_a.groupby(by=["user_id", "location_id", "location_id_end"]).size().reset_index(name="counts")
             )
+            counts = self._add_all_loc_ids_to_counts(counts)
         except ValueError:
             # If there are only rows with nans, groupby throws an error but should
             # return an empty dataframe
@@ -253,7 +274,7 @@ class activity_graph:
         locations.reset_index(inplace=True)
         locations = locations.set_index("user_id", drop=False)
         locations.index.name = "user_id_ix"
-        locations.sort_values(by='location_id', inplace=True)
+        locations.sort_values(by="location_id", inplace=True)
 
         if "extent" not in locations.columns:
             locations["extent"] = pd.NA
@@ -272,7 +293,7 @@ class activity_graph:
             edge_name = edge_name_list[ix]
             # assert location_id_order
             for node_ix, location_id in enumerate(location_id_order):
-                assert location_id == G.nodes[node_ix]['location_id']
+                assert location_id == G.nodes[node_ix]["location_id"]
 
             G_temp = nx.from_scipy_sparse_matrix(A, create_using=nx.MultiDiGraph())
             edge_list = nx.to_edgelist(G_temp)
