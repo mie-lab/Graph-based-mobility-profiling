@@ -1,114 +1,38 @@
-import geopandas as gpd
 import pandas as pd
 import trackintel as ti
-from sqlalchemy import create_engine
-import numpy as np
 import os
 import pickle
-import ntpath
-import json
 import datetime
-import numpy as np
-import sys
 from future_trackintel.activity_graph import activity_graph
-from future_trackintel.utils import write_graphs_to_postgresql, read_graphs_from_postgresql
 import copy
 from trackintel.analysis.tracking_quality import _split_overlaps
-from collections import defaultdict
-import pytz
-import psycopg2
+from utils import get_engine, get_staypoints,get_locations, get_triplegs, \
+                    get_trips, write_graphs_to_postgresql, read_graphs_from_postgresql
 from tqdm import tqdm
 
 CRS_WGS84 = "epsg:4326"
 
-
-def get_engine(study, return_con=False):
-
-    if study == "yumuv_graph_rep":
-        sys.path.append(r"C:\Users\e527371\OneDrive\Programming\yumuv")
-        from db_login import DSN  # database login information
-
-        engine = create_engine("postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}".format(**DSN))
-        if return_con:
-            con = psycopg2.connect(
-                dbname=DSN["db_database"],
-                user=DSN["db_user"],
-                password=DSN["db_password"],
-                host=DSN["db_host"],
-                port=DSN["db_port"],
-            )
-    else:
-
-        # build database login string from file
-        DBLOGIN_FILE = os.path.join("./dblogin.json")
-        with open(DBLOGIN_FILE) as json_file:
-            LOGIN_DATA = json.load(json_file)
-
-        conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}".format(**LOGIN_DATA)
-        engine = create_engine(conn_string)
-        if return_con:
-            con = psycopg2.connect(
-                dbname=LOGIN_DATA["database"],
-                user=LOGIN_DATA["user"],
-                password=LOGIN_DATA["password"],
-                host=LOGIN_DATA["host"],
-                port=LOGIN_DATA["port"],
-            )
-
-    if return_con:
-        return con
-    else:
-        return engine
-
-
-def get_staypoints(study, engine, limit=""):
-    sp = gpd.read_postgis(
-        sql="select * from {}.staypoints {}".format(study, limit),
-        con=engine,
-        geom_col="geom",
-        index_col="id",
-    )
-    sp["started_at"] = pd.to_datetime(sp["started_at"], utc=True)
-    sp["finished_at"] = pd.to_datetime(sp["finished_at"], utc=True)
-
-    return sp
-
-
-def get_locations(study, engine, limit=""):
-    locs = ti.io.read_locations_postgis(
-        sql="select * from {}.locations {}".format(study, limit),
-        con=engine,
-        center="center",
-    )
-    return locs
-
-
-def get_triplegs(study, engine, limit=""):
-    tpls = pd.read_sql(
-        sql="select id, user_id, started_at, finished_at from {}.triplegs {}".format(study, limit),
-        con=engine,
-        index_col="id",
-    )
-    tpls["started_at"] = pd.to_datetime(tpls["started_at"], utc=True)
-    tpls["finished_at"] = pd.to_datetime(tpls["finished_at"], utc=True)
-    return tpls
-
-
-def get_trips(study, engine, limit=""):
-    trips = pd.read_sql(sql="select * from {}.trips {}".format(study, limit), con=engine, index_col="id")
-    trips["started_at"] = pd.to_datetime(trips["started_at"], utc=True)
-    trips["finished_at"] = pd.to_datetime(trips["finished_at"], utc=True)
-
-    return trips
-
-
 def filter_user_by_number_of_days(sp, tpls, coverage=0.7, min_nb_good_days=28, filter_sp=True):
+    """
+
+    Parameters
+    ----------
+    sp
+    tpls
+    coverage
+    min_nb_good_days
+    filter_sp
+
+    Returns
+    -------
+
+    """
     # could be replaced by https://github.com/mie-lab/trackintel/issues/258 once implemented
     nb_users = len(sp.user_id.unique())
 
     sp_tpls = sp.append(tpls).sort_values(["user_id", "started_at"])
 
-    coverage_df = ti.analysis.tracking_quality.temporal_tracking_quality(sp_tpls, granularity="day")
+    coverage_df = ti.analysis.tracking_quality.temporal_tracking_quality(sp_tpls, granularity="day", max_iter=1000)
 
     good_days_count = coverage_df[coverage_df["quality"] >= coverage].groupby(by="user_id")["quality"].count()
     good_users = good_days_count[good_days_count >= min_nb_good_days].index
@@ -119,7 +43,18 @@ def filter_user_by_number_of_days(sp, tpls, coverage=0.7, min_nb_good_days=28, f
 
 
 def filter_days_with_bad_tracking_coverage(sp, tpls, coverage=0.99):
+    """
 
+    Parameters
+    ----------
+    sp
+    tpls
+    coverage
+
+    Returns
+    -------
+
+    """
     # could be replaced by https://github.com/mie-lab/trackintel/issues/258 once implemented
 
     # filter by tracking quality
@@ -146,7 +81,22 @@ def filter_days_with_bad_tracking_coverage(sp, tpls, coverage=0.99):
     return sp
 
 
-def generate_graphs(locs, sp, study, trips=None, plotting=False):
+def generate_graphs(locs, sp, study, trips=None, plotting=False, gap_threshold=None):
+    """
+
+    Parameters
+    ----------
+    locs
+    sp
+    study
+    trips
+    plotting
+    gap_threshold
+
+    Returns
+    -------
+
+    """
     AG_dict = {}
 
     for user_id_this in tqdm(locs["user_id"].unique()):
@@ -159,9 +109,9 @@ def generate_graphs(locs, sp, study, trips=None, plotting=False):
             trips_user = trips[trips["user_id"] == user_id_this]
             if trips_user.empty:
                 continue
-            AG = activity_graph(sp_user, locs_user, trips=trips_user)
+            AG = activity_graph(sp_user, locs_user, trips=trips_user, gap_threshold=gap_threshold)
         else:
-            AG = activity_graph(sp_user, locs_user)
+            AG = activity_graph(sp_user, locs_user,  gap_threshold=gap_threshold)
 
         if study == "geolife":
             AG.add_node_features_from_staypoints(sp, agg_dict={"started_at": list, "finished_at": list})
@@ -187,67 +137,69 @@ def generate_graphs(locs, sp, study, trips=None, plotting=False):
     return AG_dict
 
 
-def generate_graphs_daily(locs, sp, out_name, study, trips=None, plotting=False):
-    # create daily graphs
-    print("create index")
-    sp.set_index("started_at", drop=False, inplace=True)
-    sp.index.name = "started_at_ix"
-    sp.sort_index(inplace=True)
-
-    AG_dict = defaultdict(dict)
-
-    sp_grouper = sp.groupby(["user_id", pd.Grouper(freq="D")])
-    i = 0
-
-    for (user, day), sp_group in sp_grouper:
-
-        # relevant location ids:
-        relevant_locs = sp_group["location_id"].unique()
-        locs_this = locs[locs.index.isin(relevant_locs)]
-
-        if locs_this.size == 0 or sp_group.empty:
-            continue
-
-        AG = activity_graph(sp_group, locs_this)
-        if study == "geolife":
-            AG.add_node_features_from_staypoints(sp_group, agg_dict={"started_at": list, "finished_at": list})
-        else:
-            AG.add_node_features_from_staypoints(
-                sp_group, agg_dict={"started_at": list, "finished_at": list, "purpose": list}
-            )
-
-        if plotting:
-            AG.plot(
-                os.path.join(
-                    ".",
-                    "graph_images",
-                    "new",
-                    "daily",
-                    user,
-                    "spring",
-                    day.strftime("%Y-%m-%d"),
-                ),
-                draw_edge_label=True,
-            )
-            # AG.plot(
-            #     os.path.join(".", "graph_images", "new", "daily", user, "coords", day.strftime("%Y-%m-%d"),),
-            #     layout="coordinate",
-            # )
-
-        AG_dict[user][day] = copy.deepcopy(AG)
-        i = i + 1
-        if i % 500 == 0:
-            print(user, day)
-
-    pickle.dump(AG_dict, out_name)
+# def generate_graphs_daily(locs, sp, out_name, study, trips=None, plotting=False):
+#     # create daily graphs
+#     print("create index")
+#     sp.set_index("started_at", drop=False, inplace=True)
+#     sp.index.name = "started_at_ix"
+#     sp.sort_index(inplace=True)
+#
+#     AG_dict = defaultdict(dict)
+#
+#     sp_grouper = sp.groupby(["user_id", pd.Grouper(freq="D")])
+#     i = 0
+#
+#     for (user, day), sp_group in sp_grouper:
+#
+#         # relevant location ids:
+#         relevant_locs = sp_group["location_id"].unique()
+#         locs_this = locs[locs.index.isin(relevant_locs)]
+#
+#         if locs_this.size == 0 or sp_group.empty:
+#             continue
+#
+#         AG = activity_graph(sp_group, locs_this)
+#         if study == "geolife":
+#             AG.add_node_features_from_staypoints(sp_group, agg_dict={"started_at": list, "finished_at": list})
+#         else:
+#             AG.add_node_features_from_staypoints(
+#                 sp_group, agg_dict={"started_at": list, "finished_at": list, "purpose": list}
+#             )
+#
+#         if plotting:
+#             AG.plot(
+#                 os.path.join(
+#                     ".",
+#                     "graph_images",
+#                     "new",
+#                     "daily",
+#                     user,
+#                     "spring",
+#                     day.strftime("%Y-%m-%d"),
+#                 ),
+#                 draw_edge_label=True,
+#             )
+#             AG.plot(
+#                 os.path.join(".", "graph_images", "new", "daily", user, "coords", day.strftime("%Y-%m-%d"),),
+#                 layout="coordinate",
+#             )
+#
+#         AG_dict[user][day] = copy.deepcopy(AG)
+#         i = i + 1
+#         if i % 500 == 0:
+#             print(user, day)
+#
+#     pickle.dump(AG_dict, out_name)
 
 
 # globals
 # study name is used as schema name in database
-studies = ["gc2", "gc1", "geolife"]
+# studies = ["gc2", "gc1", "geolife"]
 # studies = ['geolife']
-# studies = ["yumuv_graph_rep"]
-studies = studies + ['tist_top10', 'tist_toph10', 'tist_top100', 'tist_toph100', 'tist_top500', 'tist_toph500']
+#studies = ["yumuv_graph_rep"]
+studies = ['tist_toph10'] #['tist_toph100', 'tist_random100'] #, 'tist_toph10', 'tist_top100', 'tist_toph100', 'tist_top500',
+# 'tist_toph500',
+#                      'tist_top1000', 'tist_toph1000']
 # limit = "where user_id > 1670"
 limit = ""
 single_user = False
@@ -294,16 +246,17 @@ if __name__ == "__main__":
             AG_dict = generate_graphs(locs=locs, sp=sp, study=study, trips=trips, plotting=True)
 
         else:
+            # exclude_purpose = ['Light Rail', 'Subway', 'Platform', 'Trail', 'Road', 'Train', 'Bus Line']
+            # sp = sp[~sp['purpose'].isin(exclude_purpose)]
+            # a = pd.DataFrame(sp.groupby('purpose').size().sort_values())
             print("\tgenerate full graphs (transition counts)\n")
-            AG_dict = generate_graphs(locs=locs, sp=sp, study=study, plotting=True)
-
-        # store graphs in DB
-        from sqlalchemy import types
+            AG_dict = generate_graphs(locs=locs, sp=sp, study=study, plotting=True, gap_threshold=12)
 
         con = get_engine(study, return_con=True)
 
         out_name = open(os.path.join(GRAPH_OUTPUT, "counts_full.pkl"), "wb")
         pickle.dump(AG_dict, out_name)
+        out_name.close()
 
         print("\t write graph to db")
         if study == "yumuv_graph_rep":
