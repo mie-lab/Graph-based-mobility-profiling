@@ -1,0 +1,53 @@
+{
+    "Inactive": {
+        "degree_beta": "low",
+        "highest_decile_distance": "low",
+        "hub_size": "low",
+        "journey_length": "low",
+        "median_trip_distance": "low",
+        "transition_beta": "high"
+    },
+    "Flexible": {
+        "degree_beta": "low",
+        "highest_decile_distance": "low",
+        "hub_size": "high",
+        "journey_length": "high",
+        "median_trip_distance": "low",
+        "transition_beta": "low"
+    },
+    "Local routine": {
+        "degree_beta": "high",
+        "highest_decile_distance": "low",
+        "hub_size": "low",
+        "journey_length": "low",
+        "median_trip_distance": "low",
+        "transition_beta": "high"
+    },
+    "Commuter": {
+        "highest_decile_distance": "high",
+        "journey_length": "high",
+        "median_trip_distance": "high",
+        "transition_beta": "high"
+    },
+    "Centered": {
+        "degree_beta": "high",
+        "hub_size": "high",
+        "journey_length": "low",
+        "transition_beta": "low"
+    },
+    "Traveller": {
+        "highest_decile_distance": "high",
+        "hub_size": "high",
+        "journey_length": "high",
+        "median_trip_distance": "high",
+        "transition_beta": "low"
+    },
+    "Locally active": {
+        "degree_beta": "low",
+        "highest_decile_distance": "low",
+        "hub_size": "high",
+        "journey_length": "low",
+        "median_trip_distance": "low",
+        "transition_beta": "low"
+    }
+}

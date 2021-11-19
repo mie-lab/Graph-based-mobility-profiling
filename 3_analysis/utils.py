@@ -4,13 +4,21 @@ import os
 import json
 import psycopg2
 import functools
+import warnings
 import pandas as pd
+import networkx as nx
 
 import trackintel as ti
 from future_trackintel.utils import read_graphs_from_postgresql
 
 
-def sort_images_by_cluster(users, labels, in_img_path="graph_images/gc2/spring", out_img_path="sorted_by_cluster"):
+def sort_images_by_cluster(
+    users,
+    labels,
+    name_mapping={},
+    in_img_path=os.path.join("graph_images", "gc2", "spring"),
+    out_img_path="sorted_by_cluster",
+):
     """
     users: list of strings
     labels: list of same lengths containig assigned cluster for each user
@@ -25,14 +33,20 @@ def sort_images_by_cluster(users, labels, in_img_path="graph_images/gc2/spring",
     # make out dir and subdirs for each cluster
     if not os.path.exists(out_img_path):
         os.makedirs(out_img_path)
+    else:
+        warnings.warn("WARNING: out dir already exists")
     for cluster in np.unique(labels):
-        os.makedirs(os.path.join(out_img_path, "cluster_" + str(cluster)))
+        # to name the directory, use the name from the mapping dict or by default "cluster_1" etc
+        cluster_dir_name = name_mapping.get(cluster, "cluster_" + str(cluster))
+        if not os.path.exists(os.path.join(out_img_path, cluster_dir_name)):
+            os.makedirs(os.path.join(out_img_path, cluster_dir_name))
 
     # copy the images
     for user, assigned_cluster in map_dict.items():
-        in_path = os.path.join(in_img_path, user + ".png")
-        out_path = os.path.join(out_img_path, "cluster_" + str(assigned_cluster), user + ".png")
-        print("copying from", in_path, "to", out_path)
+        in_path = os.path.join(in_img_path, str(user) + ".png")
+        cluster_dir_name = name_mapping.get(assigned_cluster, "cluster_" + str(assigned_cluster))
+        out_path = os.path.join(out_img_path, cluster_dir_name, str(user) + ".png")
+        # print("copying from", in_path, "to", out_path)
         shutil.copy(in_path, out_path)
 
 
@@ -69,7 +83,7 @@ def dist_names(feature):
 
 # ----------------- DISTRIBUTIONS TO FIT ----------------------
 def func_simple_powerlaw(x, beta):
-    return x ** (-(1 + beta))
+    return x ** (-beta)
 
 
 def func_truncated_powerlaw(x, delta_x, beta, kappa):
@@ -219,18 +233,51 @@ def normalize_features(feature_matrix):
     return (feature_matrix - means_cols) / std_cols
 
 
+def htb(data):
+    results = []  # array of break points
+
+    def htb_inner(data):
+        """
+        Inner ht breaks function for recursively computing the break points.
+        """
+        # Add mean to results
+        data_length = float(len(data))
+        data_mean = sum(data) / data_length
+        results.append(data_mean)
+        head = [datum for datum in data if datum > data_mean]
+        while len(head) > 1 and len(head) / data_length < 0.40:
+            return htb_inner(head)
+
+    htb_inner(data)
+
+    return results
+
+
 def graph_dict_to_list(graph_dict, node_importance=50):
     users = []
     nx_graphs = []
     for user_id, ag in graph_dict.items():
-        users.append(user_id)
         if node_importance == 0:
             ag_sub = ag.G
         else:
-            # TODO: rewrite k importance nodes such that it is filtered by the fraction of occurence, not the abs number
             important_nodes = ag.get_k_importance_nodes(node_importance)
-            ag_sub = ag.G.subgraph(important_nodes)
-        nx_graphs.append(ag_sub)
+            ag_sub = nx.DiGraph(ag.G.subgraph(important_nodes))
+
+        # delete edges with transition weight 0:
+        edges_to_delete = [(a, b) for a, b, attrs in ag_sub.edges(data=True) if attrs["weight"] < 1]
+        if len(edges_to_delete) > 0:
+            # print("delete edges of user", user_id, "nr edges", len(edges_to_delete))
+            ag_sub.remove_edges_from(edges_to_delete)
+        if ag_sub.number_of_edges() == 0:
+            print("zero edges for user", user_id, " --> skip!")
+            continue
+
+        # get only the largest connected component:
+        cc = sorted(nx.connected_components(ag_sub.to_undirected()), key=len, reverse=True)
+        graph_cleaned = ag_sub.subgraph(cc[0])
+
+        users.append(user_id)
+        nx_graphs.append(graph_cleaned)
     return nx_graphs, users
 
 
@@ -244,7 +291,7 @@ def load_graphs_pkl(path, node_importance=50):
 
 
 def get_con():
-    DBLOGIN_FILE = os.path.join("./dblogin.json")
+    DBLOGIN_FILE = os.path.join("dblogin.json")
     with open(DBLOGIN_FILE) as json_file:
         LOGIN_DATA = json.load(json_file)
 
@@ -258,24 +305,24 @@ def get_con():
     return con
 
 
-def load_graphs_postgis(study, node_importance=50, decompress=True):
-    # load login data
-    con = get_con()
-    graph_dict = read_graphs_from_postgresql(
-        graph_table_name="full_graph",
-        psycopg_con=con,
-        graph_schema_name=study,
-        file_name="graph_data",
-        decompress=decompress,
-    )
-    nx_graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
-    return nx_graphs, users
-
-
 def load_user_info(study, index_col="user_id"):
     con = get_con()
     user_info = pd.read_sql_query(sql=f"SELECT * FROM {study}.user_info".format(study), con=con, index_col=index_col)
     return user_info
+
+
+def load_all_questions(path=os.path.join("yumuv_data", "yumuv_questions_all.csv")):
+    return pd.read_csv(path, index_col="qname")
+
+
+def load_question_mapping(before_after="before", group="cg"):
+    if before_after == "before":
+        group = ""
+    question_mapping = pd.read_csv(os.path.join("yumuv_data", f"yumuv_{before_after}_{group}.csv"), delimiter=";").drop(
+        columns="Unnamed: 0"
+    )
+    # only the qname leads to unique questions
+    return question_mapping.set_index("qname")
 
 
 def split_yumuv_control_group(df):
@@ -283,7 +330,7 @@ def split_yumuv_control_group(df):
     Splits dataframe into users which are in treatment group (study_id: 22) and the ones that are in control group
     (study_id: 23)
     """
-    user_info = load_user_info("yumuv_graph_rep", index_col="app_user_id")
+    user_info = load_user_info("yumuv_graph_rep", index_col="user_id")
     users_tg = user_info[user_info["study_id"] == 22].index
     users_cg = user_info[user_info["study_id"] == 23].index
     print("users in control group:", len(users_cg), "users in treatment group:", len(users_tg))

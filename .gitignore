@@ -34,6 +34,12 @@ MANIFEST
 # trained models
 trained_models/
 
+# other folders
+results*
+backup*
+out_features/
+yumuv_data/
+
 # VS code and OSX
 .DS_Store
 *.code-workspace

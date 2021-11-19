@@ -12,7 +12,7 @@ import trackintel as ti
 import argparse
 
 from utils import dist_to_stats, dist_names, get_point_dist
-from clustering import normalize_and_cluster
+from clustering import ClusterWrapper
 from skmob.measures.individual import *
 from plotting import scatterplot_matrix
 
@@ -20,6 +20,7 @@ from plotting import scatterplot_matrix
 class RawFeatures:
     def __init__(self, study, trips_available=True):
         self._trips_available = trips_available
+        self._study = study
         print("Loading data...")
         self._load_data(study)
         self._tdf = self._to_skmob(self._sp, self._locations)
@@ -196,14 +197,55 @@ class RawFeatures:
         df_all_features.set_index("user_id", inplace=True)
         return df_all_features
 
+    # --------------------------- Returner and explorer -------------------------------------
+
+    def _k_explorer(self, part_tdf, k):
+        k_gyration = k_radius_of_gyration(part_tdf, k, show_progress=False)
+        gyration = radius_of_gyration(part_tdf, show_progress=False)
+        merged = k_gyration.merge(gyration)
+        col_name = str(k) + "k_radius_of_gyration"
+        merged["ratio"] = merged.apply(lambda x: x[col_name] / x["radius_of_gyration"], axis=1)
+        return merged
+
+    def _min_returner_k(self, max_k=50):
+        k = 2
+        # prepare final
+        final_res = pd.DataFrame(np.unique(self._tdf["uid"]), columns=["uid"])
+        final_res["k_returner"] = [pd.NA for _ in range(len(final_res))]
+        final_res.set_index("uid", inplace=True)
+
+        part_df = self._tdf.copy()
+        while len(part_df) > 0 and k < max_k:
+            exp_ret_ratio = self._k_explorer(part_df, k)
+            k_returners = exp_ret_ratio[exp_ret_ratio["ratio"] >= 0.5]["uid"]
+            final_res.loc[k_returners] = k
+            keep = exp_ret_ratio[exp_ret_ratio["ratio"] < 0.5]["uid"]
+            part_df = part_df[part_df["uid"].isin(keep)]
+            print(len(part_df), len(np.unique(part_df["uid"])))
+            k += 1
+        return final_res
+
+    def _returner_explorer(self, out_path):
+        returner_explorer = self._min_returner_k()
+        returner_explorer.reset_index(inplace=True)
+        returner_explorer.rename(columns={"uid": "user_id"}, inplace=True)
+        returner_explorer.set_index("user_id", inplace=True)
+        returner_explorer.to_csv(os.path.join(out_path, f"{self._study}_returner_explorer.csv"))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")
+    parser.add_argument(
+        "-e",
+        "--explorer",
+        action="store_true",
+        help="Compute not the feature, but instead only the returner explorer info?",
+    )
     args = parser.parse_args()
 
     study = args.study
-    out_dir = "test"
+    out_dir = "out_features/test"
 
     trips_available = "tist" not in study  # for tist, the trips are missing
 
@@ -213,11 +255,18 @@ if __name__ == "__main__":
     out_path = os.path.join(out_dir, f"{study}_raw_features")
 
     raw_feat = RawFeatures(study, trips_available=trips_available)
+    # compute only the returners and explorers
+    if args.explorer:
+        print("Compute returners and explorers")
+        raw_feat._returner_explorer(out_dir)
+        exit()
+    # compute features
     raw_feature_df = raw_feat(features="all")
     raw_feature_df.to_csv(out_path + ".csv")
     print(raw_feature_df.head(10))
     print(raw_feature_df.shape)
 
     raw_feature_df.dropna(inplace=True)
-    labels = normalize_and_cluster(np.array(raw_feature_df), n_clusters=2)
+    cluster_wrapper = ClusterWrapper()
+    labels = cluster_wrapper(raw_feature_df, n_clusters=2)
     scatterplot_matrix(raw_feature_df, raw_feature_df.columns, clustering=labels, save_path=out_path + ".pdf")
