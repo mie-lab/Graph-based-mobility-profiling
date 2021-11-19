@@ -97,24 +97,37 @@ def returner_explorers(path_to_returner, graph_features):
 
 
 def graph_raw_all_datasets(base_path, graph_feat_path, studies_raw=["gc1", "gc2", "geolife"]):
-    graph_feats = pd.read_csv(os.path.join(graph_feat_path, "all_datasets_clustering.csv"))
-    graph_feats["user_id"] = graph_feats["user_id"].astype(str) + ("_" + graph_feats["study"])
-    graph_feats = graph_feats.drop(columns=["study"]).set_index("user_id")
+    graph_feats = pd.read_csv(
+        os.path.join(graph_feat_path, "all_datasets_clustering.csv"), index_col=["user_id", "study"]
+    )
 
     # collect all raw feats
     raw_feats = []
     for study in studies_raw:
         feat = pd.read_csv(os.path.join(base_path, f"{study}_raw_features_0.csv"))
-        feat["user_id"] = feat["user_id"].astype(str) + ("_" + study)
+        feat["user_id"] = feat["user_id"].astype(str)
+        feat["study"] = study
         raw_feats.append(feat)
-    raw_feats = pd.concat(raw_feats).set_index("user_id")
+    raw_feats = pd.concat(raw_feats).set_index(["user_id", "study"])
 
     # filter for common
-    graph_feats_in_raw = graph_feats.loc[raw_feats.index]
-    # # save again
-    # graph_feats_in_raw.to_csv(os.path.join(base_path, "all_graph_clustering.csv"))
-    # raw_feats.to_csv(os.path.join(base_path, "all_raw.csv"))
-    return graph_feats_in_raw, raw_feats
+    together = pd.merge(
+        graph_feats,
+        raw_feats,
+        on=("user_id", "study"),
+        how="inner",
+        suffixes=("_before", "_after"),
+    )
+    # # check the number of data
+    # print(together.columns)
+    # print(len(together), len(graph_feats), len(raw_feats))
+    # print(together.reset_index().groupby("study").agg({"study": "count"}))
+    # print(graph_feats.reset_index().groupby("study").agg({"study": "count"}))
+    # print(raw_feats.reset_index().groupby("study").agg({"study": "count"}))
+
+    graph_feats_filtered = together[graph_feats.columns]
+    raw_feats_filtered = together[raw_feats.columns]
+    return graph_feats_filtered, raw_feats_filtered
 
 
 if __name__ == "__main__":
@@ -186,7 +199,7 @@ if __name__ == "__main__":
     labels_graph = cluster_wrapper(graph_features, algorithm=algorithm)
     if labels_graph_orig is not None:
         labels_graph = labels_graph_orig
-    labels_raw = cluster_wrapper(raw_features, algorithm=algorithm)
+    labels_raw = cluster_wrapper(raw_features, algorithm=algorithm, n_clusters=8)
     print("rand score before", adjusted_rand_score(labels_raw, labels_graph))
 
     # get best raw features to explain graph features
