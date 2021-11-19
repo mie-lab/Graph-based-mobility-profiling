@@ -2,7 +2,6 @@ import csv
 import datetime
 import logging
 import os
-
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -21,7 +20,7 @@ engine = create_engine(
         **DSN
     )
 )
-file_prefix = "210910"
+file_prefix = "210911"
 study = "yumuv_graph_rep"
 limit = "" #"where user_id in (5652, 5609, 4979, 5008, 6007)"
 sp_ = get_staypoints(study=study, engine=engine, limit=limit)
