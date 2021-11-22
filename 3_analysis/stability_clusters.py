@@ -10,7 +10,7 @@ from scipy.sparse.construct import rand
 from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, rand_score
 
 from clustering import ClusterWrapper
-from utils import sort_images_by_cluster
+from analysis_utils import sort_images_by_cluster
 from plotting import scatterplot_matrix, plot_cluster_characteristics, cluster_by_study
 from find_groups import cluster_characteristics, sort_clusters_into_groups, group_consistency
 

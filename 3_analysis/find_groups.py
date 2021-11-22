@@ -8,7 +8,7 @@ import sys
 import shutil
 
 from clustering import ClusterWrapper
-from utils import sort_images_by_cluster
+from analysis_utils import sort_images_by_cluster
 from plotting import scatterplot_matrix, plot_cluster_characteristics, cluster_by_study
 
 

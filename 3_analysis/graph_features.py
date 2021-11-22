@@ -13,11 +13,11 @@ from scipy.optimize import curve_fit
 from joblib import Parallel, delayed
 
 
-from utils import *
+from analysis_utils import *
 
 
 class GraphFeatures:
-    def __init__(self, study, node_importance=50, random_walk_iters=500):
+    def __init__(self, study, node_importance=50, random_walk_iters=5000):
         """
         study: str, study name
         node_importance: int, only keep x most important nodes for each graph
@@ -225,6 +225,8 @@ class GraphFeatures:
     def _weighted_dists(self, graph):
         dist_list = []
         for (u, v, data) in graph.edges(data=True):
+            if u == v:
+                continue
             loc_u = graph.nodes[u]["center"]
             loc_v = graph.nodes[v]["center"]
             weight = data["weight"]
@@ -291,7 +293,7 @@ class GraphFeatures:
 if __name__ == "__main__":
     """Test on example data"""
     from plotting import scatterplot_matrix
-    from utils import normalize_features, clean_equal_cols, load_graphs_pkl
+    from analysis_utils import normalize_features, clean_equal_cols, load_graphs_pkl
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--study", type=str, required=True, help="study - one of gc1, gc2, geolife")

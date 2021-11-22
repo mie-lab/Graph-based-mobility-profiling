@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import sys
 
-from utils import split_yumuv_control_group, get_con
+from analysis_utils import split_yumuv_control_group, get_con
 from clustering import ClusterWrapper
 from plotting import scatterplot_matrix
 from graph_features import GraphFeatures

@@ -320,7 +320,7 @@ def barplot_clusters(
 
 if __name__ == "__main__":
     study = "yumuv_graph_rep"
-    from utils import get_con
+    from analysis_utils import get_con
     from future_trackintel.utils import read_graphs_from_postgresql
 
     con = get_con()

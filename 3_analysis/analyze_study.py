@@ -7,7 +7,7 @@ import shutil
 import pickle
 from sklearn.metrics import silhouette_score
 
-from utils import sort_images_by_cluster
+from analysis_utils import sort_images_by_cluster
 from clustering import ClusterWrapper
 from find_groups import cluster_characteristics, sort_clusters_into_groups, group_consistency
 from plotting import plot_cluster_characteristics, cluster_by_study, scatterplot_matrix
