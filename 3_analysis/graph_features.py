@@ -236,10 +236,20 @@ class GraphFeatures:
 
     def median_trip_distance(self, graph):
         dist_list = self._weighted_dists(graph)
+        if len(dist_list) == 0:
+            print("dist list nan")
+            for (u, v, data) in graph.edges(data=True):
+                print(u, v, data["weight"])
+            return np.nan
         return np.median(dist_list)
 
     def highest_decile_distance(self, graph):
         dist_list = self._weighted_dists(graph)
+        if len(dist_list) == 0:
+            print("dist list nan")
+            for (u, v, data) in graph.edges(data=True):
+                print(u, v, data["weight"])
+            return np.nan
         return np.quantile(dist_list, 0.9)
 
     def _degree(self, graph, mode="out"):

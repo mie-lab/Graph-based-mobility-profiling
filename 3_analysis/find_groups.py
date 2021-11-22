@@ -124,10 +124,8 @@ def group_consistency(
     consistency = []
     for row in res:
         uni, counts = np.unique(row, return_counts=True)
-        counts_wo_other = counts[uni != "other"]
-        uni_wo_other = uni[uni != "other"]
-        assigned_most_often.append(uni_wo_other[np.argmax(counts_wo_other)])
-        consistency.append(np.max(counts_wo_other) / np.sum(counts_wo_other))
+        assigned_most_often.append(uni[np.argmax(counts)])
+        consistency.append(np.max(counts) / np.sum(counts))
     df["most often"] = assigned_most_often
     df["consistency_" + str(round(np.mean(consistency), 2))] = consistency
 
@@ -165,7 +163,7 @@ if __name__ == "__main__":
 
     algorithm = "kmeans"
 
-    np.random.seed(6)
+    np.random.seed(8)
 
     # load features
     graph_features = pd.read_csv(

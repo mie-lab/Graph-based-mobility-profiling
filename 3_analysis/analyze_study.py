@@ -64,14 +64,13 @@ if __name__ == "__main__":
         graph_features = graph_features[graph_features["study"].isin(STUDIES)]
 
         # # Scatterplot with colours showing study
-        # scatter_features = graph_features.reset_index().set_index(["user_id", "study"])
-        # scatterplot_matrix(
-        #     scatter_features,
-        #     scatter_features.columns,
-        #     clustering=list(graph_features["study"]),
-        #     save_path=os.path.join(out_dir, "scatterplot_study.pdf"),
-        # )
-        # exit()
+        scatter_features = graph_features.reset_index().set_index(["user_id", "study"])
+        scatterplot_matrix(
+            scatter_features,
+            scatter_features.columns,
+            clustering=list(graph_features["study"]),
+            save_path=os.path.join(out_dir, "scatterplot_study.pdf"),
+        )
 
         # log to file
         f = open(os.path.join(args.out_dir, "analyze_study.txt"), "w")
