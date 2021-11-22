@@ -14,26 +14,31 @@ import os
 import pickle
 
 
-def plot_all_graphs(AG_dict, study):
+def plot_all_graphs(AG_dict, study, filter_node=100):
     """Originally code of example_for_nina file, now function to plot the graphs"""
-    output_spring = os.path.join(".", "graph_images", study, "spring")
+    output_spring = os.path.join(".", "graph_images", study, f"spring_{filter_node}")
     if not os.path.exists(output_spring):
         os.makedirs(output_spring)
 
-    output_coords = os.path.join(".", "graph_images", study, "coords")
+    output_coords = os.path.join(".", "graph_images", study, f"coords_{filter_node}")
     if not os.path.exists(output_coords):
         os.makedirs(output_coords)
+
+    # Use the following in activtitiy_graph_utils in order to plot only on switzerland
+    # lon_min, lon_max, lat_min, lat_max = (6.218109005202716, 8.968002536801063, 45.87257606616743, 47.03243181641454)
 
     for user_id_this, AG in AG_dict.items():
 
         AG.plot(
             filename=os.path.join(output_spring, str(user_id_this)),
-            filter_node_importance=25,
+            filter_node_importance=filter_node,
+            filter_extent=False,
             draw_edge_label=False,
         )
         AG.plot(
             filename=os.path.join(output_coords, str(user_id_this)),
-            filter_node_importance=25,
+            filter_node_importance=filter_node,
+            filter_dist=400,
             draw_edge_label=False,
             layout="coordinate",
         )
@@ -319,9 +324,9 @@ def barplot_clusters(
 
 
 if __name__ == "__main__":
-    study = "yumuv_graph_rep"
+    study = "gc2"
     from analysis_utils import get_con
-    from future_trackintel.utils import read_graphs_from_postgresql
+    from utils import read_graphs_from_postgresql
 
     con = get_con()
     graph_dict = read_graphs_from_postgresql(
