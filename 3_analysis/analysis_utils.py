@@ -253,7 +253,7 @@ def htb(data):
     return results
 
 
-def graph_dict_to_list(graph_dict, node_importance=50):
+def graph_dict_to_list(graph_dict, node_importance=50, remove_loops=False):
     users = []
     nx_graphs = []
     for user_id, ag in graph_dict.items():
@@ -275,6 +275,11 @@ def graph_dict_to_list(graph_dict, node_importance=50):
         # get only the largest connected component:
         cc = sorted(nx.connected_components(ag_sub.to_undirected()), key=len, reverse=True)
         graph_cleaned = ag_sub.subgraph(cc[0])
+
+        # filter self loops:
+        if remove_loops:
+            graph_cleaned = nx.DiGraph(graph_cleaned)
+            graph_cleaned.remove_edges_from(nx.selfloop_edges(graph_cleaned))
 
         users.append(user_id)
         nx_graphs.append(graph_cleaned)

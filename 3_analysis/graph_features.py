@@ -17,7 +17,7 @@ from analysis_utils import *
 
 
 class GraphFeatures:
-    def __init__(self, study, node_importance=50, random_walk_iters=5000):
+    def __init__(self, study, node_importance=50, random_walk_iters=5000, remove_loops=False):
         """
         study: str, study name
         node_importance: int, only keep x most important nodes for each graph
@@ -32,6 +32,7 @@ class GraphFeatures:
 
         # specify necessary parameters for the feature extraction
         self._random_walk_iters = random_walk_iters
+        self._remove_loops = remove_loops
 
         self.all_features = [f for f in dir(self) if not f.startswith("_")]
 
@@ -59,7 +60,7 @@ class GraphFeatures:
             file_name=file_name,
             decompress=True,
         )
-        graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance)
+        graphs, users = graph_dict_to_list(graph_dict, node_importance=node_importance, remove_loops=self._remove_loops)
         print("loaded graphs", len(graphs))
         return graphs, users
 
@@ -143,7 +144,10 @@ class GraphFeatures:
 
         # check if we can walk somewhere at all
         if np.max(all_degrees[:, 1]) == 0:
-            return 0
+            if return_resets:
+                return [], []
+            else:
+                return []
 
         encountered_locations = [current_node]
         number_of_walks = 0
@@ -198,6 +202,8 @@ class GraphFeatures:
     def _home_cycle_lengths(self, graph):
         """Get cycle lengths of journeys (starting and ending at home"""
         nodes_on_rw, resets = self._random_walk(graph, return_resets=True)
+        if len(nodes_on_rw) == 0:
+            return []
         assert (
             len(resets) == 0 or len(np.unique(np.array(nodes_on_rw)[resets])) == 1
         ), "reset indices must always be a home node"
@@ -226,6 +232,8 @@ class GraphFeatures:
         dist_list = []
         for (u, v, data) in graph.edges(data=True):
             if u == v:
+                if self._remove_loops:
+                    raise RuntimeError("Still encountering self loops!")
                 continue
             loc_u = graph.nodes[u]["center"]
             loc_v = graph.nodes[v]["center"]
@@ -292,6 +300,8 @@ class GraphFeatures:
 
     def hub_size(self, graph, thresh=0.8):
         nodes_on_rw = self._random_walk(graph)
+        if len(nodes_on_rw) < 2:
+            return np.nan
         _, counts = np.unique(nodes_on_rw, return_counts=True)
         sorted_counts = np.sort(counts)[::-1]
         cumulative_counts = np.cumsum(sorted_counts)
