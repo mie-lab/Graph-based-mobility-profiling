@@ -60,7 +60,7 @@ if __name__ == "__main__":
     # ------------------ ANALYSE MERGED STUDIES WITH GIVEN GROUPS -------------------------------
     if study == "all_datasets":
         # Use only the main studies!! otherwise biased
-        STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+        STUDIES = ["gc1", "gc2", "tist_toph100", "tist_random100", "geolife", "yumuv_graph_rep"]
         graph_features = graph_features[graph_features["study"].isin(STUDIES)]
 
         # # Scatterplot with colours showing study

@@ -96,7 +96,7 @@ def clean_features(path, cutoff=4):
 
 def get_graph_and_raw(out_dir, node_importance):
 
-    for study in ["gc1", "gc2", "geolife", "tist_toph100"]:
+    for study in ["gc1", "gc2", "geolife", "tist_toph100", "tist_random100"]:
         for feat_type in ["graph"]:
 
             print("\n -------------- PROCESS", study, feat_type, " ---------------")

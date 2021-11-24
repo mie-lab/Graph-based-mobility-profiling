@@ -113,7 +113,7 @@ def group_consistency(
 
             # try to characterize clusters
             characteristics = cluster_characteristics(graph_features, labels, printout=False)
-            cluster_assigment = sort_clusters_into_groups(characteristics, printout=False)
+            cluster_assigment = sort_clusters_into_groups(characteristics, printout=False, min_equal=2)
             groups = [cluster_assigment[lab] for lab in labels]
             res[:, i] = groups
             i += 1
@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
     algorithm = "kmeans"
 
-    np.random.seed(8)
+    np.random.seed(0)
 
     # load features
     graph_features = pd.read_csv(
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     )
     # Use only the five studies for identifying the user groups
     if args.study == "all_datasets":
-        STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+        STUDIES = ["gc1", "gc2", "tist_toph100", "tist_random100", "geolife", "yumuv_graph_rep"]
         print("current studies:", np.unique(graph_features["study"].values))
         print("Warning: To find the groups, we only use the data from the following studies")
         graph_features = graph_features[graph_features["study"].isin(STUDIES)]
@@ -189,7 +189,7 @@ if __name__ == "__main__":
         in_features = graph_features.copy()
     # Run clustering multiple times, and add the identified groups to the file 3_analysis/groups.json
     for i in range(3):
-        for n_clusters in [6, 7, 8, 9]:
+        for n_clusters in [5, 6, 7, 8, 9, 10]:
             labels = cluster_wrapper(in_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
             characteristics = cluster_characteristics(in_features, labels, printout=False)
             cluster_assignment = sort_clusters_into_groups(

@@ -65,8 +65,8 @@ def cluster_by_study(feats, out_path=None, fontsize_dict={"font.size": 28, "axes
         "gc2": "Green Class 2",
         "yumuv_graph_rep": "YUMUV",
         "geolife": "Geolife",
-        "tist_toph100": "Foursquare",
-        "tist_random100": "Foursquare",
+        "tist_toph100": "Foursquare\nHome",
+        "tist_random100": "Foursquare\nRandom",
     }
     filtered = feats[feats["study"].isin(study_mapping.keys())]
     filtered["study"] = filtered["study"].apply(lambda x: study_mapping[x])
@@ -126,7 +126,7 @@ def plot_cluster_characteristics(
         plt.ylim(-1.5, 3)
         plt.legend(ncol=2, framealpha=1)
     else:
-        plt.ylim(-1, 3)
+        plt.ylim(-1, 3.5)
         plt.legend(ncol=3, framealpha=1)
     plt.tight_layout()
     if out_path is not None:
