@@ -1,7 +1,7 @@
 {
     "Local routine": {
         "degree_beta": "low",
-        "highest_decile_distance": "low",
+        "9th_decile_distance": "low",
         "hub_size": "low",
         "journey_length": "low",
         "median_trip_distance": "low",
@@ -9,7 +9,7 @@
     },
     "Traveller": {
         "degree_beta": "high",
-        "highest_decile_distance": "high",
+        "9th_decile_distance": "high",
         "hub_size": "high",
         "journey_length": "low",
         "median_trip_distance": "high"
@@ -23,21 +23,21 @@
     },
     "Flexible": {
         "degree_beta": "low",
-        "highest_decile_distance": "low",
+        "9th_decile_distance": "low",
         "hub_size": "high",
         "journey_length": "high",
         "median_trip_distance": "low",
         "transition_beta": "low"
     },
     "Commuter": {
-        "highest_decile_distance": "high",
+        "9th_decile_distance": "high",
         "hub_size": "low",
         "median_trip_distance": "high",
         "transition_beta": "high"
     },
     "other_6": {
         "degree_beta": "high",
-        "highest_decile_distance": "high",
+        "9th_decile_distance": "high",
         "hub_size": "high",
         "journey_length": "high",
         "median_trip_distance": "high",

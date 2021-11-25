@@ -74,7 +74,7 @@ def cluster_by_study(feats, out_path=None, fontsize_dict={"font.size": 28, "axes
     plt.figure(figsize=(20, 10))
     p = sns.barplot(x="study", y="Percentage", hue="cluster", data=df_perc)
     plt.xlabel("")
-    plt.legend(ncol=3, framealpha=0.8, loc="upper center")
+    plt.legend(ncol=3, framealpha=0.8, loc="upper left")
     plt.tight_layout()
     if out_path is not None:
         plt.savefig(out_path)
@@ -89,7 +89,7 @@ def plot_cluster_characteristics(
         "degree_beta",
         "journey_length",
         "hub_size",
-        "highest_decile_distance",
+        "9th_decile_distance",
         "median_trip_distance",
         "transition_beta",
     ],
@@ -97,6 +97,11 @@ def plot_cluster_characteristics(
     plot_mode="english",
 ):
     matplotlib.rcParams.update(fontsize_dict)
+
+    col_labs = {col: column_mapping.get(col, col) for col in feat_columns}
+    feats = feats.rename(columns=col_labs)
+    feat_columns = list(col_labs.values())
+
     feat_rn_dict = {group: group.replace(" ", "\n") for group in np.unique(feats["cluster"])}
     feats["cluster"] = feats["cluster"].apply(lambda x: feat_rn_dict[x])
     if plot_mode == "german":
@@ -126,8 +131,8 @@ def plot_cluster_characteristics(
         plt.ylim(-1.5, 3)
         plt.legend(ncol=2, framealpha=1)
     else:
-        plt.ylim(-1, 3.5)
-        plt.legend(ncol=3, framealpha=1)
+        plt.ylim(-1, 3.8)
+        plt.legend(ncol=3, framealpha=0.8)
     plt.tight_layout()
     if out_path is not None:
         plt.savefig(out_path)
@@ -172,7 +177,7 @@ column_mapping = {
     "median_trip_distance": "median trip\ndistance",
     "mean_clustering_coeff": "mean\nclustering\ncoefficient",
     "distance_ht_index": "ht index",
-    "highest_decile_distance": "highest decile\ndistance",
+    "9th_decile_distance": "9th decile\ndistance",
     "hub_size": "hub\nsize",
 }
 
