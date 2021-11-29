@@ -53,7 +53,7 @@ class GraphFeatures:
     def _load_graphs(self, study, node_importance):
         con = get_con()
         table_name, study_for_db, file_name = self._get_db_params(study)
-        graph_dict = graph_dict = read_graphs_from_postgresql(
+        graph_dict = read_graphs_from_postgresql(
             graph_table_name=table_name,
             psycopg_con=con,
             graph_schema_name=study_for_db,

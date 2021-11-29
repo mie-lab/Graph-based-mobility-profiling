@@ -128,18 +128,21 @@ if __name__ == "__main__":
         features_all_datasets = graph_features.copy()
         features_all_datasets = features_all_datasets[features_all_datasets["study"].isin(STUDIES)]
 
-        print("Computing entropy...")
+        print("\n -------  Entropy analysis ------------")
         study_entropy = entropy(features_all_datasets, "study", "cluster", print_parts=True)
-        print("\n OVERALL ENTROPY", study_entropy)
+        print("ENTROPY studies over groups", study_entropy, "\n")
 
-        print("\n computing entropy without tist...")
+        study_entropy = entropy(features_all_datasets, "cluster", "study", print_parts=True)
+        print("ENTROPY groups over studies", study_entropy, "\n")
+
+        print("\n Entropy without tist...")
         study_entropy = entropy(
             features_all_datasets[~features_all_datasets["study"].str.contains("tist")],
-            "study",
             "cluster",
+            "study",
             print_parts=True,
         )
-        print("\n ENTROPY wo tist", study_entropy, "\n")
+        print("ENTROPY groups over studies without tist", study_entropy, "\n")
 
         # compare relation between cluster and study labels
         compute_all_scores(features_all_datasets["cluster"].values, features_all_datasets["study"].values)
