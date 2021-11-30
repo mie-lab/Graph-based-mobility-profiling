@@ -199,7 +199,7 @@ if __name__ == "__main__":
     labels_graph = cluster_wrapper(graph_features, algorithm=algorithm)
     if labels_graph_orig is not None:
         labels_graph = labels_graph_orig
-    labels_raw = cluster_wrapper(raw_features, algorithm=algorithm, n_clusters=8)
+    labels_raw = cluster_wrapper(raw_features, algorithm=algorithm, n_clusters=n_clusters)
     print("rand score before", adjusted_rand_score(labels_raw, labels_graph))
 
     # get best raw features to explain graph features
@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
     raw_filtered = raw_features[selected_features]
     print("Selected raw features to predict graph features:", list(raw_filtered.columns))
-    raw_labels_filtered = cluster_wrapper(raw_filtered, algorithm=algorithm)
+    raw_labels_filtered = cluster_wrapper(raw_filtered, algorithm=algorithm, n_clusters=n_clusters)
     print("rand score after filtering", adjusted_rand_score(raw_labels_filtered, labels_graph))
 
     # get five most important features:
