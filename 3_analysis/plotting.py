@@ -27,6 +27,12 @@ def plot_all_graphs(AG_dict, study, filter_node=100):
     # Use the following in activtitiy_graph_utils in order to plot only on switzerland
     # lon_min, lon_max, lat_min, lat_max = (6.218109005202716, 8.968002536801063, 45.87257606616743, 47.03243181641454)
 
+    # activity_graph.py zeile 336 einfügen:
+    # cc = sorted(nx.connected_components(G.to_undirected()), key=len, reverse=True)
+    # G = G.subgraph(cc[0])
+
+    # bei savefig in activity_graph.py einfügen dpi=100
+
     for user_id_this, AG in AG_dict.items():
 
         AG.plot(

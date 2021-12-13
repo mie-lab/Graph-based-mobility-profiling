@@ -49,10 +49,13 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     plt.figure(figsize=(15, 10))
     normalized = np.swapaxes(np.swapaxes(transition_matrix, 1, 0) / np.sum(transition_matrix, axis=1), 1, 0)
     df = pd.DataFrame(normalized, columns=cluster_names, index=cluster_names)
-    sns.heatmap(df, annot=True, cmap="Blues", vmin=0, vmax=0.8)
-    plt.xticks(rotation=0)
-    plt.ylabel("Group before intervention", fontsize=30)
-    plt.xlabel("Group after intervention", fontsize=30)
+    df.rename(index={"Local routine": "Local\nroutine"}, inplace=True)
+    sns.heatmap(df, annot=True, cmap="Blues", vmin=0, vmax=0.8, annot_kws={"size": 30}, cbar=False)
+    plt.xticks(rotation=0, fontsize=30)
+    plt.yticks(rotation=0, fontsize=30)
+    plt.ylabel("Group before intervention", fontsize=30, fontweight="bold")
+    plt.xlabel("Group after intervention", fontsize=30, fontweight="bold")
+    plt.tight_layout()
     if out_path:
         plt.savefig(out_path.replace("longitudinal", "longitudinal_matrix_rel"), dpi=600)
     else:
