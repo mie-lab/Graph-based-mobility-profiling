@@ -96,7 +96,7 @@ def returner_explorers(path_to_returner, graph_features):
     # print(np.array(graph_features.columns)[important_feature_inds], feature_importances[important_feature_inds])
 
 
-def graph_raw_all_datasets(base_path, graph_feat_path, studies_raw=["gc1", "gc2", "geolife"]):
+def graph_raw_all_datasets(base_path, graph_feat_path, studies_raw=["gc1", "gc2", "geolife", "yumuv_graph_rep"]):
     graph_feats = pd.read_csv(
         os.path.join(graph_feat_path, "all_datasets_clustering.csv"), index_col=["user_id", "study"]
     )
