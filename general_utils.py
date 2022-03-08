@@ -10,6 +10,9 @@ import pickle
 import zlib
 from psycopg2 import sql
 from trackintel.analysis.tracking_quality import _split_overlaps
+from tqdm import tqdm
+from graph_trackintel.activity_graph import  ActivityGraph
+import copy
 
 def filter_user_by_number_of_days(sp, tpls, coverage=0.7, min_nb_good_days=28, filter_sp=True):
     """
@@ -152,7 +155,6 @@ def get_staypoints(study, engine, limit=""):
 
     return sp
 
-
 def get_locations(study, engine, limit=""):
     """
         Download locations and transform to trackintel format
@@ -164,7 +166,6 @@ def get_locations(study, engine, limit=""):
         index_col="id"
     )
     return locs
-
 
 def get_triplegs(study, engine, limit=""):
     """
@@ -180,7 +181,6 @@ def get_triplegs(study, engine, limit=""):
 
     return tpls
 
-
 def get_trips(study, engine, limit=""):
     """
         Download trips and transform to trackintel format
@@ -190,7 +190,6 @@ def get_trips(study, engine, limit=""):
     trips["finished_at"] = pd.to_datetime(trips["finished_at"], utc=True)
 
     return trips
-
 
 def write_graphs_to_postgresql(
     graph_data, graph_table_name, psycopg_con, graph_schema_name="public", file_name="graph_data", drop_and_create=True
@@ -293,5 +292,85 @@ def read_graphs_from_postgresql(
         AG_dict2 = pickle.loads(pickle_string2)
 
     return AG_dict2
+
+
+def generate_graphs(
+        locs,
+        sp,
+        study,
+        trips=None,
+        gap_threshold=None,
+        plot_spring=True,
+        plot_coords=True,
+        output_dir=os.path.join(".", "graph_images", "new"),
+):
+    """
+    Wrapper function around graph-trackintel.ActivityGraph to create person specific graphs.
+
+    Implements a per-user iteration, quality checks and adds dataset specific features to the activity graph.
+
+    Parameters
+    ----------
+    locs: trackintel locations
+    sp: trackintel staypoints
+    study: str
+        name of study
+    trips: trackintel trips
+        optional input but if provided, activity graphs are created based on trips
+    gap_threshold: float
+        Maximum time in hours between the start of two staypoints so that they are still considered consecutive.
+        Only relevant when trips are not provided
+    plot_spring: boolean
+        If true a visualization using spring layout will be stored in output_dir
+    plot_coords: boolean
+        If true a visualization using coordinate layout will be stored in output_dir
+
+    Returns
+    -------
+
+    """
+    AG_dict = {}
+
+    # loop by user
+    for user_id_this in tqdm(locs["user_id"].unique()):
+        sp_user = sp[sp["user_id"] == user_id_this]
+        if sp_user.empty:
+            continue
+        locs_user = locs[locs["user_id"] == user_id_this]
+
+        # if trips are provided they are used to create the activity graph
+        if trips is not None:
+            trips_user = trips[trips["user_id"] == user_id_this]
+            if trips_user.empty:
+                continue
+            AG = ActivityGraph(sp_user, locs_user, trips=trips_user, gap_threshold=gap_threshold)
+        else:
+            AG = ActivityGraph(sp_user, locs_user, gap_threshold=gap_threshold)
+
+        if study == "geolife":
+            AG.add_node_features_from_staypoints(sp, agg_dict={"started_at": list, "finished_at": list})
+        else:
+            AG.add_node_features_from_staypoints(
+                sp, agg_dict={"started_at": list, "finished_at": list, "purpose": list}
+            )
+
+        if plot_spring:
+            AG.plot(
+                os.path.join(output_dir, study, "spring", str(user_id_this)),
+                filter_node_importance=25,
+                draw_edge_label=False,
+            )
+
+        if plot_coords:
+            AG.plot(
+                os.path.join(output_dir, study, "coords", str(user_id_this)),
+                filter_node_importance=25,
+                draw_edge_label=False,
+                layout="coordinate",
+            )
+
+        AG_dict[user_id_this] = copy.deepcopy(AG)
+
+    return AG_dict
 
 
