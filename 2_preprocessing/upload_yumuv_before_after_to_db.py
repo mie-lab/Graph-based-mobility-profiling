@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 import os
 import pickle
 import json
-from utils import write_graphs_to_postgresql, read_graphs_from_postgresql
+from general_utils import write_graphs_to_postgresql, read_graphs_from_postgresql
 import psycopg2
 
 CRS_WGS84 = "epsg:4326"

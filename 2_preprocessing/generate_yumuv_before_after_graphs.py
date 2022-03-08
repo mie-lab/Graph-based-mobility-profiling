@@ -1,14 +1,6 @@
-import csv
-import datetime
-import logging
 import os
-import geopandas as gpd
-import numpy as np
 import pandas as pd
-import pytz
-from shapely.geometry import Point
 from sqlalchemy import create_engine
-import trackintel as ti
 from db_login import DSN  # database login information
 from generate_graphs import get_staypoints, get_triplegs, get_trips, get_locations, generate_graphs, filter_user_by_number_of_days
 from collections import defaultdict
