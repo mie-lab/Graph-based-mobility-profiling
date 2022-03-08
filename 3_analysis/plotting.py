@@ -14,26 +14,37 @@ import os
 import pickle
 
 
-def plot_all_graphs(AG_dict, study):
+def plot_all_graphs(AG_dict, study, filter_node=100):
     """Originally code of example_for_nina file, now function to plot the graphs"""
-    output_spring = os.path.join(".", "graph_images", study, "spring")
+    output_spring = os.path.join(".", "graph_images", study, f"spring_{filter_node}")
     if not os.path.exists(output_spring):
         os.makedirs(output_spring)
 
-    output_coords = os.path.join(".", "graph_images", study, "coords")
+    output_coords = os.path.join(".", "graph_images", study, f"coords_{filter_node}")
     if not os.path.exists(output_coords):
         os.makedirs(output_coords)
+
+    # Use the following in activtitiy_graph_utils in order to plot only on switzerland
+    # lon_min, lon_max, lat_min, lat_max = (6.218109005202716, 8.968002536801063, 45.87257606616743, 47.03243181641454)
+
+    # activity_graph.py zeile 336 einfügen:
+    # cc = sorted(nx.connected_components(G.to_undirected()), key=len, reverse=True)
+    # G = G.subgraph(cc[0])
+
+    # bei savefig in activity_graph.py einfügen dpi=100
 
     for user_id_this, AG in AG_dict.items():
 
         AG.plot(
             filename=os.path.join(output_spring, str(user_id_this)),
-            filter_node_importance=25,
+            filter_node_importance=filter_node,
+            filter_extent=False,
             draw_edge_label=False,
         )
         AG.plot(
             filename=os.path.join(output_coords, str(user_id_this)),
-            filter_node_importance=25,
+            filter_node_importance=filter_node,
+            filter_dist=400,
             draw_edge_label=False,
             layout="coordinate",
         )
@@ -60,8 +71,8 @@ def cluster_by_study(feats, out_path=None, fontsize_dict={"font.size": 28, "axes
         "gc2": "Green Class 2",
         "yumuv_graph_rep": "YUMUV",
         "geolife": "Geolife",
-        "tist_toph100": "Foursquare",
-        "tist_random100": "Foursquare",
+        "tist_toph100": "Foursquare\nHome",
+        "tist_random100": "Foursquare\nRandom",
     }
     filtered = feats[feats["study"].isin(study_mapping.keys())]
     filtered["study"] = filtered["study"].apply(lambda x: study_mapping[x])
@@ -69,7 +80,7 @@ def cluster_by_study(feats, out_path=None, fontsize_dict={"font.size": 28, "axes
     plt.figure(figsize=(20, 10))
     p = sns.barplot(x="study", y="Percentage", hue="cluster", data=df_perc)
     plt.xlabel("")
-    plt.legend(ncol=3, framealpha=0.8, loc="upper center")
+    plt.legend(ncol=3, framealpha=0.8, loc="upper left")
     plt.tight_layout()
     if out_path is not None:
         plt.savefig(out_path)
@@ -84,7 +95,7 @@ def plot_cluster_characteristics(
         "degree_beta",
         "journey_length",
         "hub_size",
-        "highest_decile_distance",
+        "9th_decile_distance",
         "median_trip_distance",
         "transition_beta",
     ],
@@ -92,6 +103,11 @@ def plot_cluster_characteristics(
     plot_mode="english",
 ):
     matplotlib.rcParams.update(fontsize_dict)
+
+    col_labs = {col: column_mapping.get(col, col) for col in feat_columns}
+    feats = feats.rename(columns=col_labs)
+    feat_columns = list(col_labs.values())
+
     feat_rn_dict = {group: group.replace(" ", "\n") for group in np.unique(feats["cluster"])}
     feats["cluster"] = feats["cluster"].apply(lambda x: feat_rn_dict[x])
     if plot_mode == "german":
@@ -121,8 +137,8 @@ def plot_cluster_characteristics(
         plt.ylim(-1.5, 3)
         plt.legend(ncol=2, framealpha=1)
     else:
-        plt.ylim(-1, 3)
-        plt.legend(ncol=3, framealpha=1)
+        plt.ylim(-1, 3.8)
+        plt.legend(ncol=3, framealpha=0.8)
     plt.tight_layout()
     if out_path is not None:
         plt.savefig(out_path)
@@ -167,7 +183,7 @@ column_mapping = {
     "median_trip_distance": "median trip\ndistance",
     "mean_clustering_coeff": "mean\nclustering\ncoefficient",
     "distance_ht_index": "ht index",
-    "highest_decile_distance": "highest decile\ndistance",
+    "9th_decile_distance": "9th decile\ndistance",
     "hub_size": "hub\nsize",
 }
 
@@ -319,9 +335,9 @@ def barplot_clusters(
 
 
 if __name__ == "__main__":
-    study = "yumuv_graph_rep"
-    from utils import get_con
-    from future_trackintel.utils import read_graphs_from_postgresql
+    study = "gc2"
+    from analysis_utils import get_con
+    from utils import read_graphs_from_postgresql
 
     con = get_con()
     graph_dict = read_graphs_from_postgresql(

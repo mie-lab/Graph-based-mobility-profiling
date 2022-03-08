@@ -19,8 +19,8 @@ def cross_sectional_yumuv(out_path):
     barplot_clusters(
         yumuv_cg_before,
         yumuv_tg_before,
-        "Kontrollgruppe (vorher)",
-        "Testgruppe (vorher)",
+        "Control group (before)",
+        "Test group (before)",
         save_name="crosssectional_yumuv",
         out_path=out_path,
         rotate=False,

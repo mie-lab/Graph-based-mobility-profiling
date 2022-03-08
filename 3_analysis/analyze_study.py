@@ -7,7 +7,7 @@ import shutil
 import pickle
 from sklearn.metrics import silhouette_score
 
-from utils import sort_images_by_cluster
+from analysis_utils import sort_images_by_cluster
 from clustering import ClusterWrapper
 from find_groups import cluster_characteristics, sort_clusters_into_groups, group_consistency
 from plotting import plot_cluster_characteristics, cluster_by_study, scatterplot_matrix
@@ -60,18 +60,17 @@ if __name__ == "__main__":
     # ------------------ ANALYSE MERGED STUDIES WITH GIVEN GROUPS -------------------------------
     if study == "all_datasets":
         # Use only the main studies!! otherwise biased
-        STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+        STUDIES = ["gc1", "gc2", "tist_toph100", "tist_random100", "geolife", "yumuv_graph_rep"]
         graph_features = graph_features[graph_features["study"].isin(STUDIES)]
 
         # # Scatterplot with colours showing study
-        # scatter_features = graph_features.reset_index().set_index(["user_id", "study"])
-        # scatterplot_matrix(
-        #     scatter_features,
-        #     scatter_features.columns,
-        #     clustering=list(graph_features["study"]),
-        #     save_path=os.path.join(out_dir, "scatterplot_study.pdf"),
-        # )
-        # exit()
+        scatter_features = graph_features.reset_index().set_index(["user_id", "study"])
+        scatterplot_matrix(
+            scatter_features,
+            scatter_features.columns,
+            clustering=list(graph_features["study"]),
+            save_path=os.path.join(out_dir, "scatterplot_study.pdf"),
+        )
 
         # log to file
         f = open(os.path.join(args.out_dir, "analyze_study.txt"), "w")
@@ -129,18 +128,21 @@ if __name__ == "__main__":
         features_all_datasets = graph_features.copy()
         features_all_datasets = features_all_datasets[features_all_datasets["study"].isin(STUDIES)]
 
-        print("Computing entropy...")
+        print("\n -------  Entropy analysis ------------")
         study_entropy = entropy(features_all_datasets, "study", "cluster", print_parts=True)
-        print("\n OVERALL ENTROPY", study_entropy)
+        print("ENTROPY studies over groups", study_entropy, "\n")
 
-        print("\n computing entropy without tist...")
+        study_entropy = entropy(features_all_datasets, "cluster", "study", print_parts=True)
+        print("ENTROPY groups over studies", study_entropy, "\n")
+
+        print("\n Entropy without tist...")
         study_entropy = entropy(
             features_all_datasets[~features_all_datasets["study"].str.contains("tist")],
-            "study",
             "cluster",
+            "study",
             print_parts=True,
         )
-        print("\n ENTROPY wo tist", study_entropy, "\n")
+        print("ENTROPY groups over studies without tist", study_entropy, "\n")
 
         # compare relation between cluster and study labels
         compute_all_scores(features_all_datasets["cluster"].values, features_all_datasets["study"].values)

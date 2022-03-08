@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 import skmob
 from skmob.measures import individual
 
-from utils import *
+from analysis_utils import *
 from graph_features import GraphFeatures
 
 

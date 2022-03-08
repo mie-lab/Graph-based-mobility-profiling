@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import sys
 
-from utils import split_yumuv_control_group, get_con
+from analysis_utils import split_yumuv_control_group, get_con
 from clustering import ClusterWrapper
 from plotting import scatterplot_matrix
 from graph_features import GraphFeatures
@@ -96,7 +96,7 @@ def clean_features(path, cutoff=4):
 
 def get_graph_and_raw(out_dir, node_importance):
 
-    for study in ["gc1", "gc2", "geolife", "tist_toph100"]:
+    for study in ["gc1", "gc2", "geolife", "tist_toph100", "tist_random100"]:
         for feat_type in ["graph"]:
 
             print("\n -------------- PROCESS", study, feat_type, " ---------------")

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from analyze_yumuv import plot_longitudinal
 from find_groups import cluster_characteristics, sort_clusters_into_groups
 from clustering import ClusterWrapper
+from plotting import print_chisquare
 
 # --------------------------- Investigations of time consistency for GC ----------------------------------------
 
@@ -109,7 +110,7 @@ def fit_all_timebins(path, out_dir):
     print("Same assignment percent:", sum(both["cluster_now"] == both["cluster_consistent"]) / len(both))
 
     STUDY = "gc1"
-    dur_graph_path = "out_features/dur_graphs_" + STUDY
+    dur_graph_path = "out_features/final_0_n0_long_" + STUDY
 
     mean_changed = []
     time_bin_list = [4 * (i + 1) for i in range(7)]
@@ -152,6 +153,11 @@ def fit_all_timebins(path, out_dir):
         mean_changed.append(np.mean(mean_changed_timebin))
     plt.legend(ncol=3)
     plt.savefig(f"results/mean_changed_over_time_{STUDY}.png")
+    plt.figure(figsize=(15, 8))
+    plt.plot(time_bin_list, mean_changed)
+    plt.xlabel("Tracking period (weeks)")
+    plt.ylabel("Percentage of cluster changes from one bin to the next")
+    plt.savefig(f"results/mean_changed_{STUDY}.png")
 
 
 # if __name__=="__main__":
@@ -174,14 +180,33 @@ def merge_two(graph_features, before, after):
     )
 
 
+def chi_square_longitudinal(long_tg, long_cg):
+    print("------------ Chi square test for movement between clustern -----------")
+    for col in long_cg.columns:
+        if col not in long_tg.columns:
+            long_tg[col] = 0
+    long_tg = long_tg.reindex(columns=long_cg.columns)
+    # print(long_tg)
+    for feat, row in long_cg.iterrows():
+        # print(feat, row)
+        print("--------------- ", feat)
+        if feat not in long_tg.index:
+            print("feat not there")
+            continue
+        occ1 = list(row.values)
+        occ2 = list(long_tg.loc[feat].values)
+        print_chisquare(occ1, occ2)
+
+
 def run_longitudinal(graph_features, name, before, after, out_path):
     merged_groups = merge_two(graph_features, before, after)
     print(
         f"Ratio of {name} group that switched cluster:",
         np.sum(merged_groups["cluster_before"] != merged_groups["cluster_after"]) / len(merged_groups),
     )
-    long_df = plot_longitudinal(merged_groups, out_path=os.path.join(out_path, f"longitudinal_{name}.png"))
-    long_df.to_csv(os.path.join(out_path, f"longitudinal_{name}.csv"))
+    long_df = plot_longitudinal(merged_groups, out_path=os.path.join(out_path, f"longitudinal_{name}.pdf"))
+    # long_df.to_csv(os.path.join(out_path, f"longitudinal_{name}.csv"))
+    return long_df
 
 
 if __name__ == "__main__":
@@ -198,6 +223,10 @@ if __name__ == "__main__":
 
     path = args.inp_dir
 
+    # To run the time-bin analysis for GC
+    # fit_all_timebins("out_features/final_0_n0_cleaned", path)
+    # exit()
+
     out_path = os.path.join(path, "long")
     os.makedirs(out_path, exist_ok=True)
 
@@ -213,10 +242,12 @@ if __name__ == "__main__":
         exit()
 
     # YUMUV CG
-    run_longitudinal(graph_features_yumuv, "yumuv_control_group", "yumuv_before_cg", "yumuv_after_cg", out_path)
+    df_cg = run_longitudinal(graph_features_yumuv, "yumuv_control_group", "yumuv_before_cg", "yumuv_after_cg", out_path)
 
     # YUMUV TG:
-    run_longitudinal(graph_features_yumuv, "yumuv_test_group", "yumuv_before_tg", "yumuv_after_tg", out_path)
+    df_tg = run_longitudinal(graph_features_yumuv, "yumuv_test_group", "yumuv_before_tg", "yumuv_after_tg", out_path)
+    # Make chi square test
+    chi_square_longitudinal(df_tg, df_cg)
 
     # GC1 first and second quarter
     graph_features_gc1 = pd.read_csv(os.path.join(path, "long_gc1_clustering.csv"), index_col="user_id")

@@ -11,7 +11,7 @@ from functools import reduce
 import trackintel as ti
 import argparse
 
-from utils import dist_to_stats, dist_names, get_point_dist
+from analysis_utils import dist_to_stats, dist_names, get_point_dist
 from clustering import ClusterWrapper
 from skmob.measures.individual import *
 from plotting import scatterplot_matrix

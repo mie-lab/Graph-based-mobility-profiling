@@ -11,7 +11,7 @@ from scipy.stats import chi2_contingency, contingency, ttest_ind, mannwhitneyu
 
 fontsize_dict = {"font.size": 15, "axes.labelsize": 15}
 matplotlib.rcParams.update(fontsize_dict)
-from utils import load_user_info, load_all_questions
+from analysis_utils import load_user_info, load_all_questions
 
 
 def _rm_nans(df_raw, label, cluster):
@@ -131,7 +131,9 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
     labels_to_check = user_info.columns
     user_groups = np.unique(joined["cluster"].values)
 
-    res_arr = np.zeros((len(labels_to_check), len(user_groups) + 4))
+    nr_groups = len(user_groups)
+
+    res_arr = np.zeros((len(labels_to_check), 3 * len(user_groups) + 4))
     res_arr[:, 4:] = 1  # set all p values to non significant by default
     test_type, question_full = [], []
 
@@ -183,7 +185,7 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
             df_group = part_df[part_df["cluster"] == group]
             df_not_group = part_df[part_df["cluster"] != group]
 
-            if len(df_group) == 0:
+            if len(df_group) == 0 or len(df_not_group) == 0:
                 res_arr[i, 2] = 1  # error: no group with this label
                 res_arr[i, j + 4] = 1
                 continue
@@ -196,8 +198,12 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
                 contingency_table = np.array([dist_in_group, dist_not_group])
                 contingency_table = contingency_table[:, np.any(contingency_table, axis=0)]
                 stat, p, dof, expected = chi2_contingency(contingency_table)
+                res_arr[i, j + nr_groups + 4] = dist_in_group[0] / sum(dist_in_group)
+                res_arr[i, j + 2 * nr_groups + 4] = dist_in_group[1] / sum(dist_in_group)
             elif col_test_type == "mannwhitneyu":
                 stat, p = mannwhitneyu(df_group[col], df_not_group[col])
+                res_arr[i, j + nr_groups + 4] = np.mean(df_group[col].values)
+                res_arr[i, j + 2 * nr_groups + 4] = np.std(df_group[col].values)
             res_arr[i, j + 4] = round(p, 3)
             if p < 0.05:  # if significant, set significant value
                 res_arr[i, 3] = 1  # SIGNIFICANCY COLUMN
@@ -225,8 +231,12 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
                 sns.boxplot(x="cluster_to_plot", y=col, data=part_df_plot)
                 plt.title(corresponding_q, fontsize=12)
                 plt.savefig(os.path.join(out_figures, col + ".png"))
+
+    group_cols = (
+        [g + "_p" for g in user_groups] + [g + "_mean" for g in user_groups] + [g + "_std" for g in user_groups]
+    )
     df = pd.DataFrame(
-        res_arr, columns=["number_included", "entropy", "zero_length_group", "any_significant"] + list(user_groups)
+        res_arr, columns=["number_included", "entropy", "zero_length_group", "any_significant"] + group_cols
     )
     df["test"] = test_type
     df["q_id"] = labels_to_check
@@ -237,6 +247,24 @@ def plot_and_entropy(joined, user_info, out_figures, questions=None):
     df.to_csv(os.path.join(out_figures, "question_results_worked.csv"))
     df = df[df["any_significant"] == 1]
     df.to_csv(os.path.join(out_figures, "significant_question_results.csv"))
+
+
+def label_analysis_to_latex(path="results/gc1_label_analysis/question_results_worked.csv"):
+    """Copied from notebook to backup"""
+    res = pd.read_csv(path, index_col="q_id")
+    groups = ["Commuter", "Traveller", "Flexible", "Local routine", "Centered"]
+    var = "w_struktur_agg_2000"  # CHANGE VAR HERE
+
+    for g in groups:
+        mean = res.loc[var, g + "_std"]
+        pvalue = res.loc[var, g + "_p"]
+        first_part = "\\begin{tabular}[c]{@{}c@{}}"
+        last_part = "\end{tabular} &"
+
+        if pvalue <= 0.05:
+            first_part = "\\textbf{" + first_part
+            last_part = last_part[:-1] + "} &"
+        print(first_part + str(round(mean, 2)) + "\\\ p=" + str(round(pvalue, 3)) + last_part)
 
 
 if __name__ == "__main__":

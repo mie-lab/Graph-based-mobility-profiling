@@ -10,7 +10,7 @@ from scipy.sparse.construct import rand
 from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, rand_score
 
 from clustering import ClusterWrapper
-from utils import sort_images_by_cluster
+from analysis_utils import sort_images_by_cluster
 from plotting import scatterplot_matrix, plot_cluster_characteristics, cluster_by_study
 from find_groups import cluster_characteristics, sort_clusters_into_groups, group_consistency
 
@@ -40,8 +40,11 @@ if __name__ == "__main__":
         os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
     )
     # Use only the five studies for identifying the user groups
-    STUDIES = ["gc1", "gc2", "tist_toph100", "geolife", "yumuv_graph_rep"]
+    STUDIES = ["gc1", "gc2", "tist_toph100", "tist_random100", "geolife", "yumuv_graph_rep"]
     graph_features = graph_features[graph_features["study"].isin(STUDIES)]
+
+    # Save groups file
+    shutil.copy("groups.json", "bl_groups.json")
 
     np.random.seed(20)  # use the seed from analyze study (from our results) here
     # BASELINE labels: current clustering
@@ -90,7 +93,7 @@ if __name__ == "__main__":
             k_choices=[6, 7, 8, 9],
             nr_iters=3,
             out_path=None,
-            printout=False,
+            printout=True,
         )
 
         score = adjusted_rand_score(labels_BL, labels)

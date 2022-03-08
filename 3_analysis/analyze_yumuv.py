@@ -10,10 +10,9 @@ import seaborn as sns
 from collections import defaultdict
 from matplotlib.lines import Line2D
 
-from utils import sort_images_by_cluster
+from analysis_utils import sort_images_by_cluster, load_question_mapping, load_user_info
 from plotting import barplot_clusters, print_chisquare, plot_cluster_characteristics
 from clustering import ClusterWrapper
-from utils import load_question_mapping, load_user_info
 from find_groups import cluster_characteristics, sort_clusters_into_groups, group_consistency
 
 
@@ -21,12 +20,12 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     # get groups for color coding:
     with open("groups.json", "r") as infile:
         groups = json.load(infile)
-    group_names = sorted(groups.keys())
-    colors_avail = ["green", "red", "blue", "purple", "black", "yellow", "orange", "brown"]
+    group_names = [g for g in sorted(groups.keys()) if g != "other_6"]
+    colors_avail = ["red", "blue", "purple", "yellow", "orange", "brown", "green", "black"]
     color_map = {g: colors_avail[i] for i, g in enumerate(group_names)}
     color_map["other"] = "grey"
 
-    fontsize_dict = {"font.size": 15, "axes.labelsize": 15}
+    fontsize_dict = {"font.size": 20, "axes.labelsize": 20}
     matplotlib.rcParams.update(fontsize_dict)
 
     assert "cluster_before" in before_after_cluster.columns and "cluster_after" in before_after_cluster.columns
@@ -50,8 +49,13 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     plt.figure(figsize=(15, 10))
     normalized = np.swapaxes(np.swapaxes(transition_matrix, 1, 0) / np.sum(transition_matrix, axis=1), 1, 0)
     df = pd.DataFrame(normalized, columns=cluster_names, index=cluster_names)
-    sns.heatmap(df, annot=True, cmap="Blues", vmin=0, vmax=0.8)
-    plt.xticks(rotation=0)
+    df.rename(index={"Local routine": "Local\nroutine"}, inplace=True)
+    sns.heatmap(df, annot=True, cmap="Blues", vmin=0, vmax=0.8, annot_kws={"size": 30}, cbar=False)
+    plt.xticks(rotation=0, fontsize=30)
+    plt.yticks(rotation=0, fontsize=30)
+    plt.ylabel("Group before intervention", fontsize=30, fontweight="bold")
+    plt.xlabel("Group after intervention", fontsize=30, fontweight="bold")
+    plt.tight_layout()
     if out_path:
         plt.savefig(out_path.replace("longitudinal", "longitudinal_matrix_rel"), dpi=600)
     else:
@@ -61,6 +65,8 @@ def plot_longitudinal(before_after_cluster, out_path=None):
     plt.figure(figsize=(15, 10))
     df_unnormalized = pd.DataFrame(transition_matrix, columns=cluster_names, index=cluster_names)
     sns.heatmap(df_unnormalized, annot=True, cmap="Blues")
+    plt.ylabel("Group before intervention")
+    plt.xlabel("Group after intervention")
     if out_path:
         plt.savefig(out_path.replace("longitudinal", "longitudinal_matrix_abs"), dpi=600)
     else:
@@ -89,7 +95,7 @@ def plot_longitudinal(before_after_cluster, out_path=None):
         Line2D([0], [0], marker="o", color="w", label=lab, markerfacecolor=color_map[lab], markersize=10)
         for lab in list(group_names)
     ]
-    plt.legend(handles=legend_elements, loc="upper left", ncol=7, fontsize=7)
+    plt.legend(handles=legend_elements, loc="upper center", ncol=7, fontsize=7)
     plt.tight_layout()
     if out_path is not None:
         plt.savefig(out_path, dpi=600)
