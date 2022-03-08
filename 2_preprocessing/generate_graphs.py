@@ -1,24 +1,52 @@
 import os
 import pickle
-from future_trackintel.activity_graph import activity_graph
+from graph_trackintel.activity_graph import ActivityGraph
 import copy
-from utils import get_engine, get_staypoints,get_locations, get_triplegs, \
-                    get_trips, write_graphs_to_postgresql, read_graphs_from_postgresql
+from general_utils import (
+    get_engine,
+    get_staypoints,
+    get_locations,
+    get_triplegs,
+    get_trips,
+    write_graphs_to_postgresql,
+    read_graphs_from_postgresql,
+    filter_user_by_number_of_days,
+)
 from tqdm import tqdm
 
 CRS_WGS84 = "epsg:4326"
 
-def generate_graphs(locs, sp, study, trips=None, plotting=False, gap_threshold=None):
+
+def generate_graphs(
+    locs,
+    sp,
+    study,
+    trips=None,
+    gap_threshold=None,
+    plot_spring=True,
+    plot_coords=True,
+    output_dir=os.path.join(".", "graph_images", "new"),
+):
     """
+    Wrapper function around graph-trackintel.ActivityGraph to create person specific graphs.
+
+    Implements a per-user iteration, quality checks and adds dataset specific features to the activity graph.
 
     Parameters
     ----------
-    locs
-    sp
-    study
-    trips
-    plotting
-    gap_threshold
+    locs: trackintel locations
+    sp: trackintel staypoints
+    study: str
+        name of study
+    trips: trackintel trips
+        optional input but if provided, activity graphs are created based on trips
+    gap_threshold: float
+        Maximum time in hours between the start of two staypoints so that they are still considered consecutive.
+        Only relevant when trips are not provided
+    plot_spring: boolean
+        If true a visualization using spring layout will be stored in output_dir
+    plot_coords: boolean
+        If true a visualization using coordinate layout will be stored in output_dir
 
     Returns
     -------
@@ -26,19 +54,21 @@ def generate_graphs(locs, sp, study, trips=None, plotting=False, gap_threshold=N
     """
     AG_dict = {}
 
+    # loop by user
     for user_id_this in tqdm(locs["user_id"].unique()):
         sp_user = sp[sp["user_id"] == user_id_this]
         if sp_user.empty:
             continue
         locs_user = locs[locs["user_id"] == user_id_this]
 
+        # if trips are provided they are used to create the activity graph
         if trips is not None:
             trips_user = trips[trips["user_id"] == user_id_this]
             if trips_user.empty:
                 continue
-            AG = activity_graph(sp_user, locs_user, trips=trips_user, gap_threshold=gap_threshold)
+            AG = ActivityGraph(sp_user, locs_user, trips=trips_user, gap_threshold=gap_threshold)
         else:
-            AG = activity_graph(sp_user, locs_user,  gap_threshold=gap_threshold)
+            AG = ActivityGraph(sp_user, locs_user, gap_threshold=gap_threshold)
 
         if study == "geolife":
             AG.add_node_features_from_staypoints(sp, agg_dict={"started_at": list, "finished_at": list})
@@ -47,87 +77,32 @@ def generate_graphs(locs, sp, study, trips=None, plotting=False, gap_threshold=N
                 sp, agg_dict={"started_at": list, "finished_at": list, "purpose": list}
             )
 
-        if plotting:
+        if plot_spring:
             AG.plot(
-                os.path.join(".", "graph_images", "new", study, "spring", str(user_id_this)),
+                os.path.join(output_dir, study, "spring", str(user_id_this)),
                 filter_node_importance=25,
                 draw_edge_label=False,
             )
-            # AG.plot(
-            #     os.path.join(".", "graph_images", "new", study, "coords", str(user_id_this)),
-            #     filter_node_importance=25,
-            #     draw_edge_label=False,
-            #     layout="coordinate",
-            # )
+
+        if plot_coords:
+            AG.plot(
+                os.path.join(output_dir, study, "coords", str(user_id_this)),
+                filter_node_importance=25,
+                draw_edge_label=False,
+                layout="coordinate",
+            )
+
         AG_dict[user_id_this] = copy.deepcopy(AG)
 
     return AG_dict
 
 
-# def generate_graphs_daily(locs, sp, out_name, study, trips=None, plotting=False):
-#     # create daily graphs
-#     print("create index")
-#     sp.set_index("started_at", drop=False, inplace=True)
-#     sp.index.name = "started_at_ix"
-#     sp.sort_index(inplace=True)
-#
-#     AG_dict = defaultdict(dict)
-#
-#     sp_grouper = sp.groupby(["user_id", pd.Grouper(freq="D")])
-#     i = 0
-#
-#     for (user, day), sp_group in sp_grouper:
-#
-#         # relevant location ids:
-#         relevant_locs = sp_group["location_id"].unique()
-#         locs_this = locs[locs.index.isin(relevant_locs)]
-#
-#         if locs_this.size == 0 or sp_group.empty:
-#             continue
-#
-#         AG = activity_graph(sp_group, locs_this)
-#         if study == "geolife":
-#             AG.add_node_features_from_staypoints(sp_group, agg_dict={"started_at": list, "finished_at": list})
-#         else:
-#             AG.add_node_features_from_staypoints(
-#                 sp_group, agg_dict={"started_at": list, "finished_at": list, "purpose": list}
-#             )
-#
-#         if plotting:
-#             AG.plot(
-#                 os.path.join(
-#                     ".",
-#                     "graph_images",
-#                     "new",
-#                     "daily",
-#                     user,
-#                     "spring",
-#                     day.strftime("%Y-%m-%d"),
-#                 ),
-#                 draw_edge_label=True,
-#             )
-#             AG.plot(
-#                 os.path.join(".", "graph_images", "new", "daily", user, "coords", day.strftime("%Y-%m-%d"),),
-#                 layout="coordinate",
-#             )
-#
-#         AG_dict[user][day] = copy.deepcopy(AG)
-#         i = i + 1
-#         if i % 500 == 0:
-#             print(user, day)
-#
-#     pickle.dump(AG_dict, out_name)
-
-
 # globals
 # study name is used as schema name in database
-# studies = ["gc2", "gc1", "geolife"]
-# studies = ['geolife']
-#studies = ["yumuv_graph_rep"]
-studies = ['tist_toph10'] #['tist_toph100', 'tist_random100'] #, 'tist_toph10', 'tist_top100', 'tist_toph100', 'tist_top500',
-# 'tist_toph500',
-#                      'tist_top1000', 'tist_toph1000']
-# limit = "where user_id > 1670"
+# studies = ["gc2", "gc1", "geolife", "yumuv_graph_rep"]
+studies = ["tist_toph10"]  # ['tist_toph100', 'tist_random100']
+# #, 'tist_toph10', 'tist_top100', 'tist_toph100', 'tist_top500', 'tist_toph500', 'tist_top1000', 'tist_toph1000']
+
 limit = ""
 single_user = False
 
@@ -138,7 +113,6 @@ if __name__ == "__main__":
 
         # define output for graphs
         GRAPH_OUTPUT = os.path.join(".", "data_out", "graph_data", study)
-        # GRAPH_FOLDER, _ = ntpath.split(GRAPH_OUTPUT)
         if not os.path.exists(GRAPH_OUTPUT):
             os.mkdir(GRAPH_OUTPUT)
 
@@ -170,14 +144,13 @@ if __name__ == "__main__":
             locs = locs[locs.user_id.isin(user_id_ix)]
 
             print("\tgenerate full graphs (transition counts)")
-            AG_dict = generate_graphs(locs=locs, sp=sp, study=study, trips=trips, plotting=True)
+            AG_dict = generate_graphs(locs=locs, sp=sp, study=study, trips=trips, plot_spring=True, plot_coords=False)
 
         else:
-            # exclude_purpose = ['Light Rail', 'Subway', 'Platform', 'Trail', 'Road', 'Train', 'Bus Line']
-            # sp = sp[~sp['purpose'].isin(exclude_purpose)]
-            # a = pd.DataFrame(sp.groupby('purpose').size().sort_values())
             print("\tgenerate full graphs (transition counts)\n")
-            AG_dict = generate_graphs(locs=locs, sp=sp, study=study, plotting=True, gap_threshold=12)
+            AG_dict = generate_graphs(
+                locs=locs, sp=sp, study=study, plot_spring=True, plot_coords=False, gap_threshold=12
+            )
 
         con = get_engine(study, return_con=True)
 
@@ -186,6 +159,7 @@ if __name__ == "__main__":
         out_name.close()
 
         print("\t write graph to db")
+
         if study == "yumuv_graph_rep":
             pass
         else:
@@ -200,5 +174,9 @@ if __name__ == "__main__":
 
             print("\t test reading from db")
             AG_dict2 = read_graphs_from_postgresql(
-                graph_table_name="full_graph", psycopg_con=con, graph_schema_name=study, file_name="graph_data", decompress=True
+                graph_table_name="full_graph",
+                psycopg_con=con,
+                graph_schema_name=study,
+                file_name="graph_data",
+                decompress=True,
             )
