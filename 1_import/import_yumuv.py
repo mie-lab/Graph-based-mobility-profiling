@@ -1,12 +1,8 @@
-import csv
 import datetime
-import logging
 import os
 import sys
 import geopandas as gpd
-import pandas as pd
 import pytz
-from shapely.geometry import Point
 from sqlalchemy import create_engine
 import trackintel as ti
 from trackintel.preprocessing.triplegs import generate_trips
@@ -22,17 +18,16 @@ max_date = datetime.datetime(year=2020, month=11, day=15, tzinfo=pytz.utc)
 
 engine = create_engine("postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}".format(**DSN))
 #
-data_folder = os.path.join("C:/", "yumuv", "data")  # todo move to config file
-cache_folder = os.path.join(data_folder, "cache")  # todo move to config file
-# limit = "where user_fk < 4980"
-limit = ""
+data_folder = os.path.join("C:/", "yumuv", "data")
+cache_folder = os.path.join(data_folder, "cache")
+limit = ""  # optional: can be used to download subset
 
-sp_sql = """select staypoint.*, study_code_sorted.study_id from
-                        yumuv.staypoint left join 
-						(select distinct on(app_user_id) app_user_id, study_code.study_id
-						 from raw_myway.study_code order by app_user_id, study_code.study_id)
-						as study_code_sorted
-                         on study_code_sorted.app_user_id = user_fk {}""".format(
+sp_sql = """SELECT staypoint.*, study_code_sorted.study_id FROM
+                        yumuv.staypoint LEFT JOIN 
+						(select distinct ON(app_user_id) app_user_id, study_code.study_id
+						 FROM raw_myway.study_code ORDER BY app_user_id, study_code.study_id)
+						AS study_code_sorted
+                         ON study_code_sorted.app_user_id = user_fk {}""".format(
     limit
 )
 
@@ -42,18 +37,25 @@ sp = gpd.read_postgis(sp_sql, engine, geom_col="geometry", index_col="id")
 sp = ti.io.read_staypoints_gpd(sp, user_id="user_fk", geom_col="geometry", tz="UTC")
 
 sp["elevation"] = np.nan
+
 # Add activity: Everything longer than 25 minutes or meaningful purpose
 sp = sp.as_staypoints.create_activity_flag(time_threshold=25, activity_column_name="activity")
 meaningful_purpose = ~sp["stay_purpose"].isin(["wait", "unknown"])
 sp["activity"] = sp["activity"] | meaningful_purpose
+
 sp = sp.rename(columns={"geometry": "geom", "stay_purpose": "purpose"})
 sp = sp.set_geometry("geom")
 
-sp_date_flag = (sp['started_at'] >= min_date) & (sp['finished_at'] <= max_date)
+# filter study duration
+sp_date_flag = (sp["started_at"] >= min_date) & (sp["finished_at"] <= max_date)
 sp = sp[sp_date_flag]
 
 sp, locs = sp.as_staypoints.generate_locations(
-    method="dbscan", epsilon=30, num_samples=1, distance_metric="haversine", agg_level="user",
+    method="dbscan",
+    epsilon=30,
+    num_samples=1,
+    distance_metric="haversine",
+    agg_level="user",
 )
 sp = horizontal_merge_staypoints(sp)
 sp = ti.io.read_staypoints_gpd(sp, geom_col="geom")
@@ -61,9 +63,7 @@ sp = ti.io.read_staypoints_gpd(sp, geom_col="geom")
 
 print("Download triplegs")
 tpls = gpd.read_postgis(
-    """select *  FROM yumuv.tripleg {}""".format(
-        limit
-    ),
+    """select *  FROM yumuv.tripleg {}""".format(limit),
     engine,
     geom_col="geometry",
     index_col="id",
@@ -79,8 +79,7 @@ tpls = tpls[tpls.geometry.is_valid]
 tpls = ti.io.read_triplegs_gpd(tpls, user_id="user_fk", geom_col="geom", tz="UTC")
 
 
-
-tpls_date_flag = (tpls['started_at'] >= min_date) & (tpls['finished_at'] <= max_date)
+tpls_date_flag = (tpls["started_at"] >= min_date) & (tpls["finished_at"] <= max_date)
 tpls = tpls[tpls_date_flag]
 
 print("generate trips")

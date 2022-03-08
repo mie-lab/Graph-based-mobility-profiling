@@ -6,15 +6,10 @@ in a postgis database
 """
 
 import os
-import time
 import json
-import ntpath
-import glob
 import pandas as pd
 from sqlalchemy import create_engine
-import psycopg2
 import trackintel as ti
-import numpy as np
 
 # connect to postgis database
 config_file = os.path.join(".", "dblogin.json")
@@ -26,10 +21,6 @@ engine = create_engine(conn_string)
 conn = engine.connect()
 
 geolife_path = r"E:\Geolife Trajectories 1.3\Data"
-# geolife_path = r"D:\temp\geolife10"
-# geolife_path = r"D:\temp\geolife_13_users"
-# geolife_path = r"D:\temp\geolife_7_users"
-# geolife_path = r"C:\Users\henry\OneDrive\Programming\21_mobility-graph-representation\data_in\data_geolife"
 schema_name = "geolife"
 
 pfs, mode_labels = ti.io.dataset_reader.read_geolife(geolife_path, print_progress=True)
@@ -56,10 +47,10 @@ print(
 
 sp = spts[valid_tstamp_flag_sp]
 tpls = tpls[valid_tstamp_flag_tpls]
-# filter staypoints that are too long
-duration_too_long = (sp['finished_at'] - sp['started_at']) > pd.Timedelta("20h")
-sp = sp[(sp['finished_at'] - sp['started_at']) < pd.Timedelta("20")]
 
+# filter staypoints that are too long
+duration_too_long = (sp["finished_at"] - sp["started_at"]) > pd.Timedelta("20h")
+sp = sp[(sp["finished_at"] - sp["started_at"]) < pd.Timedelta("20")]
 
 print("extract locations")
 spts, locs = spts.as_staypoints.generate_locations(

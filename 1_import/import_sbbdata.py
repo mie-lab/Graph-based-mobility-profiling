@@ -48,6 +48,7 @@ for study in studies:
         geom_col="geometry_raw",
         index_col="id",
     )
+
     print("\tdownload triplegs")
     tpls = gpd.GeoDataFrame.from_postgis(
         sql="SELECT * FROM {}.triplegs where ST_isValid(geometry)".format(study),
@@ -60,8 +61,11 @@ for study in studies:
     # drop entries with invalid timestamps
     valid_tstamp_flag_sp = sp.started_at <= sp.finished_at
     valid_tstamp_flag_tpls = tpls.started_at <= tpls.finished_at
-    print("\t\ttimestamps of {} sp and {} tpls corrupted. corrupted ts are dropped".format(sp.shape[0] - sum(
-        valid_tstamp_flag_sp), tpls.shape[0] - sum(valid_tstamp_flag_tpls)))
+    print(
+        "\t\ttimestamps of {} sp and {} tpls corrupted. corrupted ts are dropped".format(
+            sp.shape[0] - sum(valid_tstamp_flag_sp), tpls.shape[0] - sum(valid_tstamp_flag_tpls)
+        )
+    )
 
     sp = sp[valid_tstamp_flag_sp]
     tpls = tpls[valid_tstamp_flag_tpls]
@@ -89,7 +93,7 @@ for study in studies:
     )
     # merge horizontal staypoints
     sp = horizontal_merge_staypoints(sp, custom_add_dict={"purpose_detected": list})
-    sp = ti.io.read_staypoints_gpd(sp, geom_col='geom')
+    sp = ti.io.read_staypoints_gpd(sp, geom_col="geom")
 
     sp, tpls, trips = ti.preprocessing.generate_trips(sp, tpls, gap_threshold=25)
     tpls.index.name = "id"
@@ -98,8 +102,6 @@ for study in studies:
     meaningful_purpose = ~sp["purpose"].isin(["wait", "unknown"])
     meaningful_duration = sp["finished_at"] - sp["started_at"] >= pd.Timedelta("25min")
     sp["activity"] = sp["activity"] | meaningful_purpose | meaningful_duration
-
-
 
     print("\twrite staypoints to database")
     ti.io.write_staypoints_postgis(
