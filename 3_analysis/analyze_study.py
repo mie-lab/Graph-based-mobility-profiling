@@ -38,6 +38,7 @@ if __name__ == "__main__":
         "-i", "--inp_dir", type=str, default=os.path.join("out_features", "test"), help="feature inputs"
     )
     parser.add_argument("-o", "--out_dir", type=str, default="results", help="outputs")
+    parser.add_argument("-t", "--feature_type", type=str, default="graph", help="Using graph or raw feature set")
     args = parser.parse_args()
 
     path = args.inp_dir
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
     # load features
     graph_features = pd.read_csv(
-        os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
+        os.path.join(path, f"{study}_{args.feature_type}_features_{node_importance}.csv"), index_col="user_id"
     )
 
     # ------------------ ANALYSE MERGED STUDIES WITH GIVEN GROUPS -------------------------------

@@ -53,7 +53,7 @@ def cluster_characteristics(in_features, cluster_labels=None, printout=True):
 def sort_clusters_into_groups(characteristics, min_equal=1, allow_tie=True, add_groups=False, printout=True):
     with open("groups.json", "r") as infile:
         groups = json.load(infile)
-    other_groups = [int(k.split("_")[-1]) for k in groups.keys() if "other" in k]
+    other_groups = [int(k.split("_")[-1]) for k in groups.keys() if "group" in k]
     num_other_groups = max(other_groups) if len(other_groups) > 0 else 0
 
     # iterate over each cluster
@@ -88,7 +88,7 @@ def sort_clusters_into_groups(characteristics, min_equal=1, allow_tie=True, add_
         else:
             # make new group
             num_other_groups += 1
-            groups["other_" + str(num_other_groups)] = cluster_characteristics
+            groups["group_" + str(num_other_groups)] = cluster_characteristics
 
             if printout:
                 print("No group possible for cluster", cluster, ", assign to other", num_other_groups)
@@ -152,6 +152,7 @@ if __name__ == "__main__":
         "-i", "--inp_dir", type=str, default=os.path.join("out_features", "test"), help="feature inputs"
     )
     parser.add_argument("-o", "--out_dir", type=str, default="results", help="Path where to output all results")
+    parser.add_argument("-t", "--feature_type", type=str, default="graph", help="Using graph or raw feature set")
     args = parser.parse_args()
 
     path = args.inp_dir
@@ -167,7 +168,7 @@ if __name__ == "__main__":
 
     # load features
     graph_features = pd.read_csv(
-        os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
+        os.path.join(path, f"{study}_{args.feature_type}_features_{node_importance}.csv"), index_col="user_id"
     )
     # Use only the five studies for identifying the user groups
     if args.study == "all_datasets":

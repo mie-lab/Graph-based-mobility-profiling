@@ -56,8 +56,7 @@ def mean_features_by_study(features, out_path=None):
         print(mean_features)
 
 
-def remove_outliers(path, outlier_thresh, out_dir, name="", feature_type="graph", node_importance=0):
-    feature_df = load_all(path + name, feature_type=feature_type, node_importance=node_importance)
+def remove_outliers(feature_df, outlier_thresh, out_dir, name="", feature_type="graph", node_importance=0):
 
     # add study to index
     feature_df = feature_df.reset_index().set_index(["user_id", "study"])
@@ -95,6 +94,10 @@ if __name__ == "__main__":
     os.makedirs(out_dir, exist_ok=True)
 
     features_main_datasets = load_all(path, feature_type=feature_type, node_importance=nodes)
+    print(len(features_main_datasets))
+    features_main_datasets.drop("mean_waiting_time", axis=1, inplace=True, errors="ignore")
+    features_main_datasets.dropna(inplace=True)
+    print("after dropping NaNs:", features_main_datasets.shape)
 
     # Remove outliers
     main_arr = np.array(features_main_datasets.drop("study", axis=1))
@@ -114,7 +117,7 @@ if __name__ == "__main__":
 
     # all others use the same outlier threshold!
     for name in ["", "_long_yumuv", "_long_gc1", "_long_gc2"]:
-        remove_outliers(path, outlier_thresh, out_dir, name=name)
+        remove_outliers(features_main_datasets, outlier_thresh, out_dir, name=name, feature_type=feature_type)
 
     # print mean and std: needs to be adopted to new code structure
     # mean_features_by_study(features_all_datasets, out_path=os.path.join(out_dir, f"dataset_{nodes}.csv"))
