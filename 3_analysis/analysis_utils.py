@@ -9,7 +9,7 @@ import pandas as pd
 import networkx as nx
 
 import trackintel as ti
-from utils import read_graphs_from_postgresql
+from general_utils import read_graphs_from_postgresql
 
 
 def sort_images_by_cluster(
