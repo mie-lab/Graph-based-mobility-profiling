@@ -18,7 +18,7 @@ def load_all(path, feature_type="graph", node_importance=0):
     all_together = []
     study_labels = []
     for f in os.listdir(path):
-        if feature_type not in f or f[-3:] != "csv":
+        if f[-3:] != "csv" or feature_type != f.split("_")[-3]:
             continue
         study = f.split(f"_{feature_type}_features")[0]
         # print("loading", f, "study:", study)

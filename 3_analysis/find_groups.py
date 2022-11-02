@@ -102,7 +102,7 @@ def sort_clusters_into_groups(characteristics, min_equal=1, allow_tie=True, add_
 
 
 def group_consistency(
-    graph_features, out_path=None, k_choices=[6, 7, 8, 9], printout=True, nr_iters=1, algorithm="kmeans"
+    graph_features, out_path=None, k_choices=[6, 7, 8, 9], printout=True, nr_iters=1, algorithm="kmeans", min_equal=2
 ):
     res = np.empty((len(graph_features), len(k_choices) * nr_iters), dtype="<U30")
     i = 0
@@ -113,7 +113,7 @@ def group_consistency(
 
             # try to characterize clusters
             characteristics = cluster_characteristics(graph_features, labels, printout=False)
-            cluster_assigment = sort_clusters_into_groups(characteristics, printout=False, min_equal=2)
+            cluster_assigment = sort_clusters_into_groups(characteristics, printout=False, min_equal=min_equal)
             groups = [cluster_assigment[lab] for lab in labels]
             res[:, i] = groups
             i += 1
@@ -153,6 +153,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("-o", "--out_dir", type=str, default="results", help="Path where to output all results")
     parser.add_argument("-t", "--feature_type", type=str, default="graph", help="Using graph or raw feature set")
+    parser.add_argument("-m", "--min_equal", type=int, default=2, help="Mininimum corresponding features parameter")
     args = parser.parse_args()
 
     path = args.inp_dir
@@ -190,11 +191,11 @@ if __name__ == "__main__":
         in_features = graph_features.copy()
     # Run clustering multiple times, and add the identified groups to the file 3_analysis/groups.json
     for i in range(3):
-        for n_clusters in [5, 6, 7, 8, 9, 10]:
+        for n_clusters in [6, 7, 8, 9]:
             labels = cluster_wrapper(in_features, impute_outliers=False, n_clusters=n_clusters, algorithm=algorithm)
             characteristics = cluster_characteristics(in_features, labels, printout=False)
             cluster_assignment = sort_clusters_into_groups(
-                characteristics, add_groups=True, printout=False, min_equal=2, allow_tie=True
+                characteristics, add_groups=True, printout=False, min_equal=args.min_equal, allow_tie=True
             )
     # copy the resulting groups to the results folder
     shutil.copy(os.path.join("groups.json"), os.path.join(out_dir, "groups.json"))
