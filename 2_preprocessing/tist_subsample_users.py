@@ -48,10 +48,14 @@ for k in k_list:
     sql_drop = """drop table if exists tist_top{}.staypoints;
                   drop table if exists tist_top{}.locations;
                   drop table if exists tist_toph{}.staypoints;
-                  drop table if exists tist_toph{}.locations;""".format(k, k, k, k)
+                  drop table if exists tist_toph{}.locations;""".format(
+        k, k, k, k
+    )
     cur.execute(sql_drop)
     sql_schema = """CREATE SCHEMA IF NOT EXISTS tist_top{};
-    CREATE SCHEMA IF NOT EXISTS tist_toph{};""".format(k, k)
+    CREATE SCHEMA IF NOT EXISTS tist_toph{};""".format(
+        k, k
+    )
     sql_sp_topk = """create table tist_top{}.staypoints as SELECT * FROM tist.staypoints WHERE staypoints.user_id in (
                                                 select ordering.user_id from (
                                                                         select user_id, count(*) from tist.staypoints group by user_id
@@ -83,15 +87,11 @@ for k in k_list:
         k, k
     )
 
-
-
     sql_rename = """ALTER TABLE tist_top{}.staypoints RENAME COLUMN geometry TO geom;
                     ALTER TABLE tist_top{}.staypoints RENAME COLUMN index TO id;
                     ALTER TABLE tist_toph{}.staypoints RENAME COLUMN geometry TO geom;
                     ALTER TABLE tist_toph{}.staypoints RENAME COLUMN index TO id;
             """
-
-
 
     cur.execute(sql_schema)
     con.commit()
@@ -107,7 +107,9 @@ nb_users = 100
 sql_schema = """CREATE SCHEMA IF NOT EXISTS tist_random100;"""
 sql_sample_ids = """select user_id from tist.user_data where
                 homecount > 24 and totalcount > 81 and nb_locs > 40 
-                order by random() limit {}""".format(nb_users)
+                order by random() limit {}""".format(
+    nb_users
+)
 
 # select
 # percentile_cont(0.25) within group (order by totalcount asc) as percentile_25,
@@ -116,14 +118,18 @@ sql_sample_ids = """select user_id from tist.user_data where
 # from tist.user_data
 
 
-user_ids = pd.read_sql(sql_sample_ids, con=engine)['user_id'].tolist()
+user_ids = pd.read_sql(sql_sample_ids, con=engine)["user_id"].tolist()
 user_ids = [str(x) for x in user_ids]
 a = ", ".join(user_ids)
 
 sql_sp_random = """create table tist_random100.staypoints as SELECT * FROM tist.staypoints 
-WHERE staypoints.user_id in ({})""".format(a)
+WHERE staypoints.user_id in ({})""".format(
+    a
+)
 sql_loc_random = """create table tist_random100.locations as SELECT * FROM tist.locations 
-WHERE locations.user_id in ({})""".format(a)
+WHERE locations.user_id in ({})""".format(
+    a
+)
 
 cur.execute(sql_schema)
 con.commit()

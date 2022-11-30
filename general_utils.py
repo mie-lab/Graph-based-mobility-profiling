@@ -14,6 +14,7 @@ from tqdm import tqdm
 from graph_trackintel.activity_graph import ActivityGraph
 import copy
 
+
 def filter_user_by_number_of_days(sp, tpls, coverage=0.7, min_nb_good_days=28, filter_sp=True):
     """
 
@@ -42,6 +43,7 @@ def filter_user_by_number_of_days(sp, tpls, coverage=0.7, min_nb_good_days=28, f
         sp = sp[sp.user_id.isin(good_users)]
         print("\t\t nb users now: ", len(sp.user_id.unique()), "before: ", nb_users)
     return sp, good_users
+
 
 def filter_days_with_bad_tracking_coverage(sp, tpls, coverage=0.99):
     """
@@ -81,13 +83,14 @@ def filter_days_with_bad_tracking_coverage(sp, tpls, coverage=0.99):
     print("\t nb dropped: ", nb_sp_old - sp.shape[0], "nb kept: ", sp.shape[0])
     return sp
 
+
 def get_engine(study, return_con=False):
     """Crete a engine object for database connection
 
     study: Used to specify the database for the connection. "yumuv_graph_rep" directs to sbb internal database
     return_con: Boolean
         if True, a psycopg connection object is returned
-        """
+    """
     if study == "yumuv_graph_rep":
         sys.path.append(r"C:\Users\e527371\OneDrive\Programming\yumuv")
         from db_login import DSN  # database login information
@@ -123,6 +126,7 @@ def get_engine(study, return_con=False):
     else:
         return engine
 
+
 def sample_tist_users(nb_users, engine):
     """
     Sample nb_users from tist.
@@ -135,9 +139,12 @@ def sample_tist_users(nb_users, engine):
     """
     query = """select user_id from tist.user_data where
                 homecount > 24 and totalcount > 81 and nb_locs > 40 
-                order by random() limit {}""".format(nb_users)
+                order by random() limit {}""".format(
+        nb_users
+    )
 
     return list(pd.read_sql(query, con=engine))
+
 
 def get_staypoints(study, engine, limit=""):
     """
@@ -154,21 +161,20 @@ def get_staypoints(study, engine, limit=""):
 
     return sp
 
+
 def get_locations(study, engine, limit=""):
     """
-        Download locations and transform to trackintel format
+    Download locations and transform to trackintel format
     """
     locs = ti.io.read_locations_postgis(
-        sql="select * from {}.locations {}".format(study, limit),
-        con=engine,
-        center="center",
-        index_col="id"
+        sql="select * from {}.locations {}".format(study, limit), con=engine, center="center", index_col="id"
     )
     return locs
 
+
 def get_triplegs(study, engine, limit=""):
     """
-        Download triplegs and transform to trackintel format
+    Download triplegs and transform to trackintel format
     """
     tpls = pd.read_sql(
         sql="select id, user_id, started_at, finished_at from {}.triplegs {}".format(study, limit),
@@ -180,9 +186,10 @@ def get_triplegs(study, engine, limit=""):
 
     return tpls
 
+
 def get_trips(study, engine, limit=""):
     """
-        Download trips and transform to trackintel format
+    Download trips and transform to trackintel format
     """
     trips = pd.read_sql(sql="select * from {}.trips {}".format(study, limit), con=engine, index_col="id")
     trips["started_at"] = pd.to_datetime(trips["started_at"], utc=True)
@@ -190,15 +197,16 @@ def get_trips(study, engine, limit=""):
 
     return trips
 
+
 def generate_graphs(
-        locs,
-        sp,
-        study,
-        trips=None,
-        gap_threshold=None,
-        plot_spring=True,
-        plot_coords=True,
-        output_dir=os.path.join(".", "graph_images", "new"),
+    locs,
+    sp,
+    study,
+    trips=None,
+    gap_threshold=None,
+    plot_spring=True,
+    plot_coords=True,
+    output_dir=os.path.join(".", "graph_images", "new"),
 ):
     """
     Wrapper function around graph-trackintel.ActivityGraph to create person specific graphs.
@@ -268,5 +276,3 @@ def generate_graphs(
         AG_dict[user_id_this] = copy.deepcopy(AG)
 
     return AG_dict
-
-

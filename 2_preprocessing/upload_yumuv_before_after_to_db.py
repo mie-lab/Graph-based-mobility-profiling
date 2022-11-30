@@ -31,6 +31,7 @@ def get_engine(study, return_con=False):
     else:
         return engine
 
+
 study = "yumuv_graph_rep"
 
 GRAPH_OUTPUT = os.path.join(".", "data_out", "graph_data", study)
@@ -49,7 +50,8 @@ write_graphs_to_postgresql(
     graph_schema_name=study,
     psycopg_con=con,
     file_name="before",
-    drop_and_create=True)
+    drop_and_create=True,
+)
 
 write_graphs_to_postgresql(
     graph_data=AG_dict_after,
@@ -57,5 +59,5 @@ write_graphs_to_postgresql(
     graph_schema_name=study,
     psycopg_con=con,
     file_name="after",
-    drop_and_create=False
+    drop_and_create=False,
 )

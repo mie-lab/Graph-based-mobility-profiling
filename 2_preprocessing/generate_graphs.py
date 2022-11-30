@@ -9,8 +9,9 @@ from general_utils import (
     write_graphs_to_postgresql,
     read_graphs_from_postgresql,
     filter_user_by_number_of_days,
-    generate_graphs
+    generate_graphs,
 )
+
 CRS_WGS84 = "epsg:4326"
 
 # globals
