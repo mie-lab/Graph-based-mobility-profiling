@@ -3,14 +3,16 @@ Script to import tist data into a postgis database. Also applies trackintel
 data model
 """
 
-import os
-from sqlalchemy import create_engine
-import pandas as pd
-import geopandas as gpd
+import datetime
 import json
+import os
+
+import geopandas as gpd
+import pandas as pd
 import trackintel as ti
 from dateutil import tz
-import datetime
+from sqlalchemy import create_engine
+
 from config import config
 
 schema_name = "tist"
@@ -25,8 +27,8 @@ engine = create_engine(conn_string)
 conn = engine.connect()
 
 
-path_checkins = config['path_checkins']
-path_pois = config['path_pois']
+path_checkins = config["path_checkins"]
+path_pois = config["path_pois"]
 
 
 # https://sites.google.com/site/yangdingqi/home/foursquare-dataset

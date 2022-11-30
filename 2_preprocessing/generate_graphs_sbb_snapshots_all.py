@@ -1,6 +1,7 @@
 """Create individual mobility graphs based on temporal subsets of a tracking study"""
-import pandas as pd
 import os
+
+import pandas as pd
 
 from general_utils import (
     get_engine,
@@ -17,10 +18,6 @@ from general_utils import (
 CRS_WGS84 = "epsg:4326"
 
 studies = ["gc1", "gc2"]
-# studies = ['geolife']
-# studies = studies + ['tist_top10', 'tist_toph10', 'tist_top100', 'tist_toph100', 'tist_top500', 'tist_toph500',
-#                      'tist_top1000', 'tist_toph1000']
-# limit = "where user_id < 1600"
 limit = ""
 
 if __name__ == "__main__":

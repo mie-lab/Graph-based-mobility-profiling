@@ -3,13 +3,15 @@ Script to import sbb green class data into a postgis database. Also applies trac
 data model
 """
 
+import json
+import os
+
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import trackintel as ti
 from sqlalchemy import create_engine
-import numpy as np
-import os
-import json
+
 from general_utils import horizontal_merge_staypoints
 
 CRS_WGS84 = "epsg:4326"

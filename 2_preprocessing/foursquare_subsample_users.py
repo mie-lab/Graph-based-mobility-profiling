@@ -1,13 +1,13 @@
 """
-Script to import tist data into a postgis database. Also applies trackintel
-data model
+Script to apply different subsample methods to the foursquare dataset.
 """
 
-import os
-from sqlalchemy import create_engine
-import pandas as pd
 import json
+import os
+
+import pandas as pd
 import psycopg2
+from sqlalchemy import create_engine
 
 schema_name = "tist"
 

@@ -1,11 +1,14 @@
 """Script to upload the processed yumuv data to the database. Script was necessary because raw yumuv data
  had to be processed on the hardware of the data owner. """
-from sqlalchemy import create_engine
+
+import json
 import os
 import pickle
-import json
-from general_utils import write_graphs_to_postgresql
+
 import psycopg2
+from sqlalchemy import create_engine
+
+from config import config
 
 CRS_WGS84 = "epsg:4326"
 
@@ -35,16 +38,9 @@ def get_engine(study, return_con=False):
 
 
 study = "yumuv_graph_rep"
-
-pkl_name = open(os.path.join("D:/", "temp", "yumuv_userinfo.pkl"), "rb")
+pkl_name = open(config["yumuv_user_info"], "rb")
 user_info = pickle.load(pkl_name)
 
 engine = get_engine(study, return_con=False)
 
 user_info.to_sql(con=engine, schema="yumuv_graph_rep", name="user_info", index=False, if_exists="replace")
-con = engine.connect()
-con.execute(
-    """GRANT SELECT, INSERT, UPDATE, DELETE
-ON ALL TABLES IN SCHEMA yumuv_graph_rep
-TO wnina;"""
-)

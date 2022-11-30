@@ -1,12 +1,15 @@
-"""Script to upload the processed yumuv data to the database. Script was necessary because raw yumuv data
- had to be processed on the hardware of the data owner. """
+"""yumuv data had to be processed on the server of the data owner. This script uploads the processed data to a new
+database.
+"""
 
-from sqlalchemy import create_engine
+import json
 import os
 import pickle
-import json
-from general_utils import write_graphs_to_postgresql, read_graphs_from_postgresql
+
 import psycopg2
+from sqlalchemy import create_engine
+
+from general_utils import write_graphs_to_postgresql, read_graphs_from_postgresql
 
 CRS_WGS84 = "epsg:4326"
 

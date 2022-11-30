@@ -1,5 +1,6 @@
 import os
 import pickle
+
 from general_utils import (
     get_engine,
     get_staypoints,
@@ -16,9 +17,7 @@ CRS_WGS84 = "epsg:4326"
 
 # globals
 # study name is used as schema name in database
-# studies = ["gc2", "gc1", "geolife", "yumuv_graph_rep"]
-studies = ["tist_toph10"]  # ['tist_toph100', 'tist_random100']
-# #, 'tist_toph10', 'tist_top100', 'tist_toph100', 'tist_top500', 'tist_toph500', 'tist_top1000', 'tist_toph1000']
+studies = ["gc2", "gc1", "geolife", "yumuv_graph_rep", "tist_toph100", "tist_random100"]
 
 limit = ""
 single_user = False

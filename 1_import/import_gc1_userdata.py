@@ -1,8 +1,9 @@
 """Download user data from main database to the project database"""
 
-import pandas as pd
-import os
 import json
+import os
+
+import pandas as pd
 
 CRS_WGS84 = "epsg:4326"
 #

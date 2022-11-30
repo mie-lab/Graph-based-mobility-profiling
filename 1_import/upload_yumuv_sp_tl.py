@@ -1,10 +1,12 @@
 """Script to upload the processed yumuv data to the database. Script was necessary because raw yumuv data
  had to be processed on the hardware of the data owner. """
 
-from sqlalchemy import create_engine
-import os
 import json
+import os
+
 import psycopg2
+from sqlalchemy import create_engine
+
 import config
 
 CRS_WGS84 = "epsg:4326"
@@ -36,7 +38,7 @@ def get_engine(study, return_con=False):
 
 study = "yumuv_graph_rep"
 
-data_folder = config['yumuv_import_data_folder']
+data_folder = config["yumuv_import_data_folder"]
 
 con = get_engine(study, return_con=False)
 

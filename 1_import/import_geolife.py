@@ -5,11 +5,13 @@ https://www.microsoft.com/en-us/download/details.aspx?id=52367) and loads it
 in a postgis database
 """
 
-import os
 import json
+import os
+
 import pandas as pd
-from sqlalchemy import create_engine
 import trackintel as ti
+from sqlalchemy import create_engine
+
 from config import config
 
 # connect to postgis database
@@ -21,7 +23,7 @@ conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}".format(*
 engine = create_engine(conn_string)
 conn = engine.connect()
 
-geolife_path = config['geolife_path']
+geolife_path = config["geolife_path"]
 schema_name = "geolife"
 
 pfs, mode_labels = ti.io.dataset_reader.read_geolife(geolife_path, print_progress=True)

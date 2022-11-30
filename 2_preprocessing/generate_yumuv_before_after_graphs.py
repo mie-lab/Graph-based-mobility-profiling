@@ -1,6 +1,19 @@
+"""
+Script that seperates control group and treatment group into the timeframe before and after the intervention for the
+yumuv dataset and generates graphs for each group.
+The yumuv dataset has a treatment group and a control group. The treatment group participated in a study and got
+access to a MaaS app that allowed them to book different shared modes mobility more easily the control group did not
+have access to this app. Both groups were tracked in the mean time.
+The start of the intervention is slightly different for all users and is therefore defined as the average start date
+for all users.
+"""
 import os
+import pickle
+
+import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
+
 from db_login import DSN  # database login information
 from generate_graphs import (
     get_staypoints,
@@ -10,14 +23,11 @@ from generate_graphs import (
     generate_graphs,
     filter_user_by_number_of_days,
 )
-from collections import defaultdict
-import pickle
-import numpy as np
 
 engine = create_engine("postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}".format(**DSN))
 file_prefix = "210911"
 study = "yumuv_graph_rep"
-limit = ""  # "where user_id in (5652, 5609, 4979, 5008, 6007)"
+limit = ""
 sp_ = get_staypoints(study=study, engine=engine, limit=limit)
 tpls_ = get_triplegs(study=study, engine=engine, limit=limit)
 trips_ = get_trips(study=study, engine=engine, limit=limit)
@@ -38,7 +48,6 @@ trips_before_list = []
 sp_after_list = []
 tpls_after_list = []
 trips_after_list = []
-
 users_without_data = []
 
 

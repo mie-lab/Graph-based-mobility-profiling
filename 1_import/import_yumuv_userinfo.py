@@ -3,17 +3,18 @@ Script to download yumuv user information from survey data
 """
 
 import os
-import pandas as pd
-from sqlalchemy import create_engine
 import pickle
 
-from db_login import DSN  # database login information
+import pandas as pd
+from sqlalchemy import create_engine
+
 from config import config
+from db_login import DSN  # database login information
 
 engine = create_engine("postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}".format(**DSN))
 #
-data_folder = config['yumuv_data_folder']
-cache_folder = config['yumuv_cach_folder']
+data_folder = config["yumuv_data_folder"]
+cache_folder = config["yumuv_cach_folder"]
 
 
 df_initial_survey = pd.read_sql(
