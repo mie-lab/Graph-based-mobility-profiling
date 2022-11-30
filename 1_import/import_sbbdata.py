@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sat May 25 20:31:37 2019
-
-@author: martinhe
+Script to import sbb green class data into a postgis database. Also applies trackintel
+data model
 """
 
 import geopandas as gpd
@@ -12,7 +10,7 @@ from sqlalchemy import create_engine
 import numpy as np
 import os
 import json
-from future_trackintel.utils import horizontal_merge_staypoints
+from general_utils import horizontal_merge_staypoints
 
 CRS_WGS84 = "epsg:4326"
 #

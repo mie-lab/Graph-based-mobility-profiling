@@ -129,7 +129,8 @@ Pipfile.lock
 
 # passwords
 dblogin.json
-
+dblogin*
+db_login*
 # raw data
 data*
 
@@ -138,7 +139,10 @@ data*
 /graph_data/*
 
 # old things
-/old/*
+/old
 # personal files
 trackintel_comments*
 notes*
+
+/8_publication
+/9_debug

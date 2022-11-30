@@ -1,25 +1,19 @@
+"""
+Script to download yumuv user information from survey data
+"""
+
 import os
-import sys
 import pandas as pd
 from sqlalchemy import create_engine
 import pickle
 
-sys.path.append(r"C:\Users\e527371\OneDrive\Programming\yumuv")
 from db_login import DSN  # database login information
+from config import config
 
 engine = create_engine("postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}".format(**DSN))
 #
-data_folder = os.path.join("C:/", "yumuv", "data")  # todo move to config file
-cache_folder = os.path.join(data_folder, "cache")  # todo move to config file
-
-# user_info_sql = """SELECT distinct on (app_user_id) app_user_id,
-# code, study_id, p_ptmobtool_2 AS ga1, p_ptmobtool_3 AS ga2, p_ptmobtool_4 AS ht
-# FROM raw_myway.study_code
-# left join henry_dev.eth_survey on p_id = code
-# left join henry_dev.eth_final_survey_fk on externalreference = code
-# left join henry_dev.eth_final_survey_kg on externalreference = code"""
-#
-# user_info = pd.read_sql(user_info_sql, con=engine)
+data_folder = config['yumuv_data_folder']
+cache_folder = config['yumuv_cach_folder']
 
 
 df_initial_survey = pd.read_sql(

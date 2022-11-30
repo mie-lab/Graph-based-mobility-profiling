@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 import os
 import json
 import psycopg2
+import config
 
 CRS_WGS84 = "epsg:4326"
 
@@ -35,7 +36,7 @@ def get_engine(study, return_con=False):
 
 study = "yumuv_graph_rep"
 
-data_folder = os.path.join("C:\\", "data", "graph_export")
+data_folder = config['yumuv_import_data_folder']
 
 con = get_engine(study, return_con=False)
 

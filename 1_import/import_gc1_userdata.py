@@ -1,4 +1,4 @@
-"""Download user data from main database (commitdb) to the project database (graph_rep)"""
+"""Download user data from main database to the project database"""
 
 import pandas as pd
 import os

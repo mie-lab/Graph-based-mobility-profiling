@@ -1,31 +1,38 @@
 """
-Script to import tist data. Also applies trackintel data model
+Script to import tist data into a postgis database. Also applies trackintel
+data model
 """
 
 import os
+from sqlalchemy import create_engine
 import pandas as pd
 import geopandas as gpd
+import json
 import trackintel as ti
 from dateutil import tz
 import datetime
-import argparse
+from config import config
+
+schema_name = "tist"
+
+dblogin_file = os.path.join("dblogin.json")
+with open(dblogin_file) as json_file:
+    login_data = json.load(json_file)
+
+conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}".format(**login_data)
+
+engine = create_engine(conn_string)
+conn = engine.connect()
+
+
+path_checkins = config['path_checkins']
+path_pois = config['path_pois']
 
 
 # https://sites.google.com/site/yangdingqi/home/foursquare-dataset
-# Dingqi Yang, Daqing Zhang, Bingqing Qu. Participatory Cultural Mapping Based on Collective Behavior Data in Location Based Social Networks. ACM Trans. on Intelligent Systems and Technology (TIST), 2015. [PDF]
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument("-c", "--checkin_path", type=str, required=True)
-parser.add_argument("-p", "--poi_path", type=str, required=True)
-parser.add_argument("-o", "--out_path", type=str, default=os.path.join("data", "raw", "foursquare"))
-args = parser.parse_args()
-
-out_path = args.out_path
-os.makedirs(out_path, exist_ok=True)
-geolife_path = args.data_path
-path_checkins = args.checkin_path
-path_pois = args.poi_path
+# Dingqi Yang, Daqing Zhang, Bingqing Qu. Participatory Cultural Mapping Based on
+# Collective Behavior Data in Location Based Social Networks. ACM Trans. on Intelligent
+# Systems and Technology (TIST), 2015. [PDF]
 
 # load raw data
 print("Reading raw data")
@@ -55,16 +62,20 @@ sp = checkins.join(venues, on="venue_id", how="left")
 sp = gpd.GeoDataFrame(sp, geometry="geometry")
 del venues, checkins
 print("Create locations")
+
 # create locations
 # 10e-6 is a very small search radius to ensure that every venue gets detected as a location (if it has a unique
 # location)
 sp, locations = sp.as_staypoints.generate_locations(epsilon=10e-6, num_samples=1, distance_metric="euclidean")
 locations.drop("extent", axis=1, inplace=True)
 
-# sp_ = sp[sp['user_id'] == 391].sort_values('started_at')
 
 # tist is now in trackintel format.
 print("Write back locations ")
-ti.io.write_locations_csv(locations, os.path.join(out_path, "locations"))
+ti.io.write_locations_postgis(
+    locations, con=conn_string, schema=schema_name, name="locations", if_exists="replace", chunksize=100000
+)
 print("Write back staypoints")
-ti.io.write_staypoints_csv(sp, os.path.join(out_path, "staypoints"))
+ti.io.write_staypoints_postgis(
+    sp, con=conn_string, schema=schema_name, name="staypoints", if_exists="replace", chunksize=100000
+)

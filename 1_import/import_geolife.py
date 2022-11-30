@@ -10,17 +10,18 @@ import json
 import pandas as pd
 from sqlalchemy import create_engine
 import trackintel as ti
+from config import config
 
 # connect to postgis database
-config_file = os.path.join(".", "dblogin.json")
-with open(config_file) as json_file:
+db_file = os.path.join(".", "dblogin.json")
+with open(db_file) as json_file:
     login_data = json.load(json_file)
 
 conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}".format(**login_data)
 engine = create_engine(conn_string)
 conn = engine.connect()
 
-geolife_path = r"E:\Geolife Trajectories 1.3\Data"
+geolife_path = config['geolife_path']
 schema_name = "geolife"
 
 pfs, mode_labels = ti.io.dataset_reader.read_geolife(geolife_path, print_progress=True)
