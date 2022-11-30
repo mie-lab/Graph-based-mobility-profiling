@@ -38,6 +38,8 @@ if __name__ == "__main__":
         "-i", "--inp_dir", type=str, default=os.path.join("out_features", "test"), help="feature inputs"
     )
     parser.add_argument("-o", "--out_dir", type=str, default="results", help="outputs")
+    parser.add_argument("-t", "--feature_type", type=str, default="graph", help="Using graph or raw feature set")
+    parser.add_argument("-m", "--min_equal", type=int, default=2, help="Mininimum corresponding features parameter")
     args = parser.parse_args()
 
     path = args.inp_dir
@@ -54,7 +56,7 @@ if __name__ == "__main__":
 
     # load features
     graph_features = pd.read_csv(
-        os.path.join(path, f"{study}_graph_features_{node_importance}.csv"), index_col="user_id"
+        os.path.join(path, f"{study}_{args.feature_type}_features_{node_importance}.csv"), index_col="user_id"
     )
 
     # ------------------ ANALYSE MERGED STUDIES WITH GIVEN GROUPS -------------------------------
@@ -84,6 +86,7 @@ if __name__ == "__main__":
             k_choices=[6, 7, 8, 9],
             nr_iters=3,
             out_path=os.path.join(out_dir, "consistency.csv"),
+            min_equal=args.min_equal,
         )
         graph_features["cluster"] = labels
         graph_features.to_csv(os.path.join(out_path + "clustering.csv"))
@@ -203,83 +206,3 @@ if __name__ == "__main__":
         print("Cluster characteristics by raw feature")
         _ = cluster_characteristics(raw_features, labels)
     f.close()
-
-
-# OLD VERSION: decision trees for feature importance, label analysis etc - deprecated
-# if __name__ == "__main__":
-#     study = "gc1"
-#     feat_type = "graph"
-#     node_importance = 0
-#     path = os.path.join("out_features", "final_6_cleaned")
-#     n_clusters = 6
-
-#     # Load the question mapping
-#     if "yumuv" in study:
-#         questions = load_all_questions()
-#     else:
-#         questions = pd.DataFrame()
-#     # study = "yumuv_before"
-
-#     name = f"{study}_{feat_type}_features_{node_importance}.csv"
-#     features = pd.read_csv(os.path.join(path, name), index_col="user_id")
-#     features.dropna(inplace=True)
-#     # find optimal k
-#     if n_clusters is None:
-#         n_clusters = find_k(features)
-#         print("Optimal k", n_clusters)
-
-#     cluster_wrapper = ClusterWrapper()
-#     labels = cluster_wrapper(features, n_clusters=n_clusters)
-
-#     # Interpret characteristics
-#     characteristics = cluster_characteristics(features, labels)
-#     sort_clusters_into_groups(characteristics)
-
-#     # print decision tree:
-#     feature_importances = decision_tree_cluster(features, labels)
-#     # get five most important features:
-#     important_feature_inds = np.argsort(feature_importances)[-5:]
-#     print(np.array(features.columns)[important_feature_inds], feature_importances[important_feature_inds])
-
-#     # load labels
-#     # GC1
-#     user_info = load_user_info(study, index_col="user_id")
-#     # YUMUV:
-#     # user_info = load_user_info(study, index_col="app_user_id")
-#     # user_info = user_info.reset_index().rename(columns={"app_user_id": "user_id"})
-
-#     # merge into one table and add cluster labels
-#     joined = features.merge(user_info, how="left", left_on="user_id", right_on="user_id")
-#     joined["cluster"] = labels
-
-#     # # Decision tree for NUMERIC data - first fill nans
-#     numeric_columns = get_numeric_columns(user_info)
-#     if len(numeric_columns) > 0:
-#         tree_input = joined[numeric_columns]
-#         tree_input = tree_input.fillna(value=tree_input.mean())
-#         feature_importances = decision_tree_cluster(tree_input, labels)
-#         # get five most important features:
-#         important_feature_inds = np.argsort(feature_importances)[-5:]
-#         print(np.array(numeric_columns)[important_feature_inds], feature_importances[important_feature_inds])
-
-#     # Entropy for CATEGORICAL data
-#     for col in user_info.columns:
-#         if "id" in col:
-#             continue
-#         not_nan = pd.isna(joined[col]).sum()
-#         if not_nan / len(joined) > 0.5:
-#             # print("Skipping because too many missing values:", col)
-#             continue
-
-#         # entropy is not symmetric, compute both
-#         entropy_1 = entropy(joined, col, "cluster")
-#         # entropy_2 = entropy(joined, "cluster", col)
-#         corresponding_q = get_q_for_col(col, questions)
-#         if entropy_1 < 0.95:
-#             print("\n------", col, "------")
-#             print(corresponding_q)
-#             entropy_1 = entropy(joined, col, "cluster", print_parts=True)
-#             print("\nEntropy:", round(entropy_1, 2), "\n")
-#         else:
-#             pass
-#             # print("high entropy", col, entropy_1)

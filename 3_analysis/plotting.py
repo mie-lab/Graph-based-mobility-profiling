@@ -91,19 +91,12 @@ def cluster_by_study(feats, out_path=None, fontsize_dict={"font.size": 28, "axes
 def plot_cluster_characteristics(
     feats,
     out_path=None,
-    feat_columns=[
-        "degree_beta",
-        "journey_length",
-        "hub_size",
-        "9th_decile_distance",
-        "median_trip_distance",
-        "transition_beta",
-    ],
     fontsize_dict={"font.size": 28, "axes.labelsize": 30},
     plot_mode="english",
 ):
     matplotlib.rcParams.update(fontsize_dict)
 
+    feat_columns = [c for c in feats.columns if c not in ["user_id", "study", "cluster"]]
     col_labs = {col: column_mapping.get(col, col) for col in feat_columns}
     feats = feats.rename(columns=col_labs)
     feat_columns = list(col_labs.values())
@@ -131,7 +124,13 @@ def plot_cluster_characteristics(
     feats_by_cluster = pd.melt(feats_by_cluster, id_vars=["cluster"], value_vars=feat_columns)
     feats_by_cluster.rename(columns=rn_dict, inplace=True)
     plt.figure(figsize=(20, 10))
-    p = sns.barplot(x=rn_dict["cluster"], y=rn_dict["value"], hue=rn_dict["variable"], data=feats_by_cluster)
+    p = sns.barplot(
+        x=rn_dict["cluster"],
+        y=rn_dict["value"],
+        hue=rn_dict["variable"],
+        data=feats_by_cluster,
+        # order=sorted(feats_by_cluster["User group"].unique()), # for RAW plotting
+    )
     plt.xlabel("")
     if plot_mode == "german":
         plt.ylim(-1.5, 3)
@@ -139,6 +138,8 @@ def plot_cluster_characteristics(
     else:
         plt.ylim(-1, 3.8)
         plt.legend(ncol=3, framealpha=0.8)
+        # plt.ylim(-1.5, 3.8)
+        # plt.legend(ncol=3, framealpha=0.8, fontsize=25) # for RAW plotting
     plt.tight_layout()
     if out_path is not None:
         plt.savefig(out_path)
@@ -159,7 +160,7 @@ def scatterplot_matrix(feature_df_in, use_features, clustering=None, save_path=N
         use_features = use_features[:6]
 
     feature_df = feature_df_in.rename(columns=column_mapping)
-    use_features = [column_mapping[feat] for feat in use_features]
+    use_features = [column_mapping.get(feat, feat) for feat in use_features]
 
     # transform to df
     feature_df = feature_df.loc[:, use_features]
@@ -300,6 +301,8 @@ def barplot_clusters(
     labels1 = np.array(labels1)
     labels2 = np.array(labels2)
 
+    matplotlib.rcParams.update({"font.size": 25, "axes.labelsize": 25})
+
     if yesno:
         occ1 = [sum(labels1 == lab) for lab in occuring_labels]
         occ2 = [sum(labels2 == lab) for lab in occuring_labels]
@@ -317,7 +320,7 @@ def barplot_clusters(
         ylabel = "Ratio of users"
 
     x = np.arange(len(occuring_labels))
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(15, 7))
     plt.bar(x - 0.2, occ1, 0.4, label=name1)
     plt.bar(x + 0.2, occ2, 0.4, label=name2)
     rot = 90 if rotate else 0
@@ -329,7 +332,7 @@ def barplot_clusters(
     plt.title(title, fontsize=15)
     plt.tight_layout()
     if out_path is not None:
-        plt.savefig(os.path.join(out_path, save_name + chisquare_text + ".png"), dpi=600)
+        plt.savefig(os.path.join(out_path, save_name + chisquare_text + ".pdf"))
     else:
         plt.show()
 

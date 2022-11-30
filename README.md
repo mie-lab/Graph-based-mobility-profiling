@@ -25,6 +25,32 @@ The activity graph class is defined in `future_trackintel.activity_graph`
       `G.edges[(0,2, 'transition_counts')]`. _transition_counts_ is currently the only edge type that is used at the moment.
 
 
+### Import data
+
+To reproduce the results of the paper, all five datasets would be needed. However, only the Foursquare and the Geolife datasets are publicly available. The first step is to download and read the raw data. 
+Geolife can be downloaded [here](TODO) and Foursquare [here](TODO).
+
+Read Geolife and preprocess:
+```
+python 1_import/import_geolife_csv.py -d path/to/geolife_data_folder
+```
+
+Read Foursquare data and preprocess:
+```
+python 1_import/import_tist_csv.py -c path/to/checkins -p path/to/pois
+```
+
+The preprocessed data is saved in a new folder `data/`.
+
+
+### Generate graphs
+
+Generate graphs for Geolife and Foursquare data
+```
+python 2_preprocessing/generate_graphs_csv.py
+```
+
+
 ### Analysis
 
 Given the mobility graphs, our analysis is grouped into scripts in the folder `3_analysis`. The workflow is the following:
