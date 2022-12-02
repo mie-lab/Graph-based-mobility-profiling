@@ -65,17 +65,17 @@ spts, triplegs, trips = ti.preprocessing.triplegs.generate_trips(spts, tpls, gap
 print("write to database")
 
 print("write positionfixes to database")
-ti.io.write_positionfixes_csv(pfs, os.path.join(out_path, "positionfixes"))
+ti.io.write_positionfixes_csv(pfs, os.path.join(out_path, "positionfixes.csv"))
 
 print("write staypoints to database")
-ti.io.write_staypoints_csv(spts, os.path.join(out_path, "staypoints"))
+ti.io.write_staypoints_csv(spts, os.path.join(out_path, "staypoints.csv"))
 
 print("write triplegs to database")
-ti.io.write_triplegs_csv(tpls, os.path.join(out_path, "triplegs"))
+ti.io.write_triplegs_csv(tpls, os.path.join(out_path, "triplegs.csv"))
 
 print("write trips to database")
-trips.as_trips.to_csv(os.path.join(out_path, "trips"))
+trips.as_trips.to_csv(os.path.join(out_path, "trips.csv"))
 
 print("write locations to database")
 locs = locs.drop("extent", axis=1)
-locs.as_locations.to_csv(os.path.join(out_path, "locations"))
+locs.as_locations.to_csv(os.path.join(out_path, "locations.csv"))

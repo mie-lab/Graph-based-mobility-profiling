@@ -23,7 +23,6 @@ args = parser.parse_args()
 
 out_path = args.out_path
 os.makedirs(out_path, exist_ok=True)
-geolife_path = args.data_path
 path_checkins = args.checkin_path
 path_pois = args.poi_path
 
@@ -61,10 +60,10 @@ print("Create locations")
 sp, locations = sp.as_staypoints.generate_locations(epsilon=10e-6, num_samples=1, distance_metric="euclidean")
 locations.drop("extent", axis=1, inplace=True)
 
-# sp_ = sp[sp['user_id'] == 391].sort_values('started_at')
+sp['finished_at'] = sp['started_at']
 
 # tist is now in trackintel format.
 print("Write back locations ")
-ti.io.write_locations_csv(locations, os.path.join(out_path, "locations"))
+ti.io.write_locations_csv(locations, os.path.join(out_path, "locations.csv"))
 print("Write back staypoints")
-ti.io.write_staypoints_csv(sp, os.path.join(out_path, "staypoints"))
+ti.io.write_staypoints_csv(sp, os.path.join(out_path, "staypoints.csv"))
