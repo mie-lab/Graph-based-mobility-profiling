@@ -143,6 +143,7 @@ data*
 # personal files
 trackintel_comments*
 notes*
+config.py
 
 /8_publication
 /9_debug
