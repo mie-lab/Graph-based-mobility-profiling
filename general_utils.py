@@ -35,7 +35,7 @@ def filter_user_by_number_of_days(sp, tpls, coverage=0.7, min_nb_good_days=28, f
 
     sp_tpls = sp.append(tpls).sort_values(["user_id", "started_at"])
 
-    coverage_df = ti.analysis.tracking_quality.temporal_tracking_quality(sp_tpls, granularity="day", max_iter=1000)
+    coverage_df = ti.analysis.tracking_quality.temporal_tracking_quality(sp_tpls, granularity="day")
 
     good_days_count = coverage_df[coverage_df["quality"] >= coverage].groupby(by="user_id")["quality"].count()
     good_users = good_days_count[good_days_count >= min_nb_good_days].index
@@ -247,9 +247,9 @@ def generate_graphs(
             trips_user = trips[trips["user_id"] == user_id_this]
             if trips_user.empty:
                 continue
-            AG = ActivityGraph(sp_user, locs_user, trips=trips_user, gap_threshold=gap_threshold)
+            AG = ActivityGraph(locations=locs_user, staypoints=sp_user, trips=trips_user, gap_threshold=gap_threshold)
         else:
-            AG = ActivityGraph(sp_user, locs_user, gap_threshold=gap_threshold)
+            AG = ActivityGraph(locations=locs_user, staypoints=sp_user, gap_threshold=gap_threshold)
 
         if study == "geolife":
             AG.add_node_features_from_staypoints(sp, agg_dict={"started_at": list, "finished_at": list})
