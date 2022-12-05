@@ -61,9 +61,10 @@ sp, locations = sp.as_staypoints.generate_locations(epsilon=10e-6, num_samples=1
 locations.drop("extent", axis=1, inplace=True)
 
 sp['finished_at'] = sp['started_at']
+# todo: set id label and delete id name in write csv
 
 # tist is now in trackintel format.
 print("Write back locations ")
 ti.io.write_locations_csv(locations, os.path.join(out_path, "locations.csv"))
 print("Write back staypoints")
-ti.io.write_staypoints_csv(sp, os.path.join(out_path, "staypoints.csv"))
+ti.io.write_staypoints_csv(sp, os.path.join(out_path, "staypoints.csv"), index_label='id')
