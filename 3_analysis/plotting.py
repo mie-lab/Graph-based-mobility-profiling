@@ -9,7 +9,6 @@ from scipy.stats import chi2_contingency, contingency
 
 matplotlib.rcParams.update({"font.size": 15, "axes.labelsize": 15})
 
-from future_trackintel.activity_graph import activity_graph
 import os
 import pickle
 
@@ -340,7 +339,7 @@ def barplot_clusters(
 if __name__ == "__main__":
     study = "gc2"
     from analysis_utils import get_con
-    from utils import read_graphs_from_postgresql
+    from graph_trackintel.io import read_graphs_from_postgresql
 
     con = get_con()
     graph_dict = read_graphs_from_postgresql(

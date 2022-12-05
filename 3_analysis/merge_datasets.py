@@ -1,13 +1,8 @@
 import os
 import numpy as np
 import pandas as pd
-import scipy
 import argparse
-import sys
 
-from clustering import ClusterWrapper
-from compare_clustering import compute_all_scores
-from label_analysis import entropy
 from plotting import plot_correlation_matrix
 
 

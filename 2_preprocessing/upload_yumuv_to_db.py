@@ -9,7 +9,7 @@ import pickle
 import psycopg2
 from sqlalchemy import create_engine
 
-from general_utils import write_graphs_to_postgresql, read_graphs_from_postgresql
+from graph_trackintel.io import write_graphs_to_postgresql, read_graphs_from_postgresql
 
 CRS_WGS84 = "epsg:4326"
 

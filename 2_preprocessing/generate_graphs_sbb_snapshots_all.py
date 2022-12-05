@@ -11,9 +11,8 @@ from general_utils import (
     get_trips,
     filter_user_by_number_of_days,
     generate_graphs,
-    read_graphs_from_postgresql,
-    write_graphs_to_postgresql,
 )
+from graph_trackintel.io import read_graphs_from_postgresql, write_graphs_to_postgresql
 
 CRS_WGS84 = "epsg:4326"
 
