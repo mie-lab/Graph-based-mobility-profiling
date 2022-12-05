@@ -21,8 +21,8 @@ if __name__ == "__main__":
     data_path = args.data_path
 
     print("\t read staypoints")
-    sp = ti.io.read_staypoints_csv(os.path.join(data_path, schema_name, "staypoints.csv"), geom_col="geometry",
-                                   index_col="id")
+    sp = ti.io.read_staypoints_csv(os.path.join(data_path, schema_name, "staypoints.csv"), geom_col="geom",
+                                   index_col="id", columns={"geometry": "geom"})
 
     print("\t read locations")
     locs = ti.io.read_locations_csv(os.path.join(data_path, schema_name, "locations.csv"), index_col="id")

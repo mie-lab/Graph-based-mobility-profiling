@@ -244,7 +244,7 @@ def generate_graphs(
 
         # if trips are provided they are used to create the activity graph
         if trips is not None:
-            trips_user = trips[trips["user_id"] == user_id_this]
+            trips_user = trips[trips["user_id"] == user_id_this].copy()
             if trips_user.empty:
                 continue
             AG = ActivityGraph(locations=locs_user, staypoints=sp_user, trips=trips_user, gap_threshold=gap_threshold)

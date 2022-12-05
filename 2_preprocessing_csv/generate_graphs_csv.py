@@ -8,7 +8,7 @@ from general_utils import generate_graphs, filter_user_by_number_of_days
 CRS_WGS84 = "epsg:4326"
 
 # public studies
-studies = ["geolife", "fs_toph100", "fs_top100"]
+studies = ["fs_toph100", "fs_top100", "geolife"]
 
 single_user = False
 
@@ -25,9 +25,9 @@ if __name__ == "__main__":
         print("start {}".format(study))
 
         if 'fs_' in study:
-            data_path = os.path.join(data_path, 'foursquare', study)
+            data_path_study = os.path.join(data_path, 'foursquare', study)
         else:
-            data_path = os.path.join(data_path, study)
+            data_path_study = os.path.join(data_path, study)
 
         # define output for graphs
         GRAPH_OUTPUT = os.path.join(args.out_path, study)
@@ -35,18 +35,18 @@ if __name__ == "__main__":
 
         # download data
         print("\t read staypoints")
-        sp = ti.io.read_staypoints_csv(os.path.join(data_path, "staypoints.csv"), index_col='id')
+        sp = ti.io.read_staypoints_csv(os.path.join(data_path_study, "staypoints.csv"), index_col='id')
 
         print("\t read locations")
-        locs = ti.io.read_locations_csv(os.path.join(data_path, "locations.csv"), index_col='id')
+        locs = ti.io.read_locations_csv(os.path.join(data_path_study, "locations.csv"), index_col='id')
 
         if "fs_" not in study:
 
             print("\t read triplegs")
-            tpls = ti.io.read_triplegs_csv(os.path.join(data_path, "triplegs.csv"), index_col='id')
+            tpls = ti.io.read_triplegs_csv(os.path.join(data_path_study, "triplegs.csv"), index_col='id')
 
             print("\t read trips")
-            trips = ti.io.read_trips_csv(os.path.join(data_path, "trips.csv"), index_col='id')
+            trips = ti.io.read_trips_csv(os.path.join(data_path_study, "trips.csv"), index_col='id')
 
             print("\t filter by tracking coverage")
             sp, user_id_ix = filter_user_by_number_of_days(sp=sp, tpls=tpls, coverage=0.7, min_nb_good_days=14)
