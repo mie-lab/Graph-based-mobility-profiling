@@ -114,7 +114,6 @@ class RawFeatures:
 
     def _load_data_csv(self, inp_dir, study):
         CRS_WGS84 = "epsg:4326"
-        con = self._get_con()
 
         # get staypoints
         self._sp = ti.read_staypoints_csv(
@@ -127,7 +126,6 @@ class RawFeatures:
         self._locations = ti.read_locations_csv(
             os.path.join(inp_dir, study_path_mapping[study], "locations.csv"),
             crs=CRS_WGS84,
-            geom_col="center",
             index_col="id",
         )
         # get trips

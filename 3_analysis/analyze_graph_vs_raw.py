@@ -108,7 +108,6 @@ def graph_raw_all_datasets(base_path, graph_feat_path, studies_raw=["gc1", "gc2"
             print(f"Warning: For study {study} no raw data exists, skip")
             continue
         feat = pd.read_csv(os.path.join(base_path, f"{study}_raw_features_0.csv"))
-        feat["user_id"] = feat["user_id"].astype(str)
         feat["study"] = study
         raw_feats.append(feat)
     raw_feats = pd.concat(raw_feats).set_index(["user_id", "study"])
@@ -117,7 +116,8 @@ def graph_raw_all_datasets(base_path, graph_feat_path, studies_raw=["gc1", "gc2"
     together = pd.merge(
         graph_feats,
         raw_feats,
-        on=("user_id", "study"),
+        left_index=True,
+        right_index=True,
         how="inner",
         suffixes=("_before", "_after"),
     )
@@ -229,7 +229,6 @@ if __name__ == "__main__":
     plot_cluster_characteristics(
         new_feats,
         out_path=os.path.join(out_dir, "raw_cluster_characteristics.pdf"),
-        feat_columns=feat_columns,
         fontsize_dict={"font.size": 26, "axes.labelsize": 30},
     )
 

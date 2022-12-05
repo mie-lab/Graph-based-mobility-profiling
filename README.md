@@ -36,13 +36,16 @@ Given the mobility graphs, our analysis is grouped into scripts in the folder `3
 
 First, all graph (and raw) mobility features are extracted from the graphs. Run
 ```
-python 3_analysis/get_all_features.py --out_dir='out_features/final_1_n0'
+python 3_analysis/get_all_features.py --in_path data/graph_data --out_dir='out_features/final_1_n0'
 ```
-NOTE: this can take up to half an hour. It is computing all features for all graphs
+NOTE: this can take up to half an hour. It is computing all features for all graphs.
+
+If you also want to experiment with the basic non-graph features, run
+```
+python 3_analysis/get_all_features.py --in_path data/raw --out_dir='out_features/final_1_n0' --f raw
+```
 
 The features are dumped in csv Files into a folder called `final_1_n0`, and then cleaned (outlier removal) and saved to a folder `final_1_n0_cleaned`.
-
-Note: The studies can also be processed individually, for this use `python 3_analysis/graph_features.py -s study` and `python 3_analysis/raw_features.py -s study`.
 
 **2) Merge datasets, compute correlation matrix and feature characteristics:**
 
@@ -51,6 +54,8 @@ Adjust the parameters that are hard-coded in the beginning of the file (input di
 python 3_analysis/merge_datasets.py --inp_dir='out_features/final_1_n0'
 ```
 This will remove outliers and save the csvs with all graph features combined for all datasets in a new folder, which is named the same as the `inp_dir` folder but with the suffiz `_cleaned`. 
+
+(To merge the datasets of the computed basic features, add the flag `--feat_type=raw`)
 
 **3) Identify user groups**
 

@@ -94,43 +94,42 @@ def clean_features(path, cutoff=4):
             after_features.to_csv(os.path.join(out_path, f).replace("before", "after"))
 
 
-def get_graph_and_raw(inp_dir, out_dir, node_importance):
+def get_graph_and_raw(inp_dir, out_dir, node_importance, feat_type="graph"):
     # if no database access, just process the three public datasets
     studies_to_process = ["geolife", "tist_toph100", "tist_random100"]
     if inp_dir == "postgis":
         studies_to_process = studies_to_process + ["gc1", "gc2"]
 
     for study in studies_to_process:
-        for feat_type in ["graph"]:
 
-            print("\n -------------- PROCESS", study, feat_type, " ---------------")
+        print("\n -------------- PROCESS", study, feat_type, " ---------------")
 
-            # Generate feature matrix
-            tic = time.time()
-            if feat_type == "raw":
-                trips_available = "tist" not in study  # for tist, the trips are missing
-                feat_class = RawFeatures(inp_dir, study, trips_available=trips_available)
-                select_features = "all"
-            else:
-                feat_class = GraphFeatures(inp_dir, study, node_importance=node_importance)
-                select_features = "default"
+        # Generate feature matrix
+        tic = time.time()
+        if feat_type == "raw":
+            trips_available = "tist" not in study  # for tist, the trips are missing
+            feat_class = RawFeatures(inp_dir, study, trips_available=trips_available)
+            select_features = "all"
+        else:
+            feat_class = GraphFeatures(inp_dir, study, node_importance=node_importance)
+            select_features = "default"
 
-            features = feat_class(features=select_features)
-            print(features)
-            print("time for feature generation", time.time() - tic)
+        features = feat_class(features=select_features)
+        print(features)
+        print("time for feature generation", time.time() - tic)
 
-            out_path = os.path.join(out_dir, f"{study}_{feat_type}_features_{node_importance}")
+        out_path = os.path.join(out_dir, f"{study}_{feat_type}_features_{node_importance}")
 
-            features.to_csv(out_path + ".csv")
+        features.to_csv(out_path + ".csv")
 
-            # geolife has nan rows, drop them first
-            features.dropna(inplace=True)
-            cluster_wrapper = ClusterWrapper()
-            labels = cluster_wrapper(features, n_clusters=2)
-            try:
-                scatterplot_matrix(features, features.columns, clustering=labels, save_path=out_path + ".pdf")
-            except:
-                continue
+        # geolife has nan rows, drop them first
+        features.dropna(inplace=True)
+        cluster_wrapper = ClusterWrapper()
+        labels = cluster_wrapper(features, n_clusters=2)
+        try:
+            scatterplot_matrix(features, features.columns, clustering=labels, save_path=out_path + ".pdf")
+        except:
+            continue
 
 
 def get_yumuv(out_dir, node_importance):
@@ -206,6 +205,9 @@ if __name__ == "__main__":
         "-o", "--out_dir", type=str, default=os.path.join("out_features", "test"), help="output directory"
     )
     parser.add_argument("-n", "--nodes", type=int, default=0, help="number of x important nodes. Set 0 for all nodes")
+    parser.add_argument(
+        "-f", "--feat_type", type=str, default="graph", help="Compute graph features (graph) or basic features (raw)"
+    )
     args = parser.parse_args()
 
     if not os.path.exists("out_features"):
@@ -219,7 +221,7 @@ if __name__ == "__main__":
     sys.stdout = f
 
     # Process graph and raw features for all studies, then add yumuv, then clean
-    get_graph_and_raw(args.in_path, args.out_dir, args.nodes)
+    get_graph_and_raw(args.in_path, args.out_dir, args.nodes, feat_type=args.feat_type)
     if args.in_path == "postgis":
         get_yumuv(args.out_dir, args.nodes)
         get_timebins(args.out_dir)

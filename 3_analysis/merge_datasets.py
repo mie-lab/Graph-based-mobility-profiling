@@ -77,12 +77,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "-i", "--inp_dir", type=str, default=os.path.join("out_features", "test"), help="input directory"
     )
+    parser.add_argument(
+        "-f", "--feat_type", type=str, default="graph", help="Compute graph features (graph) or basic features (raw)"
+    )
     args = parser.parse_args()
 
     # parameters
     nodes = 0
     path = args.inp_dir
-    feature_type = "graph"
+    feature_type = args.feat_type
     cutoff = 4
 
     out_dir = path + "_cleaned"
