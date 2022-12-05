@@ -104,6 +104,9 @@ def graph_raw_all_datasets(base_path, graph_feat_path, studies_raw=["gc1", "gc2"
     # collect all raw feats
     raw_feats = []
     for study in studies_raw:
+        if not os.path.exists(os.path.join(base_path, f"{study}_raw_features_0.csv")):
+            print(f"Warning: For study {study} no raw data exists, skip")
+            continue
         feat = pd.read_csv(os.path.join(base_path, f"{study}_raw_features_0.csv"))
         feat["user_id"] = feat["user_id"].astype(str)
         feat["study"] = study

@@ -94,9 +94,13 @@ def clean_features(path, cutoff=4):
             after_features.to_csv(os.path.join(out_path, f).replace("before", "after"))
 
 
-def get_graph_and_raw(out_dir, node_importance):
+def get_graph_and_raw(inp_dir, out_dir, node_importance):
+    # if no database access, just process the three public datasets
+    studies_to_process = ["geolife", "tist_toph100", "tist_random100"]
+    if inp_dir == "postgis":
+        studies_to_process = studies_to_process + ["gc1", "gc2"]
 
-    for study in ["gc1", "gc2", "geolife", "tist_toph100", "tist_random100"]:
+    for study in studies_to_process:
         for feat_type in ["graph"]:
 
             print("\n -------------- PROCESS", study, feat_type, " ---------------")
@@ -105,10 +109,10 @@ def get_graph_and_raw(out_dir, node_importance):
             tic = time.time()
             if feat_type == "raw":
                 trips_available = "tist" not in study  # for tist, the trips are missing
-                feat_class = RawFeatures(study, trips_available=trips_available)
+                feat_class = RawFeatures(inp_dir, study, trips_available=trips_available)
                 select_features = "all"
             else:
-                feat_class = GraphFeatures(study, node_importance=node_importance)
+                feat_class = GraphFeatures(inp_dir, study, node_importance=node_importance)
                 select_features = "default"
 
             features = feat_class(features=select_features)
@@ -132,18 +136,18 @@ def get_graph_and_raw(out_dir, node_importance):
 def get_yumuv(out_dir, node_importance):
 
     print("\n----------------- PROCESS YUMUV --------------------")
-    runner_all_feat = GraphFeatures("yumuv_graph_rep", node_importance=node_importance)
+    runner_all_feat = GraphFeatures("postgis", "yumuv_graph_rep", node_importance=node_importance)
     full_features = runner_all_feat(features="default")
     full_features.to_csv(os.path.join(out_dir, f"yumuv_graph_rep_graph_features_{node_importance}.csv"))
 
     print("\n----------------- GET YUMUV BEF AND AFT --------------------")
 
     print("Run yumuv before")
-    runner_before_feat = GraphFeatures("yumuv_before", node_importance=node_importance)
+    runner_before_feat = GraphFeatures("postgis", "yumuv_before", node_importance=node_importance)
     before_features = runner_before_feat(features="default")
 
     print("\nRun yumuv after")
-    runner_after_feat = GraphFeatures("yumuv_after", node_importance=node_importance)
+    runner_after_feat = GraphFeatures("postgis", "yumuv_after", node_importance=node_importance)
     after_features = runner_after_feat(features="default")
 
     yumuv_dir = out_dir + "_long_yumuv"
@@ -165,7 +169,7 @@ def get_gc_quarters(out_dir, node_importance):
     os.makedirs(quarter_dir, exist_ok=True)
     for quarter_ind in range(1, 5):
         quarter = "gc1_quarter" + str(quarter_ind)
-        runner_all_feat = GraphFeatures(quarter, node_importance=node_importance)
+        runner_all_feat = GraphFeatures("postgis", quarter, node_importance=node_importance)
         full_features = runner_all_feat(features="default")
         full_features.to_csv(os.path.join(quarter_dir, quarter + f"_graph_features_{node_importance}.csv"))
 
@@ -190,13 +194,14 @@ def get_timebins(out_dir, node_importance=0):
                     print("already done", name)
                     continue
                 print("processing graphs from", name)
-                runner_all_feat = GraphFeatures(name, node_importance=node_importance)
+                runner_all_feat = GraphFeatures("postgis", name, node_importance=node_importance)
                 full_features = runner_all_feat(features="default")
                 full_features.to_csv(os.path.join(timebin_dir, name + f"_graph_features_{node_importance}.csv"))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--in_path", type=str, default=os.path.join("data", "graph_data"))
     parser.add_argument(
         "-o", "--out_dir", type=str, default=os.path.join("out_features", "test"), help="output directory"
     )
@@ -214,9 +219,10 @@ if __name__ == "__main__":
     sys.stdout = f
 
     # Process graph and raw features for all studies, then add yumuv, then clean
-    get_graph_and_raw(args.out_dir, args.nodes)
-    get_yumuv(args.out_dir, args.nodes)
-    get_timebins(args.out_dir)
+    get_graph_and_raw(args.in_path, args.out_dir, args.nodes)
+    if args.in_path == "postgis":
+        get_yumuv(args.out_dir, args.nodes)
+        get_timebins(args.out_dir)
     # clean_features(args.out_dir)
 
     f.close()

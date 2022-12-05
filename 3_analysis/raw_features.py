@@ -16,13 +16,22 @@ from clustering import ClusterWrapper
 from skmob.measures.individual import *
 from plotting import scatterplot_matrix
 
+study_path_mapping = {
+    "tist_toph100": "foursquare/fs_toph100",
+    "tist_random100": "foursquare/fs_top100",
+    "geolife": "geolife",
+}
+
 
 class RawFeatures:
-    def __init__(self, study, trips_available=True):
+    def __init__(self, inp_dir, study, trips_available=True):
         self._trips_available = trips_available
         self._study = study
         print("Loading data...")
-        self._load_data(study)
+        if inp_dir == "postgis":
+            self._load_data(study)
+        else:
+            self._load_data_csv(inp_dir, study)
         self._tdf = self._to_skmob(self._sp, self._locations)
 
         # the features we aim to use
@@ -100,6 +109,33 @@ class RawFeatures:
                 con=con,
                 crs=CRS_WGS84,
                 geom_col="geom",  # center for locations
+                index_col="id",
+            )
+
+    def _load_data_csv(self, inp_dir, study):
+        CRS_WGS84 = "epsg:4326"
+        con = self._get_con()
+
+        # get staypoints
+        self._sp = ti.read_staypoints_csv(
+            os.path.join(inp_dir, study_path_mapping[study], "staypoints.csv"),
+            crs=CRS_WGS84,
+            geom_col="geom",
+            index_col="id",
+        )
+        # get locs
+        self._locations = ti.read_locations_csv(
+            os.path.join(inp_dir, study_path_mapping[study], "locations.csv"),
+            crs=CRS_WGS84,
+            geom_col="center",
+            index_col="id",
+        )
+        # get trips
+        if self._trips_available:
+            self._trips = ti.read_trips_csv(
+                os.path.join(inp_dir, study_path_mapping[study], "trips.csv"),
+                crs=CRS_WGS84,
+                geom_col="geom",
                 index_col="id",
             )
 
@@ -254,7 +290,7 @@ if __name__ == "__main__":
 
     out_path = os.path.join(out_dir, f"{study}_raw_features")
 
-    raw_feat = RawFeatures(study, trips_available=trips_available)
+    raw_feat = RawFeatures("postgis", study, trips_available=trips_available)
     # compute only the returners and explorers
     if args.explorer:
         print("Compute returners and explorers")

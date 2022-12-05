@@ -11,23 +11,29 @@ from skmob.measures import individual
 from scipy.optimize import curve_fit
 
 from joblib import Parallel, delayed
-
+from graph_trackintel.io import read_graphs_from_postgresql
 
 from analysis_utils import *
 
+study_path_mapping = {"tist_toph100": "fs_toph100", "tist_random100": "fs_top100", "geolife": "geolife"}
+
 
 class GraphFeatures:
-    def __init__(self, study, node_importance=50, random_walk_iters=5000, remove_loops=False):
+    def __init__(self, in_path, study, node_importance=50, random_walk_iters=5000, remove_loops=False):
         """
         study: str, study name
         node_importance: int, only keep x most important nodes for each graph
         """
         # Load from pickle
-        # self._graphs, self._users = load_graphs_pkl(
-        #     os.path.join(".", "data_out", "graph_data", "gc2", "counts_full.pkl"), node_importance=50
-        # )
+        #
         self._debug = False
-        self._graphs, self._users = self._load_graphs(study, node_importance)
+        if in_path == "postgis":
+            self._graphs, self._users = self._load_graphs(study, node_importance)
+        else:
+            self._graphs, self._users = load_graphs_pkl(
+                os.path.join(in_path, study_path_mapping[study], "counts_full.pkl"), node_importance=node_importance
+            )
+
         print("Loaded data", len(self._graphs))
 
         # specify necessary parameters for the feature extraction
@@ -329,7 +335,7 @@ if __name__ == "__main__":
 
     # Generate feature matrix
     tic = time.time()
-    graph_feat = GraphFeatures(study, node_importance=node_importance)
+    graph_feat = GraphFeatures("postgis", study, node_importance=node_importance)
     # TESTING:
     graph_feat._test_feature("unique_journeys")
 

@@ -1,34 +1,11 @@
 # Mobility Profiling Based on Graph Representations
 
-## Preprocessing
-
-### current data format 
-
-dictionary with user id as keys and _activity graph objects_ as values e.g.,
-
-```python
-{1597: <future_trackintel.activity_graph.activity_graph at 0x158eee23520>,
-1598: <future_trackintel.activity_graph.activity_graph at 0x158eee23fa0>,
-1599: <future_trackintel.activity_graph.activity_graph at 0x158f0883c70>}
-```
-
-The activity graph class is defined in `future_trackintel.activity_graph`
-
-#### attributes 
-- G: the nx graph model
-    - node ids start with 0
-    - nodes have a location id, geometry and an optional extent geometry
-    - It is planned that arbitrary features of staypoints, locations and context will be
-    assigned to nodes
-    - edges are directed 
-    - can be adressed by the 3-tuple (node 1, node 2, edge type) e.g., 
-      `G.edges[(0,2, 'transition_counts')]`. _transition_counts_ is currently the only edge type that is used at the moment.
-
+## Import and preprocessing
 
 ### Import data
 
 To reproduce the results of the paper, all five datasets would be needed. However, only the Foursquare and the Geolife datasets are publicly available. The first step is to download and read the raw data. 
-Geolife can be downloaded [here](TODO) and Foursquare [here](TODO).
+Geolife can be downloaded [here](https://www.microsoft.com/en-us/research/publication/geolife-gps-trajectory-dataset-user-guide/) and Foursquare [here](https://drive.google.com/file/d/1PNk3zY8NjLcDiAbzjABzY5FiPAFHq6T8/view?usp=sharing).
 
 Read Geolife and preprocess:
 ```
@@ -37,21 +14,21 @@ python 1_import/import_geolife_csv.py -d path/to/geolife_data_folder
 
 Read Foursquare data and preprocess:
 ```
-python 1_import/import_tist_csv.py -c path/to/checkins -p path/to/pois
+python 1_import_csv/import_foursquare_csv.py -c path/to/checkins -p path/to/pois
 ```
 
-The preprocessed data is saved in a new folder `data/`.
+The preprocessed data is saved in a new folder `data/raw`.
 
 
 ### Generate graphs
 
 Generate graphs for Geolife and Foursquare data
 ```
-python 2_preprocessing/generate_graphs_csv.py
+python 2_preprocessing_csv/generate_graphs_csv.py -i data/raw
 ```
+The graphs are saved as pickle files in the folder `data/graph_data`
 
-
-### Analysis
+## Analysis
 
 Given the mobility graphs, our analysis is grouped into scripts in the folder `3_analysis`. The workflow is the following:
 
@@ -61,6 +38,8 @@ First, all graph (and raw) mobility features are extracted from the graphs. Run
 ```
 python 3_analysis/get_all_features.py --out_dir='out_features/final_1_n0'
 ```
+NOTE: this can take up to half an hour. It is computing all features for all graphs
+
 The features are dumped in csv Files into a folder called `final_1_n0`, and then cleaned (outlier removal) and saved to a folder `final_1_n0_cleaned`.
 
 Note: The studies can also be processed individually, for this use `python 3_analysis/graph_features.py -s study` and `python 3_analysis/raw_features.py -s study`.
@@ -71,8 +50,7 @@ Adjust the parameters that are hard-coded in the beginning of the file (input di
 ```
 python 3_analysis/merge_datasets.py --inp_dir='out_features/final_1_n0'
 ```
-This will save a csv file with all graph features combined for all datasets (saved to the same folder as the input graph feature csvs), secondly a csv file with the averages per feature, and third a plot for the correlation matrix.
-The latter two will be saved to the output directory called `results`.
+This will remove outliers and save the csvs with all graph features combined for all datasets in a new folder, which is named the same as the `inp_dir` folder but with the suffiz `_cleaned`. 
 
 **3) Identify user groups**
 
@@ -94,7 +72,18 @@ This will run the clustering multiple times again with the identified user group
 
 Note: It is also possible to analyse a single study with the user groups. To do this, specify for example `-s gc1` in the command above.
 
-**5) Transform other features to the identified user groups**
+**5) Validation: comparison to raw features**
+
+Run
+```
+python 3_analysis/analyze_graph_vs_raw.py -o results -i out_features/final_1_n0_cleaned -s all_datasets
+```
+
+## MaaS Impact Analysis
+
+**All further steps can only be reproduced with full data access, as they rely on the Green Class and Yumuv data**
+
+**6) Transform other features to the identified user groups**
 
 After step 4, all users in the five main datasets have their (most consistent) group assigned. In step 4, we also saved one specific clustering C with the k that had the highest correspondence with the consistent user groups. Now, for the MAAS applictations, we need to transform the features of control group / test group to the clustering C.
 
@@ -104,21 +93,21 @@ python 3_analysis/transform_new_features.py -i out_features/final_1_n0_cleaned -
 ```
 This will output files `long_yumuv_clustering.csv` and the same for gc1 and gc2 into the `results` folder. 
 
-**6) Cross sectional study with GC and YUMUV**
+**7) Cross sectional study with GC and YUMUV**
 
 For the cross secional study, we use the assigned groups from above (`results/all_datasets_clustering.csv`). In this script we simply compare the assigned groups between control group and test group. Run
 ```
 python 3_analysis/cross_sectional.py -i results
 ```
 
-**7) Longitudinal study with GC1 and YUMUV**
+**8) Longitudinal study with GC1 and YUMUV**
 
 Run the following to save all longitudinal plots into the results folder:
 ```
 python 3_analysis/longitudinal.py -i results
 ```
 
-**8) Label analysis**
+**9) Label analysis**
 
 For GC and YUMUV, the results of a user survey are also available, with questions about demographics and mobility behavior. We compare the replies of each user group vs the other user groups and save the results in a csv file (and plot significant ones). This is done by running
 ```
@@ -128,11 +117,3 @@ or
 ```
 python 3_analysis/label_analysis.py -i results -s gc1
 ```
-
-**9) Validation: comparison to raw features**
-
-Run
-```
-python 3_analysis/analyze_graph_vs_raw.py -o results_quantile -i out_features/final_7_n0_quantile_cleaned -s all_datasets
-```
-
