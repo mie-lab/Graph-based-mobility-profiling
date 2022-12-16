@@ -1,15 +1,16 @@
 # Mobility Profiling Based on Graph Representations
 
+This is the code for the paper _Graph Based Mobility Profiling_ available [here](https://www.sciencedirect.com/science/article/pii/S0198971522001545) (open access)
 ## Import and preprocessing
 
 ### Import data
 
-To reproduce the results of the paper, all five datasets would be needed. However, only the Foursquare and the Geolife datasets are publicly available. The first step is to download and read the raw data. 
+To reproduce the results of the paper, all five datasets would be needed. However, only the Foursquare and the Geolife datasets are publicly available. For the work in the paper, all datasets were imported into a Postgresql/PostGIS database. To allows the reproduction of the results to some extent, we have modified the pipeline so that it can be run using only the publicly available datasets (Geolife + Foursquare) using .csv files. The first step is to download and read the raw data. 
 Geolife can be downloaded [here](https://www.microsoft.com/en-us/research/publication/geolife-gps-trajectory-dataset-user-guide/) and Foursquare [here](https://drive.google.com/file/d/1PNk3zY8NjLcDiAbzjABzY5FiPAFHq6T8/view?usp=sharing).
 
-Read Geolife and preprocess:
+Read and preprocess Geolife:
 ```
-python 1_import/import_geolife_csv.py -d path/to/geolife_data_folder
+python 1_import_csv/import_geolife_csv.py -d path/to/geolife_data_folder
 ```
 
 Read Foursquare data and preprocess:
@@ -18,7 +19,6 @@ python 1_import_csv/import_foursquare_csv.py -c path/to/checkins -p path/to/pois
 ```
 
 The preprocessed data is saved in a new folder `data/raw`.
-
 
 ### Generate graphs
 
