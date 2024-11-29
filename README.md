@@ -122,3 +122,21 @@ or
 ```
 python 3_analysis/label_analysis.py -i results -s gc1
 ```
+
+### References
+
+**Please consider citing our paper if you build up on this work:**
+
+Martin, H., Wiedemann, N., Reck, D. J., & Raubal, M. (2023). Graph-based mobility profiling. Computers, Environment and Urban Systems, 100, 101910.
+
+```bib
+@article{martin2023graph,
+  title={Graph-based mobility profiling},
+  author={Martin, Henry and Wiedemann, Nina and Reck, Daniel J and Raubal, Martin},
+  journal={Computers, Environment and Urban Systems},
+  volume={100},
+  pages={101910},
+  year={2023},
+  publisher={Elsevier}
+}
+```
